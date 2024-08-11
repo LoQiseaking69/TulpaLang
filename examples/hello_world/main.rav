@@ -1,0 +1,47 @@
+# Hello World example for Tulpa
+
+print("Hello, World!");
+
+# Demonstrating a simple loop macro
+simple_loop!(3, {
+    print("This will print 3 times!");
+});
+
+# Variable declaration and usage
+let message = "The Tulpa Is MANIFESTING!";
+print(message);
+
+# Function definition and call
+fn greet(name) {
+    let greeting = "Hello, " + name + "!";
+    print(greeting);
+}
+
+greet("Tulpa User");
+
+# Demonstrating an if-else condition
+let number = 10;
+if number > 5 {
+    print("Number is greater than 5");
+} else {
+    print("Number is 5 or less");
+}
+
+# Using a for loop for iteration
+for i in 0..5 {
+    print("Loop iteration: ", i);
+}
+
+# Calculating a simple expression
+let result = 5 * 10 + 3;
+print("Result of the expression: ", result);
+
+# Demonstrating use of a macro with parameters
+define_macro!(repeat_message, (times, msg) {
+    simple_loop!(times, {
+        print(msg);
+    });
+});
+
+repeat_message!(2, "Repeating this message twice!");
+
