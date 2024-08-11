@@ -3,7 +3,8 @@
 ## Overview
 
 Tulpa is a multi-paradigm programming language inspired by Python, powered by Rust, and enhanced with Hehner's algebraic notation. It is designed for high-performance computing and seamless device integration, making it an ideal choice for embedded systems, robotics, and hardware control.
-
+___
+![img](
 ## Features
 
 - **Python-like Syntax**: Easy-to-read syntax inspired by Python, accessible to both beginners and experienced developers.
