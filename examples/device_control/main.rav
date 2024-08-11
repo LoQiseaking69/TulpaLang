@@ -1,0 +1,31 @@
+
+# Device control example of Tulpa
+
+# Import necessary modules
+use gpio::GPIO;
+use i2c::I2C;
+use spi::SPI;
+use uart::UART;
+
+// Example of controlling a GPIO pin
+let gpio = GPIO::new(17);
+gpio.set_high();
+gpio.set_low();
+
+// Example of communicating with an I2C device
+let i2c = I2C::new(0x40);
+let mut buffer = [0; 3];
+i2c.write(&[0x01, 0x02, 0x03]);
+i2c.read(&mut buffer);
+print(&format!("I2C Read Data: {:?}", buffer));
+
+// Example of SPI communication
+let spi = SPI::new(0, 10);
+let response = spi.transfer(&[0xAA, 0xBB, 0xCC]);
+print(&format!("SPI Response: {:?}", response));
+
+// Example of UART communication
+let uart = UART::new("COM1".to_string(), 9600);
+uart.send(b"Hello, UART!");
+uart.receive(&mut buffer);
+print(&format!("UART Received Data: {:?}", buffer));
