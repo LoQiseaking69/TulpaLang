@@ -10,7 +10,6 @@ ___
 
 - **Python-like Syntax**: Easy-to-read syntax inspired by Python, accessible to both beginners and experienced developers.
 - **Rust Performance**: Utilizes Rust's LLVM backend for optimized, safe, and fast execution.
-- **Hehner's Notation**: Supports advanced algebraic notation for sophisticated logic and mathematical precision.
 - **Device Integration**: Provides modules for controlling GPIO, I2C, SPI, and UART devices, enabling direct hardware interaction.
 - **Async Programming**: Supports asynchronous programming to handle I/O-bound tasks effectively.
 - **Macros**: Allows code generation and metaprogramming within the language.
