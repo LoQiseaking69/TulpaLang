@@ -20,8 +20,8 @@ Tulpa is a multi-paradigm programming language inspired by Python, powered by Ru
 Clone the Tulpa repository and navigate to the project directory:
 
 ```bash
-git clone https://github.com/yourusername/glue.git
-cd glue
+git clone https://github.com/LoQiseaking69/TulpaLang.git
+cd TulpaLang
 ```
 
 ### 2. Building the Project
