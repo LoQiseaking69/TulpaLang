@@ -1206,6 +1206,34 @@ impl Native for Scaler {
             s.m2.iter().map(|m2| if s.n > 1.0 { (m2 / (s.n - 1.0)).sqrt().max(1e-6) } else { 1.0 }).collect()
         };
         match m {
+            "save" => {
+                let path = str_arg(a, 0, "Scaler.save")?;
+                let line = |v: &[f64]| v.iter().map(|x| format!("{x:e}")).collect::<Vec<_>>().join(" ");
+                let body = format!("tulpa-scaler 1\n{} {} {}\n{}\n{}\n", self.mean.len(), self.n, self.clip, line(&self.mean), line(&self.m2));
+                std::fs::write(&path, body).map_err(|e| format!("Scaler.save {path}: {e}"))?;
+                Ok(Value::Nil)
+            }
+            "load" => {
+                let path = str_arg(a, 0, "Scaler.load")?;
+                let s = std::fs::read_to_string(&path).map_err(|e| format!("Scaler.load {path}: {e}"))?;
+                let mut l = s.lines();
+                if l.next() != Some("tulpa-scaler 1") {
+                    return Err(format!("Scaler.load: {path} is not a scaler file"));
+                }
+                let head: Vec<f64> = l.next().unwrap_or("").split_whitespace().filter_map(|x| x.parse().ok()).collect();
+                if head.len() != 3 || head[0] as usize != self.mean.len() {
+                    return Err(format!("Scaler.load: {path} has a different feature count"));
+                }
+                let parse = |x: Option<&str>| -> Vec<f64> { x.unwrap_or("").split_whitespace().filter_map(|v| v.parse().ok()).collect() };
+                let (mean, m2) = (parse(l.next()), parse(l.next()));
+                if mean.len() != self.mean.len() || m2.len() != self.m2.len() {
+                    return Err("Scaler.load: corrupt file".into());
+                }
+                self.n = head[1];
+                self.mean = mean;
+                self.m2 = m2;
+                Ok(Value::Nil)
+            }
             "update" | "observe" => {
                 let x = operand(a.first().ok_or("Scaler.update(x)")?, None)?;
                 if x.cols != self.mean.len() {

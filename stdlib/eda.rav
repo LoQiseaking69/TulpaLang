@@ -175,8 +175,11 @@ struct Board {
         for ref in self.order {
             let part = self.parts[ref]
             if part.supplied_from != nil and part.supplied_from in rails {
+                # several regulators may share a rail: each carries its share of capacity
                 let out = 0[W]
-                for rail, _ in part.supplies { if rail in rails { out += rails[rail].load } }
+                for rail, cap in part.supplies {
+                    if rail in rails and rails[rail].capacity > 0 { out += rails[rail].load * (cap / rails[rail].capacity) }
+                }
                 rails[part.supplied_from].load += out / part.efficiency
                 rails[part.supplied_from].loads.push(ref)
             }

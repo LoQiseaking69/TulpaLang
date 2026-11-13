@@ -117,3 +117,14 @@ print(q.value)
 "#);
     assert_eq!(out, "4 9 [1, 2, 0, 3]\n0.09\n[9.5]\n0 2.1 [\"C1\"]\n2\n");
 }
+
+#[test]
+fn scaler_save_load_roundtrip() {
+    let p = std::env::temp_dir().join("tulpa_scaler_test.txt");
+    let ps = p.display().to_string().replace('\\', "/");
+    let src = format!(
+        "let s = nn::Scaler(2)\nfor r in [[1.0, 10.0], [3.0, 30.0], [5.0, 50.0]] {{ s.update([r]) }}\ns.save(\"{ps}\")\nlet t = nn::Scaler(2)\nt.load(\"{ps}\")\nprint(t.count(), t.mean())\n"
+    );
+    let out = tulpa::run_captured(&src).unwrap();
+    assert_eq!(out.trim(), "3.0 [3.0, 30.0]");
+}
