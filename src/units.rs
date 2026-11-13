@@ -351,6 +351,11 @@ impl fmt::Display for Quantity {
     }
 }
 
+/// All unit symbols (for completion in tooling).
+pub fn unit_symbols() -> Vec<&'static str> {
+    ATOMS.iter().map(|(s, _, _)| *s).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -13,9 +13,12 @@ pub mod devices;
 pub mod ext;
 pub mod interp;
 pub mod lexer;
+pub mod llvm;
+pub mod lsp;
 pub mod parser;
 pub mod units;
 pub mod value;
+pub mod vm;
 
 pub use devices::Backend;
 pub use interp::{Interpreter, RuntimeError};

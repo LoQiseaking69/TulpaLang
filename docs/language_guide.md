@@ -34,8 +34,8 @@ Assigning to a name you never declared is an error. This catches typos.
 `int`, `float`, `str`, `bool`, `nil`, `list`, `dict`, `range`, `fn`, `task`, `quantity`, `signal`,
 struct objects, machine instances, plus native objects (`GPIO`, `I2C`, `SPI`, `UART`, `PWM`, `Servo`, `PID`). Use `type(v)` to get the type name.
 
-- `int / int` is floor division, as in C and Rust (`7 / 2 == 3`). Use a float operand to get a float result (`7.0 / 2 == 3.5`).
-- `%` is Euclidean modulo, so the result is never negative for a positive divisor. `**` is exponentiation and is right-associative.
+- `int / int` is Euclidean integer division (`7 / 2 == 3`, `-7 / 2 == -4`, `-7 / -3 == 3`). It pairs with `%` so that `a == b * (a / b) + a % b` always holds. Use a float operand to get a float result (`7.0 / 2 == 3.5`).
+- `%` is the Euclidean remainder, so it is never negative. `**` is exponentiation and is right-associative.
 - Integer overflow is an error. It never silently wraps.
 - `str + anything` concatenates.
 - Truthiness: `nil`, `false`, `0`, `0.0`, `""`, `[]` and `{}` are false. Everything else is true.
@@ -384,6 +384,72 @@ drive.TRACK_WIDTH; d.wheels(t)
 - Names starting with `_` stay private.
 - A circular import is an error.
 
+
+## Timing rules
+
+```tulpa
+when button.read() == 1 for 25[ms] { start() }          # debounce: must hold 25 ms
+when temp.get() > 80 for 2[s] { alarm() } else { clear() }
+
+after motor.read() == 1 within 300[ms] ensure at_limit.get() else { motor.set_low() }
+```
+
+- `when cond for D`: the body fires once the condition has held continuously for duration `D`. If the condition drops before then, the timer resets.
+- `after trigger within D ensure response [else { handler }]`: arms on each rising edge of `trigger`. It's satisfied as soon as `response` holds. If `D` passes first, the handler runs; with no handler, the program stops with a `deadline missed` error.
+- Durations accept time quantities (`250[ms]`) or plain seconds.
+
+Time-based rules are re-evaluated as time passes. When one is registered, sleeps are sliced and
+re-check the rules every 2 ms, and every `every!` tick checks them too.
+
+**Virtual clock.** `--virtual-time`, or `sim::virtual_time(true)` from a script, replaces the wall
+clock with a simulated one:
+- `sleep`, `sleep_ms`, `every!` and `sim::advance(dur)` move it forward instantly.
+- With timing rules registered, it moves in 1 ms steps.
+- `millis()` reads it.
+
+Timing logic then runs deterministically and fast in tests. `sim::gpio_input`, `sim::i2c_set` and
+`sim::uart_feed` count as external events, so rules see them immediately.
+
+## Execution tiers
+
+1. **Interpreter.** Runs everything.
+2. **Bytecode VM.** On its first call, each function is compiled to stack bytecode with resolved
+   local slots and executed with int/float fast paths. It's 4–5× faster than the interpreter and
+   is on by default.
+   - Functions using closures, nested definitions, `match`, `try`, macros or destructuring stay on the interpreter.
+   - Both tiers share values, contracts, types and error traces.
+   - `tulpa bytecode file.rav` shows each function's bytecode, or why it stays interpreted.
+   - `--no-vm` or `TULPA_NO_VM=1` turns the VM off.
+3. **Native code.** `tulpa build file.rav -o ctl.o [--shared] [-O3]` compiles the typed numeric
+   subset through LLVM and writes `ctl.h` with C prototypes. Each function is exported as
+   `tulpa_<name>`. `tulpa emit-llvm` prints the IR instead.
+
+   **What compiles natively:**
+   - `int`, `float`, `num` and `bool` parameters (unannotated means `float`)
+   - locals, arithmetic, comparisons, `and`/`or`
+   - `if`, `while` (including invariants), `for i in a..b`, `loop`, `break`/`continue`, `return`
+   - `assert`, `const` numbers, calls between native functions
+   - math builtins: `sqrt sin cos tan asin acos atan atan2 hypot exp log log10 abs floor ceil round min max clamp pow float int radians degrees`
+
+   **Semantics match the interpreter:**
+   - Integer `/` and `%` are Euclidean.
+   - Integer overflow and division by zero are caught.
+   - `require`, `ensure`, loop `invariant` and `assert` become checks that call
+     `tulpa_violation(msg)`. That's a weak symbol which prints the message and aborts, so you can
+     override it in firmware (for example, to trigger an emergency stop).
+
+   Functions outside the subset are listed with the reason they were skipped.
+
+## Editor support
+
+`tulpa lsp` speaks the Language Server Protocol over stdio and provides:
+- diagnostics: syntax errors, unit mismatches between constant quantities, and never-defined names with "did you mean" suggestions
+- hover: function signatures with types and contracts, struct fields and invariants, machine states and events, unit dimensions
+- completion: keywords, builtins and document symbols; unit names inside `[...]`; methods after `.`
+- document symbols and go-to-definition
+
+Setup for VS Code and Neovim is in `editors/`.
+
 ## Standard library (globals)
 
 - **I/O:** `print(...)`, `input(prompt)`, `read_file`, `write_file`, `append_file`
@@ -420,6 +486,10 @@ tulpa check file.rav ...     syntax check only
 tulpa ast file.rav           dump the AST
 tulpa                        REPL (:log, :reset, :quit)
 tulpa verify file.rav        fuzz contracted functions (--trials=N)
+tulpa build file.rav -o x.o  native object + header (--shared, -O0..3); emit-llvm prints IR
+tulpa bytecode file.rav      VM bytecode per function
+tulpa lsp                    language server over stdio
+--virtual-time / --no-vm     simulated clock / interpreter only
 tulpa graph file.rav         Mermaid diagrams of all state machines
 --hw / --sim / --trace       backend selection and device tracing (also TULPA_BACKEND=linux)
 --record F / --replay F      record device traffic to a tape / replay and check against it

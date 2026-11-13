@@ -167,7 +167,7 @@ impl Value {
             Value::Float(f) => *f != 0.0,
             Value::Str(s) => !s.is_empty(),
             Value::List(l) => !l.borrow().is_empty(),
-            Value::Dict(d) => d.borrow().len() > 0,
+            Value::Dict(d) => !d.borrow().is_empty(),
             Value::Range(a, b, incl) => {
                 if *incl {
                     a <= b

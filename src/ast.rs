@@ -168,7 +168,10 @@ pub enum Stmt {
     Struct(Rc<StructDef>),
     Machine(Rc<MachineDef>),
     /// Edge-triggered reactive rule: `when cond { rising } else { falling }`
-    When(Expr, Vec<Stmt>, Option<Vec<Stmt>>, usize),
+    /// `when cond [for duration] { rising } else { falling }`
+    When(Expr, Option<Expr>, Vec<Stmt>, Option<Vec<Stmt>>, usize),
+    /// Bounded response: `after trigger within duration ensure response else { handler }`
+    Deadline(Expr, Expr, Contract, Option<Vec<Stmt>>, usize),
     /// Safety monitor: `always cond else { handler }`
     Always(Contract, Option<Vec<Stmt>>, usize),
     /// `import "path" as name` / `from "path" import a, b`

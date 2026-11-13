@@ -215,13 +215,18 @@ impl Parser {
             Tok::Kw("when") => {
                 self.next();
                 let cond = self.expr()?;
+                let hold = if self.eat_kw("for") {
+                    Some(self.expr()?)
+                } else {
+                    None
+                };
                 let body = self.block()?;
                 let els = if self.eat_kw("else") {
                     Some(self.block()?)
                 } else {
                     None
                 };
-                Ok(Stmt::When(cond, body, els, line))
+                Ok(Stmt::When(cond, hold, body, els, line))
             }
             Tok::Kw("always") => {
                 self.next();
@@ -232,6 +237,32 @@ impl Parser {
                     None
                 };
                 Ok(Stmt::Always(c, handler, line))
+            }
+            Tok::Ident(ref a)
+                if a == "after"
+                    && !matches!(
+                        self.peek_at(1),
+                        Tok::Sym("=" | "+=" | "-=" | "." | "(" | "[" | ",")
+                    )
+                    && !self.peek_at(1).eq(&Tok::Eof) =>
+            {
+                self.next();
+                let trigger = self.expr()?;
+                if !self.is_ident("within") {
+                    return self.err("expected 'within <duration>' after the trigger");
+                }
+                self.next();
+                let within = self.expr()?;
+                if !self.eat_kw("ensure") {
+                    return self.err("expected 'ensure <response>' after the deadline");
+                }
+                let response = self.contract()?;
+                let handler = if self.eat_kw("else") {
+                    Some(self.block()?)
+                } else {
+                    None
+                };
+                Ok(Stmt::Deadline(trigger, within, response, handler, line))
             }
             Tok::Kw("import") => {
                 self.next();

@@ -24,8 +24,14 @@ button.is_high(); led.set_direction("in"); led.pin(); led.direction()
 Writing to a pin that's configured as an input is an error, not a silent no-op.
 
 **Hardware notes:**
-- Uses `/sys/class/gpio`, so you need to be root or in the `gpio` group.
-- On kernels where the sysfs numbers are offset, set `TULPA_GPIO_BASE` to the chip's base and keep using BCM numbers in your scripts. Raspberry Pi 5 and kernels 6.6+ are like this; there, `cat /sys/class/gpio/gpiochip*/base` shows e.g. `571`.
+- **Character device (default).** When `/dev/gpiochip0` exists, lines are requested through the
+  kernel's GPIO v2 uAPI. This is the modern interface: no exporting, and no number offsets.
+  - Pin numbers are line offsets on the chip. On a Raspberry Pi those are the BCM numbers.
+  - Pick another chip with `TULPA_GPIO_CHIP=gpiochip4`.
+  - You need read/write access to the chip device, usually through the `gpio` group.
+- **sysfs fallback.** Used when no chip device exists, or forced with `TULPA_GPIO=sysfs`.
+  It goes through `/sys/class/gpio`. On kernels where sysfs numbers are offset, set
+  `TULPA_GPIO_BASE` to the chip's base; `cat /sys/class/gpio/gpiochip*/base` shows it.
 
 ## I2C
 

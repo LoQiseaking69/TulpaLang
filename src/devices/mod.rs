@@ -852,7 +852,7 @@ fn linux_scan(_: u32) -> Result<Vec<u16>, String> {
 }
 #[cfg(target_os = "linux")]
 fn linux_gpio(pin: u32) -> Result<Box<dyn GpioIo>, String> {
-    Ok(Box::new(linux::SysfsGpio::open(pin)?))
+    linux::open_gpio(pin)
 }
 #[cfg(target_os = "linux")]
 fn linux_i2c(bus: u32, addr: u16) -> Result<Box<dyn I2cIo>, String> {
@@ -903,7 +903,33 @@ fn sim_only(i: &Interpreter, f: &str) -> Result<(), String> {
     }
 }
 
+/// Simulated inputs are external events: let `when`/`always` rules see them immediately.
+fn sim_react(i: &mut Interpreter) -> Result<(), String> {
+    i.react().map_err(|c| match c {
+        crate::interp::Ctrl::Error(e) => e.to_string(),
+        _ => "control flow escaped a reactive rule".into(),
+    })
+}
+
 const SIM: &[(&str, NativeFn)] = &[
+    ("virtual_time", |i, a| {
+        pad_args("sim::virtual_time", &a, 0, 1)?;
+        let on = a.first().map(|v| v.truthy()).unwrap_or(true);
+        i.virtual_time = if on { Some(i.now()) } else { None };
+        Ok(Value::Nil)
+    }),
+    ("advance", |i, a| {
+        pad_args("sim::advance", &a, 1, 1)?;
+        if i.virtual_time.is_none() {
+            return Err("sim::advance needs the virtual clock: call sim::virtual_time(true) or run with --virtual-time".into());
+        }
+        let secs =
+            crate::ext::seconds_of(&a[0]).ok_or("sim::advance expects a duration, e.g. 250[ms]")?;
+        i.sleep_secs(secs).map(|_| Value::Nil).map_err(|c| match c {
+            crate::interp::Ctrl::Error(e) => e.to_string(),
+            _ => "control flow escaped sim::advance".into(),
+        })
+    }),
     ("pwm", |i, a| {
         sim_only(i, "pwm")?;
         pad_args("sim::pwm", &a, 2, 2)?;
@@ -928,6 +954,7 @@ const SIM: &[(&str, NativeFn)] = &[
         i.sim
             .borrow_mut()
             .gpio_drive(int("gpio_input", &a[0])? as u32, a[1].truthy());
+        sim_react(i)?;
         Ok(Value::Nil)
     }),
     ("gpio_level", |i, a| {
@@ -949,6 +976,7 @@ const SIM: &[(&str, NativeFn)] = &[
         let reg = crate::value::byte(int("i2c_set", &a[1])?)?;
         let data = a[2].to_bytes()?;
         i.sim.borrow_mut().i2c_poke(bus, addr, reg, &data);
+        sim_react(i)?;
         Ok(Value::Nil)
     }),
     ("i2c_get", |i, a| {
@@ -976,6 +1004,7 @@ const SIM: &[(&str, NativeFn)] = &[
         pad_args("sim::uart_feed", &a, 2, 2)?;
         let data = a[1].to_bytes()?;
         i.sim.borrow_mut().uart_feed(&a[0].to_string(), &data);
+        sim_react(i)?;
         Ok(Value::Nil)
     }),
     ("uart_sent", |i, a| {

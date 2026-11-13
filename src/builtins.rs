@@ -178,12 +178,11 @@ const GLOBALS: &[(&str, NativeFn)] = &[
         )
     }),
     ("sleep", b_sleep),
-    ("sleep_ms", |_, a| {
+    ("sleep_ms", |i, a| {
         arity("sleep_ms", &a, 1, 1)?;
         let ms = crate::ext::millis_of(&a[0])
             .ok_or("sleep_ms() expects milliseconds or a time quantity")?;
-        std::thread::sleep(std::time::Duration::from_secs_f64(ms.max(0.0) / 1000.0));
-        Ok(Value::Nil)
+        unwrap_ctrl(i.sleep_secs(ms / 1000.0).map(|_| Value::Nil))
     }),
     ("quantity", |_, a| {
         arity("quantity", &a, 2, 2)?;
@@ -224,10 +223,10 @@ const GLOBALS: &[(&str, NativeFn)] = &[
         unwrap_ctrl(i.check_fn(&a[0], trials))
     }),
     ("millis", |i, _| {
-        Ok(Value::Int(i.start.elapsed().as_millis() as i64))
+        Ok(Value::Int(((i.now() * 1e6).round() / 1000.0).floor() as i64))
     }),
     ("micros", |i, _| {
-        Ok(Value::Int(i.start.elapsed().as_micros() as i64))
+        Ok(Value::Int((i.now() * 1e6).round() as i64))
     }),
     ("now", |_, _| {
         Ok(Value::Float(
@@ -857,12 +856,11 @@ fn trig(name: &str, a: Vec<Value>, f: fn(f64) -> f64) -> Res {
     Ok(Value::Float(f(r)))
 }
 
-fn b_sleep(_: I, a: Vec<Value>) -> Res {
+fn b_sleep(i: I, a: Vec<Value>) -> Res {
     arity("sleep", &a, 1, 1)?;
     let s = crate::ext::seconds_of(&a[0])
         .ok_or("sleep() expects seconds or a time quantity like 250[ms]")?;
-    std::thread::sleep(std::time::Duration::from_secs_f64(s.max(0.0)));
-    Ok(Value::Nil)
+    unwrap_ctrl(i.sleep_secs(s).map(|_| Value::Nil))
 }
 
 fn b_append_file(_: I, a: Vec<Value>) -> Res {
@@ -1504,4 +1502,16 @@ fn dict_method(i: I, d: &Rc<std::cell::RefCell<Dict>>, name: &str, a: Vec<Value>
             return Err(format!("dict has no method '{name}'"));
         }
     })
+}
+
+/// Names of all global builtins and constants (for tooling such as the language server).
+pub fn global_names() -> Vec<&'static str> {
+    let mut v: Vec<&'static str> = GLOBALS.iter().map(|(n, _)| *n).collect();
+    v.extend(["PI", "TAU", "E", "HIGH", "LOW", "ARGS"]);
+    v
+}
+
+/// Module names usable with `Module::item`.
+pub fn module_names() -> &'static [&'static str] {
+    MODULES
 }

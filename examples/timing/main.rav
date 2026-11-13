@@ -1,0 +1,40 @@
+# Time-bounded rules on a simulated clock: debouncing and response deadlines.
+# Run with --virtual-time, or turn the simulated clock on from the script:
+sim::virtual_time(true)
+
+let button = GPIO::new(17, "in")
+let motor = GPIO::new(22)
+let at_limit = signal(false)
+let faults = []
+
+# Debounce: only a press held for 25 ms counts.
+when button.read() == 1 for 25[ms] {
+    print(f"[{millis()} ms] start pressed -> motor on")
+    motor.set_high()
+}
+
+# Bounded response: once the motor runs, the limit switch must close within 300 ms.
+after motor.read() == 1 within 300[ms] ensure at_limit.get() else {
+    motor.set_low()
+    faults.push(f"limit switch timeout at {millis()} ms")
+}
+
+fn press(ms) {
+    sim::gpio_input(17, 1)
+    sim::advance(ms * 1[ms])
+    sim::gpio_input(17, 0)
+    sim::advance(10[ms])
+}
+
+press(4)          # contact bounce: ignored
+press(6)          # ignored
+press(40)         # real press -> motor starts
+sim::advance(120[ms])
+at_limit.set(true)        # reached the limit in time
+motor.set_low()
+at_limit.set(false)
+print(f"[{millis()} ms] cycle 1 ok, faults={faults}")
+
+press(40)         # second cycle: the limit switch never closes
+sim::advance(400[ms])
+print(f"[{millis()} ms] motor={motor.read()} faults={faults}")

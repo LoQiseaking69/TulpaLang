@@ -5,7 +5,7 @@ use std::process::ExitCode;
 use tulpa::{parse, Backend, Interpreter, ParseError};
 
 const USAGE: &str = "\
-Tulpa 2.0 — device-integration scripting language
+Tulpa 3.0 — device-integration scripting language
 
 USAGE:
     tulpa [FLAGS] <file.tlp|file.rav> [args...]   run a program
@@ -16,11 +16,17 @@ USAGE:
     tulpa ast <file>                              dump the parsed syntax tree
     tulpa verify [--trials=N] <file>...           fuzz every fn against its own require/ensure
     tulpa graph <file>...                         print Mermaid diagrams of every state machine
+    tulpa emit-llvm <file> [-o out.ll]            LLVM IR for the typed numeric subset
+    tulpa build <file> [-o out.o] [--shared]      native object/library + C header (needs clang)
+    tulpa bytecode <file>                         show VM bytecode per function
+    tulpa lsp                                     language server over stdio
 
 FLAGS:
     --hw        use real Linux hardware (sysfs GPIO, /dev/i2c-*, /dev/spidev*, TTYs)
     --sim       use the in-memory simulator (default)
     --trace     log every device call to stderr
+    --no-vm     run everything on the tree-walking interpreter (no bytecode tier)
+    --virtual-time  simulated clock: sleeps and every! ticks advance instantly
     --record F  record all device traffic to tape file F
     --replay F  answer device calls from tape F; fail on the first divergence
     -h, --help  show this help
@@ -32,6 +38,8 @@ struct Opts {
     trace: bool,
     record: Option<String>,
     replay: Option<String>,
+    virtual_time: bool,
+    no_vm: bool,
 }
 
 fn report_parse(file: &str, src: &str, e: &ParseError) {
@@ -60,6 +68,12 @@ fn interpreter(o: &Opts, args: &[String]) -> Interpreter {
     let mut i = Interpreter::new();
     i.backend = o.backend;
     i.trace_devices = o.trace;
+    if o.virtual_time {
+        i.virtual_time = Some(0.0);
+    }
+    if o.no_vm {
+        i.use_vm = false;
+    }
     if let Some(p) = &o.replay {
         match tulpa::devices::Tape::load(std::path::Path::new(p)) {
             Ok(t) => i.tape = Some(std::rc::Rc::new(std::cell::RefCell::new(t))),
@@ -225,6 +239,134 @@ fn verify_files(files: &[String], o: &Opts, trials: usize) -> ExitCode {
     }
 }
 
+/// `tulpa emit-llvm file.rav [-o out.ll]` / `tulpa build file.rav [-o out.o] [--shared]`
+fn native(rest: &[String], build: bool) -> ExitCode {
+    let mut file = None;
+    let mut out: Option<String> = None;
+    let mut shared = false;
+    let mut opt = "-O2".to_string();
+    let mut it = rest[1..].iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "-o" => out = it.next().cloned(),
+            "--shared" => shared = true,
+            "-O0" | "-O1" | "-O2" | "-O3" | "-Os" => opt = a.clone(),
+            f => file = Some(f.to_string()),
+        }
+    }
+    let Some(file) = file else {
+        eprintln!(
+            "usage: tulpa {} <file.rav> [-o out]",
+            if build { "build" } else { "emit-llvm" }
+        );
+        return ExitCode::from(2);
+    };
+    let (_, prog) = match load(&file) {
+        Ok(x) => x,
+        Err(c) => return c,
+    };
+    let stem = std::path::Path::new(&file)
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "tulpa".into());
+    let report = tulpa::llvm::emit_module(&prog, &stem);
+    for (name, sig) in &report.compiled {
+        let ps: Vec<String> = sig
+            .params
+            .iter()
+            .map(|(n, t)| format!("{n}: {}", t.c()))
+            .collect();
+        eprintln!("  native  {name}({}) -> {}", ps.join(", "), sig.ret.c());
+    }
+    for (name, why) in &report.skipped {
+        eprintln!("  skipped {name}: {why}");
+    }
+    if report.compiled.is_empty() {
+        eprintln!("tulpa: no functions in {file} fit the native subset");
+        return ExitCode::from(1);
+    }
+    if !build {
+        match out {
+            Some(p) if p != "-" => {
+                if let Err(e) = std::fs::write(&p, &report.ir) {
+                    eprintln!("tulpa: {p}: {e}");
+                    return ExitCode::from(2);
+                }
+                eprintln!("wrote {p}");
+            }
+            _ => print!("{}", report.ir),
+        }
+        return ExitCode::SUCCESS;
+    }
+    let out = out.unwrap_or_else(|| format!("{stem}{}", if shared { ".so" } else { ".o" }));
+    let base = out
+        .trim_end_matches(".so")
+        .trim_end_matches(".o")
+        .to_string();
+    let ll = format!("{base}.ll");
+    let header = format!("{base}.h");
+    let guard = format!(
+        "TULPA_{}_H",
+        stem.to_uppercase()
+            .replace(|c: char| !c.is_ascii_alphanumeric(), "_")
+    );
+    if let Err(e) =
+        std::fs::write(&ll, &report.ir).and_then(|_| std::fs::write(&header, report.header(&guard)))
+    {
+        eprintln!("tulpa: {e}");
+        return ExitCode::from(2);
+    }
+    let cc = std::env::var("TULPA_CLANG").unwrap_or_else(|_| "clang".into());
+    let mut cmd = std::process::Command::new(&cc);
+    cmd.args([opt.as_str(), "-Wno-override-module"]);
+    if shared {
+        cmd.args(["-shared", "-fPIC"]);
+    } else {
+        cmd.arg("-c");
+    }
+    cmd.args([&ll, "-o", &out]);
+    if shared {
+        cmd.arg("-lm");
+    }
+    match cmd.status() {
+        Ok(s) if s.success() => {
+            eprintln!("built {out} (+ {header}, {ll})");
+            ExitCode::SUCCESS
+        }
+        Ok(_) => {
+            eprintln!("tulpa: {cc} failed compiling {ll}");
+            ExitCode::from(1)
+        }
+        Err(e) => {
+            eprintln!("tulpa: cannot run {cc} ({e}); the IR is in {ll} and the header in {header}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+/// `tulpa bytecode file.rav`: shows which functions run on the VM and their bytecode.
+fn bytecode(files: &[String]) -> ExitCode {
+    use tulpa::ast::Stmt;
+    for file in files {
+        let (_, prog) = match load(file) {
+            Ok(x) => x,
+            Err(c) => return c,
+        };
+        for s in &prog {
+            if let Stmt::Fn(def) = s {
+                match tulpa::vm::compile(def) {
+                    Some(c) => print!("{}", tulpa::vm::disassemble(&def.name, &c)),
+                    None => println!(
+                        "fn {}: interpreted (uses features outside the bytecode tier)",
+                        def.name
+                    ),
+                }
+            }
+        }
+    }
+    ExitCode::SUCCESS
+}
+
 fn graph_files(files: &[String], o: &Opts) -> ExitCode {
     for file in files {
         let i = match load_definitions(file, o) {
@@ -308,7 +450,7 @@ fn balanced(src: &str) -> bool {
 
 fn repl(o: &Opts) -> ExitCode {
     println!(
-        "Tulpa 2.0 REPL — backend: {:?}. Type :quit to exit, :help for help.",
+        "Tulpa 3.0 REPL — backend: {:?}. Type :quit to exit, :help for help.",
         o.backend
     );
     let mut i = interpreter(o, &[]);
@@ -375,6 +517,8 @@ fn real_main() -> ExitCode {
         trace: false,
         record: None,
         replay: None,
+        virtual_time: false,
+        no_vm: false,
     };
     if std::env::var("TULPA_BACKEND")
         .map(|v| v == "linux" || v == "hw")
@@ -417,6 +561,8 @@ fn real_main() -> ExitCode {
             "--hw" => o.backend = Backend::Linux,
             "--sim" => o.backend = Backend::Sim,
             "--trace" => o.trace = true,
+            "--virtual-time" => o.virtual_time = true,
+            "--no-vm" => o.no_vm = true,
             "-h" | "--help" => {
                 print!("{USAGE}");
                 return ExitCode::SUCCESS;
@@ -432,7 +578,17 @@ fn real_main() -> ExitCode {
             _ => {
                 if !matches!(
                     a.as_str(),
-                    "run" | "test" | "check" | "repl" | "ast" | "verify" | "graph"
+                    "run"
+                        | "test"
+                        | "check"
+                        | "repl"
+                        | "ast"
+                        | "verify"
+                        | "graph"
+                        | "emit-llvm"
+                        | "build"
+                        | "bytecode"
+                        | "lsp"
                 ) || !rest.is_empty()
                 {
                     seen_file = true;
@@ -477,6 +633,9 @@ fn real_main() -> ExitCode {
             verify_files(&files, &o, trials)
         }
         Some("graph") => graph_files(&rest[1..], &o),
+        Some("emit-llvm") | Some("build") => native(&rest, rest[0] == "build"),
+        Some("bytecode") => bytecode(&rest[1..]),
+        Some("lsp") => tulpa::lsp::serve(),
         Some("ast") => match rest.get(1).map(|f| load(f)) {
             Some(Ok((_, prog))) => {
                 for s in prog {

@@ -51,10 +51,13 @@ fn stopping_distance(v: [m/s], decel: [m/s^2]) -> [m]
 | **Contract fuzzing:** `check(f)`, `tulpa verify` | Your `ensure` clauses double as test oracles. Tulpa generates inputs that satisfy each `require`, hunts for violations, and shrinks any failure to a minimal counterexample. |
 | **State machines:** `machine` / `state` / `on ev(args) if guard => Target { action }` | Robot behaviour as data: enter/exit hooks, global transitions such as e-stop, history, `.can()`, and Mermaid diagrams via `tulpa graph`. |
 | **Reactive signals:** `signal()`, `derive()`, `when cond { } else { }` | Edge-triggered rules that re-evaluate when signals, variables or devices change. |
+| **Timing rules:** `when cond for 25[ms] { }`, `after trigger within 300[ms] ensure response else { }` | Debouncing and bounded-response deadlines are language constructs. A virtual clock (`--virtual-time`) makes timing logic testable in milliseconds of wall time. |
 | **Safety envelopes:** `always cond [else { handler }]` | Monitors checked after every device call, assignment, transition and control tick. Without a handler a violation stops the program; with one, the handler runs. |
 | **Record & replay:** `--record run.tape`, `--replay run.tape` | Capture a real hardware session, then rerun the script against the tape in CI. It fails at the first device operation that differs. |
 | **Structs:** fields, defaults, methods, `invariant`, operator overloading | Class invariants are re-checked after every method call and field write, and a write that would break one is rolled back. |
-| **Devices:** GPIO, I2C (+ `scan`), SPI, UART, PWM, Servo, PID, `kin::` | A deterministic simulator by default. `--hw` switches to real Linux hardware. |
+| **Devices:** GPIO, I2C (+ `scan`), SPI, UART, PWM, Servo, PID, `kin::` | A deterministic simulator by default. `--hw` switches to real Linux hardware (GPIO via `/dev/gpiochipN`, with a sysfs fallback). |
+| **Three execution tiers** | A tree-walking interpreter, a bytecode VM that hot functions use automatically (4–5× faster), and `tulpa build` for LLVM-compiled native code with a C header. Contracts are kept as checks in native code too. |
+| **Editor support:** `tulpa lsp` | Diagnostics, including constant unit mismatches and undefined names with suggestions; hover with signatures, contracts and unit dimensions; completion, including unit names inside `[...]`; symbols; go-to-definition. |
 
 It also has everything you'd expect from a general-purpose scripting language:
 - f-strings, `match` with guards and list patterns
@@ -71,6 +74,9 @@ T=./target/release/tulpa
 $T examples/warehouse_robot/main.rav        # machine + signals + safety envelope + servos
 $T examples/units/main.rav                  # dimensional analysis
 $T verify examples/verify/main.rav          # fuzz every contracted function
+$T --virtual-time examples/timing/main.rav  # debounce + deadlines on a simulated clock
+$T build examples/native/main.rav -o ctl.o  # native object + ctl.h for firmware (needs clang)
+$T bytecode examples/units/main.rav         # see what the VM compiles
 $T graph examples/warehouse_robot/main.rav  # Mermaid state diagrams
 $T --record run.tape robot.rav              # capture device traffic...
 $T --replay run.tape robot.rav              # ...and regression-test against it
@@ -106,19 +112,34 @@ src/parser.rs      Pratt parser → AST (src/ast.rs): structs, machines, when/al
 src/interp.rs      evaluator core: scopes, closures, contracts, macros, tasks
 src/ext.rs         2.0 features: units math, kwargs, types, structs, machines, signals,
                    reactive rules, safety monitors, modules, contract fuzzing
+src/vm.rs          bytecode compiler + VM (automatic tier for eligible functions)
+src/llvm.rs        LLVM IR generator for the typed numeric subset (tulpa build / emit-llvm)
+src/lsp.rs         language server (tulpa lsp)
 src/units.rs       dimensional analysis (SI base vector, unit parser, conversions)
 src/builtins.rs    standard library, kin:: module, string/list/dict methods, formatting
 src/devices/       GPIO/I2C/SPI/UART/PWM/Servo/PID; sim.rs, linux.rs, tape.rs (record/replay)
 examples/          runnable programs with expected.txt (checked by `cargo test`)
-tests/             58 Rust tests + Tulpa-level tests
+tests/             70 Rust tests (run under both tiers) + Tulpa-level tests
+editors/           VS Code and Neovim language-server setup
 ```
+
+## Performance
+
+| Benchmark (release build) | Interpreter | VM (default) | Native (`tulpa build`) |
+|---|---|---|---|
+| `fib(30)`, call-heavy | 1.15 s | 0.28 s | 0.005 s |
+| 1M-iteration loop + 1M-step PID simulation | 1.39 s | 0.28 s | — |
+
+Every test runs under both the interpreter and the VM (`TULPA_NO_VM=1`), and native output is
+differential-tested against the interpreter.
 
 ## Roadmap
 
-- A bytecode VM, and LLVM codegen for hot control loops.
-- A GPIO character-device backend (`/dev/gpiochipN`).
-- Time-bounded temporal monitors (`within 200[ms] { ... }`).
-- An LSP server, so editors get unit-aware hover and contract diagnostics.
+The 2.0 roadmap has shipped: the bytecode VM, LLVM codegen, the gpiochip backend, time-bounded monitors, and the LSP. Next:
+- Native code for unit-typed functions (dimensions checked at compile time, erased at runtime).
+- A VS Code extension package with syntax highlighting.
+- Bluetooth LE and CAN bus devices.
+- Running deadline monitors against recorded tapes, with real timestamps.
 
 ## License
 

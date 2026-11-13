@@ -1,0 +1,26 @@
+# The typed numeric subset compiles to native code:
+#   tulpa build examples/native/control.rav -o control.o    (writes control.h too)
+# and links into C/C++/Rust firmware. Contracts become runtime checks there as well.
+
+const MAX_DUTY = 255
+
+fn clamp_duty(x: int) -> int
+    ensure 0 <= result' and result' <= MAX_DUTY
+{ max(0, min(x, MAX_DUTY)) }
+
+fn pid_output(err: float, integral: float, deriv: float) -> float {
+    2.0 * err + 0.4 * integral + 0.05 * deriv
+}
+
+fn wrap_angle(a: float) -> float
+    ensure -180.0 <= result' and result' < 180.0
+{ (a + 180.0) % 360.0 - 180.0 }
+
+fn steps_for(angle: float, steps_per_rev: int) -> int
+    require steps_per_rev > 0
+{ round(wrap_angle(angle) / 360.0 * steps_per_rev) }
+
+fn main() {
+    print(clamp_duty(300), clamp_duty(-5), round(pid_output(1.5, 0.2, -3.0), 3), wrap_angle(370.0), steps_for(450.0, 200))
+}
+main()

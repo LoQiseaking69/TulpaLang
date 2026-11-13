@@ -1,0 +1,4 @@
+[55 ms] start pressed -> motor on
+[200 ms] cycle 1 ok, faults=[]
+[225 ms] start pressed -> motor on
+[650 ms] motor=0 faults=["limit switch timeout at 526 ms"]

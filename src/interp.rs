@@ -162,6 +162,9 @@ pub struct Interpreter {
     pub builtins_env: Env,
     pub(crate) rules: Vec<Rc<RefCell<crate::ext::Rule>>>,
     pub(crate) monitors: Vec<Rc<RefCell<crate::ext::Monitor>>>,
+    pub(crate) deadlines: Vec<Rc<RefCell<crate::ext::Deadline>>>,
+    /// Simulated clock in seconds (`--virtual-time` / `sim::virtual_time(true)`); None = wall clock.
+    pub virtual_time: Option<f64>,
     pub(crate) reacting: bool,
     /// Directory stack used to resolve `import` paths.
     pub base_dirs: Vec<std::path::PathBuf>,
@@ -178,6 +181,9 @@ pub struct Interpreter {
     pub output: Output,
     pub start: Instant,
     pub(crate) depth: usize,
+    /// Run eligible functions on the bytecode VM (`--no-vm` / `TULPA_NO_VM=1` disables).
+    pub use_vm: bool,
+    pub(crate) compiled: HashMap<usize, (Rc<FnDef>, Option<Rc<crate::vm::Chunk>>)>,
 }
 
 const MAX_DEPTH: usize = 2500;
@@ -198,6 +204,8 @@ impl Interpreter {
             builtins_env,
             rules: Vec::new(),
             monitors: Vec::new(),
+            deadlines: Vec::new(),
+            virtual_time: None,
             reacting: false,
             base_dirs: vec![std::path::PathBuf::from(".")],
             modules: HashMap::new(),
@@ -212,6 +220,10 @@ impl Interpreter {
             output: Output::Stdout,
             start: Instant::now(),
             depth: 0,
+            use_vm: std::env::var("TULPA_NO_VM")
+                .map(|v| v.is_empty() || v == "0")
+                .unwrap_or(true),
+            compiled: HashMap::new(),
         }
     }
 
@@ -335,7 +347,7 @@ impl Interpreter {
             Stmt::Assign(target, op, e, line) => {
                 self.assign(target, op.as_deref(), e, env)
                     .map_err(|c| at_line(c, *line))?;
-                if !self.rules.is_empty() || !self.monitors.is_empty() {
+                if self.has_reactive() {
                     self.react().map_err(|c| at_line(c, *line))?;
                 }
                 Ok(Value::Nil)
@@ -356,8 +368,11 @@ impl Interpreter {
                 define(env, &def.name, Value::MachineType(Rc::new(t)));
                 Ok(Value::Nil)
             }
-            Stmt::When(cond, body, els, line) => self
-                .register_when(cond, body, els.as_ref(), env)
+            Stmt::When(cond, hold, body, els, line) => self
+                .register_when(cond, hold.as_ref(), body, els.as_ref(), env)
+                .map_err(|c| at_line(c, *line)),
+            Stmt::Deadline(trigger, within, response, handler, line) => self
+                .register_deadline(trigger, within, response, handler.as_ref(), env)
                 .map_err(|c| at_line(c, *line)),
             Stmt::Always(c, handler, line) => self
                 .register_always(c, handler.as_ref(), env)
@@ -767,7 +782,7 @@ impl Interpreter {
         }
     }
 
-    fn force_thunk(&mut self, t: &Rc<(MacroArg, Env)>) -> R<Value> {
+    pub(crate) fn force_thunk(&mut self, t: &Rc<(MacroArg, Env)>) -> R<Value> {
         let (arg, env) = &**t;
         match arg {
             MacroArg::Expr(e) => self.eval(e, env),
@@ -835,6 +850,48 @@ impl Interpreter {
         kw: Vec<(String, Value)>,
     ) -> R<Value> {
         let def = &c.def;
+        // Fast path: compiled body, exact positional arity, no contracts. Locals live in VM
+        // slots, so no scope object is allocated for the call.
+        if kw.is_empty()
+            && args.len() == def.params.len()
+            && def.requires.is_empty()
+            && def.ensures.is_empty()
+            && self.depth < MAX_DEPTH
+        {
+            if let Some(chunk) = self.chunk_for(def) {
+                for (p, v) in def.params.iter().zip(args.iter()) {
+                    if let Some(ty) = &p.ty {
+                        if !self.type_matches(ty, v) {
+                            self.check_type(
+                                ty,
+                                v,
+                                &format!("{}() parameter '{}'", def.name, p.name),
+                            )?;
+                        }
+                    }
+                }
+                self.depth += 1;
+                let r = self.run_chunk(&chunk, &c.env, args);
+                self.depth -= 1;
+                let value = match r {
+                    Ok((v, _)) => v,
+                    Err(Ctrl::Error(mut e)) => {
+                        if e.trace.len() < 12 {
+                            let at = e.line.map(|l| format!(" (line {l})")).unwrap_or_default();
+                            e.trace.push(format!("{}(){at}", def.name));
+                        }
+                        return Err(Ctrl::Error(e));
+                    }
+                    Err(other) => return Err(other),
+                };
+                if let Some(ty) = &def.ret {
+                    if !self.type_matches(ty, &value) {
+                        self.check_type(ty, &value, &format!("{}() return value", def.name))?;
+                    }
+                }
+                return Ok(value);
+            }
+        }
         let required = def.params.iter().filter(|p| p.default.is_none()).count();
         let kw_used = !kw.is_empty();
         if kw_used {
@@ -892,8 +949,31 @@ impl Interpreter {
         }
 
         self.depth += 1;
-        self.hoist(&def.body, &env);
-        let result = self.exec_block_in(&def.body, &env);
+        let result = match self.chunk_for(def) {
+            Some(chunk) => {
+                let locals: Vec<Value> = def
+                    .params
+                    .iter()
+                    .map(|p| lookup(&env, &p.name).unwrap_or(Value::Nil))
+                    .collect();
+                match self.run_chunk(&chunk, &env, locals) {
+                    Ok((v, finals)) => {
+                        if !def.ensures.is_empty() {
+                            // expose final parameter values for `x'` in postconditions
+                            for (p, v) in def.params.iter().zip(finals) {
+                                define(&env, &p.name, v);
+                            }
+                        }
+                        Ok(v)
+                    }
+                    Err(e) => Err(e),
+                }
+            }
+            None => {
+                self.hoist(&def.body, &env);
+                self.exec_block_in(&def.body, &env)
+            }
+        };
         self.depth -= 1;
 
         let value = match result {
@@ -953,7 +1033,7 @@ impl Interpreter {
                     }
                 }
                 let v = r.map_err(Ctrl::from)?;
-                if !self.rules.is_empty() || !self.monitors.is_empty() {
+                if self.has_reactive() {
                     self.react()?;
                 }
                 Ok(v)
@@ -1029,8 +1109,8 @@ impl Interpreter {
                     None
                 };
                 let body = args.last().unwrap();
-                let dt = std::time::Duration::from_secs_f64(period.max(0.0) / 1000.0);
-                let mut next = Instant::now();
+                let dt = period.max(0.0) / 1000.0;
+                let mut next = self.now();
                 let mut i = 0i64;
                 while count.is_none_or(|c| i < c) {
                     match self.macro_arg(body, env) {
@@ -1039,13 +1119,13 @@ impl Interpreter {
                         Err(e) => return Err(e),
                     }
                     i += 1;
-                    if !self.rules.is_empty() || !self.monitors.is_empty() {
+                    if self.has_reactive() {
                         self.react()?;
                     }
                     next += dt;
-                    let now = Instant::now();
+                    let now = self.now();
                     if next > now {
-                        std::thread::sleep(next - now);
+                        self.sleep_secs(next - now)?;
                     } else {
                         next = now; // overran the period; don't try to catch up
                     }

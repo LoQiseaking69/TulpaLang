@@ -8,7 +8,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      - run: sudo apt-get update && sudo apt-get install -y clang
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings -A clippy::len_zero
-      - run: cargo test
+      - name: tests (bytecode VM tier)
+        run: cargo test
+      - name: tests (interpreter only)
+        run: cargo test
+        env:
+          TULPA_NO_VM: "1"
       - run: cargo run --release -- check examples/*/main.rav
+      - run: cargo run --release -- verify examples/native/main.rav

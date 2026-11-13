@@ -423,3 +423,202 @@ pub fn scan(bus: u32) -> Result<Vec<u16>, String> {
     }
     Ok(found)
 }
+
+// ---------------------------------------------------------------------------- GPIO (character device, uAPI v2)
+
+const GPIO_V2_GET_LINE_IOCTL: u64 = 0xC250_B407;
+const GPIO_V2_LINE_SET_CONFIG_IOCTL: u64 = 0xC110_B40D;
+const GPIO_V2_LINE_GET_VALUES_IOCTL: u64 = 0xC010_B40E;
+const GPIO_V2_LINE_SET_VALUES_IOCTL: u64 = 0xC010_B40F;
+const GPIO_V2_LINE_FLAG_INPUT: u64 = 1 << 2;
+const GPIO_V2_LINE_FLAG_OUTPUT: u64 = 1 << 3;
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub(crate) struct GpioV2LineAttribute {
+    id: u32,
+    padding: u32,
+    value: u64,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub(crate) struct GpioV2LineConfigAttribute {
+    attr: GpioV2LineAttribute,
+    mask: u64,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub(crate) struct GpioV2LineConfig {
+    flags: u64,
+    num_attrs: u32,
+    padding: [u32; 5],
+    attrs: [GpioV2LineConfigAttribute; 10],
+}
+
+#[repr(C)]
+pub(crate) struct GpioV2LineRequest {
+    offsets: [u32; 64],
+    consumer: [u8; 32],
+    config: GpioV2LineConfig,
+    num_lines: u32,
+    event_buffer_size: u32,
+    padding: [u32; 5],
+    fd: i32,
+}
+
+#[repr(C)]
+pub(crate) struct GpioV2LineValues {
+    bits: u64,
+    mask: u64,
+}
+
+// Layouts must match <linux/gpio.h> exactly (verified against the kernel headers).
+const _: () = assert!(std::mem::size_of::<GpioV2LineRequest>() == 592);
+const _: () = assert!(std::mem::size_of::<GpioV2LineConfig>() == 272);
+const _: () = assert!(std::mem::size_of::<GpioV2LineValues>() == 16);
+
+fn line_config(output: bool) -> GpioV2LineConfig {
+    let zero_attr = GpioV2LineConfigAttribute {
+        attr: GpioV2LineAttribute {
+            id: 0,
+            padding: 0,
+            value: 0,
+        },
+        mask: 0,
+    };
+    GpioV2LineConfig {
+        flags: if output {
+            GPIO_V2_LINE_FLAG_OUTPUT
+        } else {
+            GPIO_V2_LINE_FLAG_INPUT
+        },
+        num_attrs: 0,
+        padding: [0; 5],
+        attrs: [zero_attr; 10],
+    }
+}
+
+/// One GPIO line requested from `/dev/gpiochipN` through the v2 character-device uAPI.
+/// This is the modern replacement for sysfs and needs no pin-number offsets.
+pub struct ChardevGpio {
+    line: File,
+    chip: String,
+    offset: u32,
+}
+
+impl ChardevGpio {
+    pub fn open(chip: &str, offset: u32) -> Result<Self, String> {
+        let chip_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(chip)
+            .map_err(|e| format!("{chip}: {e}"))?;
+        let mut req = GpioV2LineRequest {
+            offsets: [0; 64],
+            consumer: [0; 32],
+            config: line_config(false),
+            num_lines: 1,
+            event_buffer_size: 0,
+            padding: [0; 5],
+            fd: -1,
+        };
+        req.offsets[0] = offset;
+        req.consumer[..5].copy_from_slice(b"tulpa");
+        // SAFETY: req is a correctly laid-out gpio_v2_line_request that outlives the call.
+        if unsafe {
+            libc::ioctl(
+                chip_file.as_raw_fd(),
+                GPIO_V2_GET_LINE_IOCTL as _,
+                &mut req as *mut GpioV2LineRequest,
+            )
+        } < 0
+        {
+            return Err(os_err(&format!("{chip}: request line {offset}")));
+        }
+        use std::os::unix::io::FromRawFd;
+        // SAFETY: the kernel returned a fresh, owned file descriptor for the line.
+        let line = unsafe { File::from_raw_fd(req.fd) };
+        Ok(ChardevGpio {
+            line,
+            chip: chip.to_string(),
+            offset,
+        })
+    }
+}
+
+impl GpioIo for ChardevGpio {
+    fn set_output(&mut self, out: bool) -> Result<(), String> {
+        let mut cfg = line_config(out);
+        // SAFETY: valid line fd and config struct.
+        if unsafe {
+            libc::ioctl(
+                self.line.as_raw_fd(),
+                GPIO_V2_LINE_SET_CONFIG_IOCTL as _,
+                &mut cfg as *mut GpioV2LineConfig,
+            )
+        } < 0
+        {
+            return Err(os_err(&format!(
+                "{} line {}: set direction",
+                self.chip, self.offset
+            )));
+        }
+        Ok(())
+    }
+    fn write(&mut self, high: bool) -> Result<(), String> {
+        let mut v = GpioV2LineValues {
+            bits: high as u64,
+            mask: 1,
+        };
+        // SAFETY: valid line fd and values struct.
+        if unsafe {
+            libc::ioctl(
+                self.line.as_raw_fd(),
+                GPIO_V2_LINE_SET_VALUES_IOCTL as _,
+                &mut v as *mut GpioV2LineValues,
+            )
+        } < 0
+        {
+            return Err(os_err(&format!(
+                "{} line {}: write",
+                self.chip, self.offset
+            )));
+        }
+        Ok(())
+    }
+    fn read(&mut self) -> Result<bool, String> {
+        let mut v = GpioV2LineValues { bits: 0, mask: 1 };
+        // SAFETY: valid line fd and values struct.
+        if unsafe {
+            libc::ioctl(
+                self.line.as_raw_fd(),
+                GPIO_V2_LINE_GET_VALUES_IOCTL as _,
+                &mut v as *mut GpioV2LineValues,
+            )
+        } < 0
+        {
+            return Err(os_err(&format!("{} line {}: read", self.chip, self.offset)));
+        }
+        Ok(v.bits & 1 == 1)
+    }
+}
+
+/// Picks the GPIO driver: `TULPA_GPIO=chardev|sysfs` forces one; otherwise the character
+/// device (`TULPA_GPIO_CHIP`, default `/dev/gpiochip0`) is used when present, else sysfs.
+pub fn open_gpio(pin: u32) -> Result<Box<dyn GpioIo>, String> {
+    let mode = std::env::var("TULPA_GPIO").unwrap_or_default();
+    let chip = std::env::var("TULPA_GPIO_CHIP").unwrap_or_else(|_| "/dev/gpiochip0".into());
+    let chip = if chip.starts_with('/') {
+        chip
+    } else {
+        format!("/dev/{chip}")
+    };
+    match mode.as_str() {
+        "sysfs" => Ok(Box::new(SysfsGpio::open(pin)?)),
+        "chardev" => Ok(Box::new(ChardevGpio::open(&chip, pin)?)),
+        _ if Path::new(&chip).exists() => Ok(Box::new(ChardevGpio::open(&chip, pin)?)),
+        _ => Ok(Box::new(SysfsGpio::open(pin)?)),
+    }
+}

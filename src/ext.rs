@@ -197,6 +197,21 @@ pub struct Rule {
     els: Option<Vec<Stmt>>,
     env: Env,
     last: bool,
+    /// `when cond for <hold>`: the condition must stay true this long (seconds) before firing.
+    hold: Option<f64>,
+    since: Option<f64>,
+}
+
+/// Bounded-response monitor: after `trigger` rises, `response` must hold within `within` seconds.
+pub struct Deadline {
+    trigger: Expr,
+    within: f64,
+    response: Contract,
+    trigger_text: String,
+    handler: Option<Vec<Stmt>>,
+    env: Env,
+    last_trigger: bool,
+    armed_at: Option<f64>,
 }
 
 pub struct Monitor {
@@ -812,7 +827,7 @@ impl Interpreter {
                 }
             }
         }
-        if !self.rules.is_empty() || !self.monitors.is_empty() {
+        if self.has_reactive() {
             self.react()?;
         }
         Ok(true)
@@ -921,7 +936,7 @@ impl Interpreter {
         if s.borrow().derive.is_some() {
             return rt("cannot set a derived signal");
         }
-        let now = self.start.elapsed().as_secs_f64();
+        let now = self.now();
         let (old, subs) = {
             let mut b = s.borrow_mut();
             let old = std::mem::replace(&mut b.value, v.clone());
@@ -1024,16 +1039,26 @@ impl Interpreter {
     pub(crate) fn register_when(
         &mut self,
         cond: &Expr,
+        hold: Option<&Expr>,
         body: &[Stmt],
         els: Option<&Vec<Stmt>>,
         env: &Env,
     ) -> R<Value> {
+        let hold = match hold {
+            Some(e) => {
+                let v = self.eval(e, env)?;
+                Some(seconds_of(&v).ok_or("`when ... for` needs a duration, e.g. 50[ms] or 0.05")?)
+            }
+            None => None,
+        };
         self.rules.push(Rc::new(RefCell::new(Rule {
             cond: cond.clone(),
             body: body.to_vec(),
             els: els.cloned(),
             env: env.clone(),
             last: false,
+            hold,
+            since: None,
         })));
         self.react()?;
         Ok(Value::Nil)
@@ -1055,9 +1080,85 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
+    pub(crate) fn register_deadline(
+        &mut self,
+        trigger: &Expr,
+        within: &Expr,
+        response: &Contract,
+        handler: Option<&Vec<Stmt>>,
+        env: &Env,
+    ) -> R<Value> {
+        let v = self.eval(within, env)?;
+        let secs = seconds_of(&v).ok_or("`within` needs a duration, e.g. 200[ms] or 0.2")?;
+        self.deadlines.push(Rc::new(RefCell::new(Deadline {
+            trigger: trigger.clone(),
+            within: secs,
+            response: response.clone(),
+            trigger_text: format!("{v}"),
+            handler: handler.cloned(),
+            env: env.clone(),
+            last_trigger: false,
+            armed_at: None,
+        })));
+        self.react()?;
+        Ok(Value::Nil)
+    }
+
+    /// True when any reactive rule or monitor is registered.
+    pub fn has_reactive(&self) -> bool {
+        !self.rules.is_empty() || !self.monitors.is_empty() || !self.deadlines.is_empty()
+    }
+
+    fn has_timed(&self) -> bool {
+        !self.deadlines.is_empty() || self.rules.iter().any(|r| r.borrow().hold.is_some())
+    }
+
+    /// Current time in seconds since start (virtual when the simulated clock is on).
+    pub fn now(&self) -> f64 {
+        match self.virtual_time {
+            Some(t) => t,
+            None => self.start.elapsed().as_secs_f64(),
+        }
+    }
+
+    /// Sleeps (or advances the virtual clock), re-checking time-based rules as time passes.
+    pub fn sleep_secs(&mut self, secs: f64) -> R<()> {
+        let secs = secs.max(0.0);
+        let timed = self.has_timed();
+        if let Some(t) = self.virtual_time {
+            if !timed {
+                self.virtual_time = Some(t + secs);
+                return self.react();
+            }
+            // 1 ms steps computed from the start time, so no rounding error accumulates
+            let end = t + secs;
+            let steps = (secs * 1000.0 - 1e-9).ceil().max(0.0) as u64;
+            for k in 1..=steps {
+                self.virtual_time = Some((t + k as f64 / 1000.0).min(end));
+                self.react()?;
+            }
+            self.virtual_time = Some(end);
+            return Ok(());
+        }
+        if !timed {
+            std::thread::sleep(std::time::Duration::from_secs_f64(secs));
+            return Ok(());
+        }
+        let end = self.now() + secs;
+        loop {
+            let left = end - self.now();
+            if left <= 0.0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_secs_f64(left.min(0.002)));
+            self.react()?;
+        }
+        Ok(())
+    }
+
     /// Re-evaluates `when` rules (edge-triggered) and `always` monitors until they settle.
     pub fn react(&mut self) -> R<()> {
-        if self.reacting || (self.rules.is_empty() && self.monitors.is_empty()) {
+        if self.reacting || !self.has_reactive() {
             return Ok(());
         }
         self.reacting = true;
@@ -1075,7 +1176,20 @@ impl Interpreter {
                     let r = rule.borrow();
                     (r.cond.clone(), r.env.clone(), r.last)
                 };
-                let now = self.eval(&cond, &env)?.truthy();
+                let raw = self.eval(&cond, &env)?.truthy();
+                let hold = rule.borrow().hold;
+                let now = match (hold, raw) {
+                    (Some(h), true) => {
+                        let t = self.now();
+                        let since = *rule.borrow_mut().since.get_or_insert(t);
+                        t - since >= h - 1e-9
+                    }
+                    (Some(_), false) => {
+                        rule.borrow_mut().since = None;
+                        false
+                    }
+                    (None, v) => v,
+                };
                 if now != last {
                     rule.borrow_mut().last = now;
                     let block = {
@@ -1114,6 +1228,46 @@ impl Interpreter {
                         fired = true;
                     }
                     None => return rt(format!("safety envelope violated: always {}", c.text)),
+                }
+            }
+            let deadlines = self.deadlines.clone();
+            for d in deadlines {
+                let (trig, env, last) = {
+                    let b = d.borrow();
+                    (b.trigger.clone(), b.env.clone(), b.last_trigger)
+                };
+                let t_now = self.eval(&trig, &env)?.truthy();
+                let now = self.now();
+                if t_now && !last {
+                    d.borrow_mut().armed_at = Some(now);
+                }
+                d.borrow_mut().last_trigger = t_now;
+                let armed = d.borrow().armed_at;
+                let Some(armed) = armed else { continue };
+                let resp = d.borrow().response.clone();
+                if self.eval(&resp.expr, &env)?.truthy() {
+                    d.borrow_mut().armed_at = None; // satisfied in time
+                    continue;
+                }
+                let within = d.borrow().within;
+                if now - armed > within + 1e-9 {
+                    d.borrow_mut().armed_at = None;
+                    let (handler, text) = {
+                        let b = d.borrow();
+                        (b.handler.clone(), b.trigger_text.clone())
+                    };
+                    match handler {
+                        Some(h) => {
+                            self.exec_block(&h, &env)?;
+                            fired = true;
+                        }
+                        None => {
+                            return rt(format!(
+                                "deadline missed: response '{}' did not hold within {text} of the trigger",
+                                resp.text
+                            ))
+                        }
+                    }
                 }
             }
             if !fired {
