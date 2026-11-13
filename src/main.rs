@@ -325,9 +325,19 @@ fn native(rest: &[String], build: bool) -> ExitCode {
         eprintln!("tulpa: {e}");
         return ExitCode::from(2);
     }
-    let cc = std::env::var("TULPA_CLANG").unwrap_or_else(|_| "clang".into());
+    let (cc, major) = match find_clang() {
+        Ok(x) => x,
+        Err(msg) => {
+            eprintln!("tulpa: {msg}; the IR is in {ll} and the header in {header}");
+            return ExitCode::from(1);
+        }
+    };
     let mut cmd = std::process::Command::new(&cc);
     cmd.args([opt.as_str(), "-Wno-override-module"]);
+    if major == Some(14) {
+        // The IR uses opaque `ptr`, which clang 14 only accepts behind this flag.
+        cmd.args(["-mllvm", "-opaque-pointers"]);
+    }
     if shared {
         cmd.args(["-shared", "-fPIC"]);
     } else {
@@ -351,6 +361,47 @@ fn native(rest: &[String], build: bool) -> ExitCode {
             ExitCode::from(1)
         }
     }
+}
+
+/// Picks the C compiler for `tulpa build`: `$TULPA_CLANG`, else `clang`, else the newest
+/// installed `clang-N`. Returns the command and its major version when it can be read.
+fn find_clang() -> Result<(String, Option<u32>), String> {
+    fn major_of(cc: &str) -> Option<Option<u32>> {
+        let out = std::process::Command::new(cc)
+            .arg("--version")
+            .output()
+            .ok()?;
+        let text = String::from_utf8_lossy(&out.stdout);
+        let v = text
+            .split("version ")
+            .nth(1)
+            .and_then(|r| r.split(|c: char| !c.is_ascii_digit()).next())
+            .and_then(|n| n.parse().ok());
+        Some(v)
+    }
+    let explicit = std::env::var("TULPA_CLANG").ok();
+    let candidates: Vec<String> = match &explicit {
+        Some(cc) => vec![cc.clone()],
+        None => std::iter::once("clang".to_string())
+            .chain((14..=22).rev().map(|n| format!("clang-{n}")))
+            .collect(),
+    };
+    for cc in candidates {
+        if let Some(major) = major_of(&cc) {
+            if let Some(m) = major {
+                if m < 14 {
+                    return Err(format!(
+                        "{cc} is version {m}; tulpa build needs clang 14 or newer"
+                    ));
+                }
+            }
+            return Ok((cc, major));
+        }
+    }
+    Err(match explicit {
+        Some(cc) => format!("cannot run {cc} (from TULPA_CLANG)"),
+        None => "no clang found (install clang 14+ or set TULPA_CLANG)".into(),
+    })
 }
 
 /// `tulpa bytecode file.rav`: shows which functions run on the VM and their bytecode.

@@ -423,6 +423,8 @@ Timing logic then runs deterministically and fast in tests. `sim::gpio_input`, `
 3. **Native code.** `tulpa build file.rav -o ctl.o [--shared] [-O3]` compiles the typed numeric
    subset through LLVM and writes `ctl.h` with C prototypes. Each function is exported as
    `tulpa_<name>`. `tulpa emit-llvm` prints the IR instead.
+   It needs clang 14 or newer: `$TULPA_CLANG` if set, else `clang`, else the newest `clang-N`
+   on the PATH.
 
    **What compiles natively:**
    - `int`, `float`, `num` and `bool` parameters (unannotated means `float`)
