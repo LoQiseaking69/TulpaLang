@@ -1,5 +1,9 @@
 # Tulpa
+---
 
+![Tulpa](https://github.com/LoQiseaking69/TulpaLang/blob/main/file_00000000d52c81f589c57789de01a871.png)
+
+---
 **A Python-flavoured, Rust-powered programming language for robotics, embedded systems, and physical computing.**
 
 Tulpa builds physical units, engineering specifications, state machines, reactive programming,
@@ -12,12 +16,6 @@ Dimensional correctness, actuator constraints, state transitions, response deadl
 hardware behaviour are all part of the programming model. The result is a language with the
 accessibility of Python-style scripting, plus systems-oriented execution, engineering-aware
 abstractions, and native hardware integration.
-
----
-
-![Tulpa](TulpaLangLOGO.png)
-
----
 
 ## At a glance
 
