@@ -1,0 +1,182 @@
+# std/rl — on-policy reinforcement learning on top of `nn::` (Gaussian actor-critic, GAE, PPO).
+#
+#   import "std/rl"
+#   let agent = rl.PPO(obs_dim: 12, act_dim: 4, hidden: [64, 64])
+#   let a = agent.act(obs)                 # {action, logp, value}
+#   agent.buffer.add(obs, a, reward, done)
+#   if agent.buffer.full() { print(agent.update(last_obs)) }
+
+struct GaussianPolicy {
+    obs_dim: int
+    act_dim: int
+    hidden = [64, 64]
+    init_log_std: float = -0.5
+    act = "tanh"
+    net = nil
+    log_std = nil
+    fn init(self) {
+        let sizes = [self.obs_dim] + self.hidden + [self.act_dim]
+        self.net = nn::MLP(sizes, self.act, 0.0, "linear", 0.01)   # small final layer → near-zero initial actions
+        self.log_std = nn::param(nn::full(1, self.act_dim, self.init_log_std).tolist())
+    }
+    fn params(self) { self.net.params() + [self.log_std] }
+    fn dist(self, obs) { [self.net.forward(obs), self.log_std] }
+    fn sample(self, obs, deterministic = false) {
+        let mu = self.net.forward(obs)
+        if deterministic { return mu.detach() }
+        nn::sample_gaussian(mu, self.log_std)
+    }
+    fn log_prob(self, obs, actions) { nn::gaussian_log_prob(actions, self.net.forward(obs), self.log_std) }
+    # Differential entropy of a diagonal Gaussian, averaged over the batch (scalar tensor).
+    fn entropy(self) { self.log_std.sum() + 0.5 * self.act_dim * (1.0 + log(TAU)) }
+}
+
+struct Rollout {
+    capacity: int = 2048
+    obs = []
+    actions = []
+    rewards = []
+    dones = []
+    values = []
+    logps = []
+    fn add(self, obs, step, reward, done) {
+        self.obs.push(obs)
+        self.actions.push(step.action)
+        self.rewards.push(float(reward))
+        self.dones.push(if done { 1.0 } else { 0.0 })
+        self.values.push(step.value)
+        self.logps.push(step.logp)
+    }
+    fn size(self) { len(self.rewards) }
+    fn full(self) { len(self.rewards) >= self.capacity }
+    fn clear(self) {
+        self.obs = []; self.actions = []; self.rewards = []
+        self.dones = []; self.values = []; self.logps = []
+    }
+    # Generalised Advantage Estimation. Returns [advantages, returns] as plain lists.
+    fn gae(self, last_value, gamma = 0.99, lam = 0.95) {
+        let n = len(self.rewards)
+        let adv = [0.0; n]
+        let last = 0.0
+        let i = n - 1
+        while i >= 0 {
+            let next_v = if i == n - 1 { last_value } else { self.values[i + 1] }
+            let nonterminal = 1.0 - self.dones[i]
+            let delta = self.rewards[i] + gamma * next_v * nonterminal - self.values[i]
+            last = delta + gamma * lam * nonterminal * last
+            adv[i] = last
+            i -= 1
+        }
+        let ret = []
+        for k in 0..n { ret.push(adv[k] + self.values[k]) }
+        [adv, ret]
+    }
+}
+
+fn _normalize(xs) {
+    let n = len(xs)
+    let m = xs.sum() / n
+    let v = xs.map(|x| (x - m) * (x - m)).sum() / max(1, n - 1)
+    let s = sqrt(v) + 1e-8
+    xs.map(|x| (x - m) / s)
+}
+
+fn _shuffle(n) {
+    let idx = range(n).map(|i| i)
+    let i = n - 1
+    while i > 0 {
+        let j = int(nn::uniform() * (i + 1))
+        let t = idx[i]; idx[i] = idx[j]; idx[j] = t
+        i -= 1
+    }
+    idx
+}
+
+# Element-wise min of two tensors, differentiable: (a + b − |a − b|) / 2
+fn tmin(a, b) { (a + b - (a - b).abs()) * 0.5 }
+
+struct PPO {
+    obs_dim: int
+    act_dim: int
+    hidden = [64, 64]
+    lr: float = 3e-4
+    gamma: float = 0.99
+    lam: float = 0.95
+    clip: float = 0.2
+    epochs: int = 6
+    batch: int = 64
+    horizon: int = 1024
+    entropy_coef: float = 0.0
+    value_coef: float = 0.5
+    max_grad_norm: float = 0.5
+    policy = nil
+    critic = nil
+    opt_pi = nil
+    opt_v = nil
+    buffer = nil
+    updates: int = 0
+    fn init(self) {
+        self.policy = GaussianPolicy(obs_dim: self.obs_dim, act_dim: self.act_dim, hidden: self.hidden)
+        self.critic = nn::MLP([self.obs_dim] + self.hidden + [1], "tanh")
+        self.opt_pi = nn::Adam(self.policy.params(), self.lr)
+        self.opt_v = nn::Adam(self.critic.params(), self.lr)
+        self.opt_pi.clip_grad(self.max_grad_norm)
+        self.opt_v.clip_grad(self.max_grad_norm)
+        self.buffer = Rollout(capacity: self.horizon)
+    }
+    fn value(self, obs) { self.critic.forward(nn::tensor([obs])).item() }
+    # obs: list of floats (already normalised). Returns {action: list, logp, value}.
+    fn act(self, obs, deterministic = false) {
+        let o = nn::tensor([obs])
+        let a = self.policy.sample(o, deterministic)
+        let lp = self.policy.log_prob(o, a).item()
+        {action: a.flat(), logp: lp, value: self.critic.forward(o).item()}
+    }
+    fn update(self, last_obs) {
+        let buf = self.buffer
+        let n = buf.size()
+        let ga = buf.gae(self.value(last_obs), self.gamma, self.lam)
+        let adv = _normalize(ga[0])
+        let ret = ga[1]
+        let pi_loss = 0.0
+        let v_loss = 0.0
+        let kl = 0.0
+        let batches = 0
+        for epoch in 0..self.epochs {
+            let idx = _shuffle(n)
+            let start = 0
+            while start < n {
+                let stop = min(n, start + self.batch)
+                let sel = idx[start..stop]
+                let O = nn::tensor(sel.map(|i| buf.obs[i]))
+                let A = nn::tensor(sel.map(|i| buf.actions[i]))
+                let ADV = nn::tensor(sel.map(|i| [adv[i]]))
+                let RET = nn::tensor(sel.map(|i| [ret[i]]))
+                let OLD = nn::tensor(sel.map(|i| [buf.logps[i]]))
+                let logp = self.policy.log_prob(O, A)
+                let ratio = (logp - OLD).exp()
+                let surr = tmin(ratio * ADV, ratio.clamp(1.0 - self.clip, 1.0 + self.clip) * ADV)
+                let lpi = surr.mean().neg() - self.policy.entropy() * self.entropy_coef
+                self.opt_pi.zero_grad(); lpi.backward(); self.opt_pi.step()
+                let lv = nn::mse(self.critic.forward(O), RET) * self.value_coef
+                self.opt_v.zero_grad(); lv.backward(); self.opt_v.step()
+                pi_loss += lpi.item(); v_loss += lv.item()
+                kl += (OLD - logp.detach()).mean().item()
+                batches += 1
+                start = stop
+            }
+        }
+        buf.clear()
+        self.updates += 1
+        {update: self.updates, samples: n, pi_loss: pi_loss / batches, v_loss: v_loss / batches,
+         approx_kl: kl / batches, log_std: self.policy.log_std.flat().sum() / self.act_dim}
+    }
+    fn save(self, prefix) {
+        nn::save(prefix + ".policy.nn", self.policy.params())
+        nn::save(prefix + ".critic.nn", self.critic.params())
+    }
+    fn load(self, prefix) {
+        nn::load(prefix + ".policy.nn", self.policy.params())
+        nn::load(prefix + ".critic.nn", self.critic.params())
+    }
+}

@@ -1,0 +1,219 @@
+# std/rtl — cycle-accurate register-transfer-level simulation with VCD waveforms.
+#
+# Model hardware the way Verilog does, in Tulpa:
+#   * `sim.sig(name, width)`  — a wire, driven with `.set(v)` inside `comb()`
+#   * `sim.reg(name, width)`  — a flip-flop, loaded with `.d(v)` inside `seq()`
+#                               (non-blocking: every register commits together on the edge)
+#   * a module is any struct with `comb(self)` and `seq(self)` methods; `sim.add(m)`
+#   * `sim.trace("out.vcd")` records every signal; open the file in HermiSim's
+#     waveform viewer or GTKWave.
+#
+#   import "std/rtl"
+#   let sim = rtl.Sim(period_ns: 10)
+#   let q = sim.reg("count", 8)
+#   struct Counter { q; fn comb(self) {}; fn seq(self) { self.q.d(self.q.value + 1) } }
+#   sim.add(Counter(q)); sim.trace("count.vcd"); sim.run(20); sim.close()
+
+fn mask(width: int) -> int { (1 << width) - 1 }
+
+# Two's-complement view of an unsigned bit pattern.
+fn signed(v: int, width: int) -> int {
+    if (v >> (width - 1)) & 1 == 1 { v - (1 << width) } else { v }
+}
+
+struct Sig {
+    name: str
+    width: int = 1
+    value: int = 0
+    next = nil
+    is_reg: bool = false
+    reset_value: int = 0
+    fn set(self, v) { self.value = int(v) & mask(self.width) }
+    fn d(self, v) { self.next = int(v) & mask(self.width) }
+    fn bit(self, k) { (self.value >> k) & 1 }
+    fn bits(self, hi, lo) { (self.value >> lo) & mask(hi - lo + 1) }
+    fn high(self) { self.value != 0 }
+    fn as_signed(self) { signed(self.value, self.width) }
+    fn to_str(self) { f"{self.name}[{self.width}]={self.value:#x}" }
+}
+
+struct Vcd {
+    path: str
+    timescale: str = "1ns"
+    ids = {}
+    last = {}
+    lines = []
+    fn _id(self, k) {
+        # printable VCD identifier from an index: ! " # ... then two-character codes
+        let a = 33 + k % 94
+        let b = k / 94
+        if b == 0 { chr(a) } else { chr(32 + b) + chr(a) }
+    }
+    fn header(self, signals, top = "top") {
+        self.lines.push("$date " + str(now()) + " $end")
+        self.lines.push("$version Tulpa std/rtl $end")
+        self.lines.push(f"$timescale {self.timescale} $end")
+        # group signals into scopes by dotted prefix: "uart.rx_state" → scope uart
+        let scopes = {}
+        for k, s in enumerate(signals) {
+            let parts = s.name.split(".")
+            let scope = if len(parts) > 1 { parts[0] } else { top }
+            let leaf = parts[-1]
+            if not (scope in scopes) { scopes[scope] = [] }
+            scopes[scope].push([k, s, leaf])
+            self.ids[s.name] = self._id(k)
+        }
+        self.lines.push(f"$scope module {top} $end")
+        for scope, items in scopes {
+            if scope != top { self.lines.push(f"$scope module {scope} $end") }
+            for it in items {
+                let s = it[1]
+                let kind = if s.is_reg { "reg" } else { "wire" }
+                let rng = if s.width > 1 { f" [{s.width - 1}:0]" } else { "" }
+                self.lines.push(f"$var {kind} {s.width} {self.ids[s.name]} {it[2]}{rng} $end")
+            }
+            if scope != top { self.lines.push("$upscope $end") }
+        }
+        self.lines.push("$upscope $end")
+        self.lines.push("$enddefinitions $end")
+    }
+    fn _val(self, s) {
+        if s.width == 1 { str(s.value) + self.ids[s.name] }
+        else { let b = bin(s.value); "b" + b[2..len(b)] + " " + self.ids[s.name] }
+    }
+    fn sample(self, t, signals) {
+        let changes = []
+        for s in signals {
+            let prev = self.last.get(s.name, nil)
+            if prev != s.value {
+                changes.push(self._val(s))
+                self.last[s.name] = s.value
+            }
+        }
+        if len(changes) > 0 {
+            self.lines.push("#" + str(t))
+            self.lines.extend(changes)
+        }
+        if len(self.lines) > 4096 { self.flush() }
+    }
+    fn flush(self) {
+        append_file(self.path, self.lines.join("\n") + "\n")
+        self.lines = []
+    }
+}
+
+struct Sim {
+    period_ns: int = 10
+    cycle: int = 0
+    signals = []
+    modules = []
+    vcd = nil
+    max_settle: int = 32
+    fn sig(self, name, width = 1, init = 0) {
+        let s = Sig(name: name, width: width, value: init & mask(width))
+        self.signals.push(s)
+        s
+    }
+    fn reg(self, name, width = 1, init = 0) {
+        let s = Sig(name: name, width: width, value: init & mask(width), is_reg: true, reset_value: init & mask(width))
+        self.signals.push(s)
+        s
+    }
+    fn add(self, m) { self.modules.push(m); m }
+    fn find(self, name) {
+        for s in self.signals { if s.name == name { return s } }
+        error(f"rtl: no signal named '{name}'")
+    }
+    # Propagate combinational logic until every wire is stable.
+    fn settle(self) {
+        let rounds = 0
+        loop {
+            let before = self.signals.map(|s| s.value)
+            for m in self.modules { m.comb() }
+            let after = self.signals.map(|s| s.value)
+            if before == after { break }
+            rounds += 1
+            if rounds > self.max_settle {
+                error(f"rtl: combinational loop — logic did not settle after {self.max_settle} passes at cycle {self.cycle}")
+            }
+        }
+    }
+    # One rising clock edge: every module computes next state, then all registers commit.
+    fn step(self) {
+        for m in self.modules { m.seq() }
+        for s in self.signals {
+            if s.next != nil { s.value = s.next; s.next = nil }
+        }
+        self.settle()
+        self.cycle += 1
+        if self.vcd != nil { self.vcd.sample(self.cycle * self.period_ns, self.signals) }
+    }
+    fn run(self, n) { for _ in 0..n { self.step() } ; self.cycle }
+    # Run until `cond()` holds (or `limit` cycles pass); returns cycles taken or -1.
+    fn run_until(self, cond, limit = 1000000) {
+        let start = self.cycle
+        while not cond() {
+            if self.cycle - start >= limit { return -1 }
+            self.step()
+        }
+        self.cycle - start
+    }
+    fn reset(self) {
+        for s in self.signals { if s.is_reg { s.value = s.reset_value; s.next = nil } }
+        self.settle()
+    }
+    fn time_ns(self) { self.cycle * self.period_ns }
+    fn trace(self, path, timescale = "1ns") {
+        write_file(path, "")
+        self.vcd = Vcd(path: path, timescale: timescale)
+        self.settle()
+        self.vcd.header(self.signals)
+        self.vcd.lines.push("#0")
+        self.vcd.lines.push("$dumpvars")
+        for s in self.signals {
+            self.vcd.lines.push(self.vcd._val(s))
+            self.vcd.last[s.name] = s.value
+        }
+        self.vcd.lines.push("$end")
+        self.vcd
+    }
+    fn close(self) {
+        if self.vcd != nil {
+            self.vcd.flush()
+            tlm::artifact(self.vcd.path, "vcd")
+        }
+    }
+}
+
+# ---------------------------------------------------------------- reusable blocks
+
+# Clock-enable pulse generator: `tick` is high for one cycle every `div` cycles.
+struct Divider {
+    prefix: str
+    div: int
+    sim
+    count = nil
+    tick = nil
+    fn init(self) {
+        let w = max(1, len(bin(self.div)) - 2)
+        self.count = self.sim.reg(self.prefix + ".count", w)
+        self.tick = self.sim.sig(self.prefix + ".tick")
+    }
+    fn comb(self) { self.tick.set(if self.count.value == self.div - 1 { 1 } else { 0 }) }
+    fn seq(self) { self.count.d(if self.count.value == self.div - 1 { 0 } else { self.count.value + 1 }) }
+}
+
+# Synchronous FIFO with full/empty flags.
+struct Fifo {
+    depth: int = 16
+    items = []
+    overflows: int = 0
+    fn push(self, v) {
+        if len(self.items) >= self.depth { self.overflows += 1; return false }
+        self.items.push(v); true
+    }
+    fn pop(self) { if len(self.items) == 0 { nil } else { self.items.pop(0) } }
+    fn empty(self) { len(self.items) == 0 }
+    fn full(self) { len(self.items) >= self.depth }
+    fn count(self) { len(self.items) }
+}

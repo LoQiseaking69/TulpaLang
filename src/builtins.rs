@@ -359,6 +359,11 @@ const MODULES: &[&str] = &[
     "SPI",
     "UART",
     "PID",
+    "nn",
+    "pack",
+    "json",
+    "cosim",
+    "tlm",
 ];
 
 pub fn module_exists(m: &str) -> bool {
@@ -393,6 +398,11 @@ pub fn path(m: &str, name: &str) -> Option<Value> {
             .iter()
             .find(|(n, _)| *n == name)
             .map(|(n, f)| Value::Builtin(n, *f)),
+        ("nn", _) => crate::nn::NN
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map(|(n, f)| Value::Builtin(n, *f)),
+        ("pack" | "json" | "tlm" | "cosim", _) => crate::stdx::path(m, name),
         _ => devices::path(m, name),
     }
 }
@@ -1515,6 +1525,30 @@ pub fn global_names() -> Vec<&'static str> {
     let mut v: Vec<&'static str> = GLOBALS.iter().map(|(n, _)| *n).collect();
     v.extend(["PI", "TAU", "E", "HIGH", "LOW", "ARGS"]);
     v
+}
+
+/// Members of a `Module::` namespace (for completion).
+pub fn module_members(m: &str) -> Vec<&'static str> {
+    match m {
+        "kin" | "kinematics" => KIN.iter().map(|(n, _)| *n).collect(),
+        "nn" => crate::nn::NN.iter().map(|(n, _)| *n).collect(),
+        "pack" => vec![
+            "pack",
+            "unpack",
+            "calcsize",
+            "f32s",
+            "to_f32s",
+            "crc16",
+            "crc32",
+            "cobs_encode",
+            "cobs_decode",
+        ],
+        "json" => vec!["encode", "decode", "load", "save"],
+        "tlm" => vec!["enabled", "plot", "event", "status", "artifact"],
+        "cosim" => vec!["connect", "available"],
+        "math" | "std" => GLOBALS.iter().map(|(n, _)| *n).collect(),
+        _ => vec![],
+    }
 }
 
 /// Module names usable with `Module::item`.

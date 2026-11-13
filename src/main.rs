@@ -427,17 +427,20 @@ fn bytecode(files: &[String]) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn graph_files(files: &[String], o: &Opts) -> ExitCode {
+fn graph_files(files: &[String], _o: &Opts) -> ExitCode {
+    // Purely static: diagrams come straight from the AST, so programs that talk to
+    // hardware or a co-simulator at the top level can still be graphed.
     for file in files {
-        let i = match load_definitions(file, o) {
-            Ok(i) => i,
+        let (_, prog) = match load(file) {
+            Ok(x) => x,
             Err(c) => return c,
         };
-        for (name, v) in i.global_values() {
-            if let tulpa::Value::MachineType(t) = v {
+        for s in &prog {
+            if let tulpa::ast::Stmt::Machine(def) = s {
                 println!(
-                    "%% machine {name} ({file})\n{}",
-                    tulpa::ext::mermaid(&t.def)
+                    "%% machine {} ({file})\n{}",
+                    def.name,
+                    tulpa::ext::mermaid(def)
                 );
             }
         }

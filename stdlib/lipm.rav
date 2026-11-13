@@ -1,0 +1,103 @@
+# std/lipm — Linear Inverted Pendulum Model tools for legged balance.
+#
+# Positions are SI metres as plain floats in [x, y] lists (the hot path stays fast);
+# the scalar API takes unit-typed quantities where it helps catch mistakes.
+#
+#   ẍ_com = ω² (x_com − p_zmp),  ω = √(g / z_c)
+#   capture point ξ = x + ẋ / ω   (step there and the pendulum comes to rest)
+
+const G = 9.81[m/s^2]
+
+fn omega(z_c: [m]) -> [Hz]
+    require z_c > 0
+{ sqrt(G / z_c) }
+
+# Instantaneous capture point (one axis).
+fn capture_point(x: [m], v: [m/s], z_c: [m]) -> [m]
+    require z_c > 0
+    ensure abs((result' - x).si - (v / omega(z_c)).si) < 1e-9
+{ x + v / omega(z_c) }
+
+# ZMP implied by a COM acceleration (one axis).
+fn zmp(x: [m], a: [m/s^2], z_c: [m]) -> [m] { x - a * z_c / G }
+
+# LIPM residual: how far an observed COM acceleration is from what the pendulum predicts.
+# This is the physics term in Morty's physics-informed loss (plain SI floats).
+fn residual(x, a, p, z_c) { a - 9.81 / z_c * (x - p) }
+
+# Closed-form LIPM propagation over dt with fixed ZMP p (plain SI floats). Returns [x, v].
+fn step(x, v, p, z_c, dt) {
+    let w = sqrt(9.81 / z_c)
+    let c = (exp(w * dt) + exp(-w * dt)) / 2
+    let s = (exp(w * dt) - exp(-w * dt)) / 2
+    [(x - p) * c + v / w * s + p, (x - p) * w * s + v * c]
+}
+
+fn capture_xy(com, vel, z_c) {
+    let w = sqrt(9.81 / z_c)
+    [com[0] + vel[0] / w, com[1] + vel[1] / w]
+}
+
+# ---------------------------------------------------------------- support polygon
+
+fn _cross(o, a, b) { (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]) }
+
+# Convex hull (Andrew's monotone chain), counter-clockwise.
+fn hull(points) {
+    let pts = points.sorted()
+    if len(pts) <= 2 { return pts }
+    let lower = []
+    for p in pts {
+        while len(lower) >= 2 and _cross(lower[-2], lower[-1], p) <= 0 { lower.pop() }
+        lower.push(p)
+    }
+    let upper = []
+    for p in reversed(pts) {
+        while len(upper) >= 2 and _cross(upper[-2], upper[-1], p) <= 0 { upper.pop() }
+        upper.push(p)
+    }
+    lower.pop(); upper.pop()
+    lower + upper
+}
+
+# Rectangle corners of a foot centred at c with yaw (rad).
+fn foot_corners(c, half_len, half_wid, yaw = 0.0) {
+    let cs = cos(yaw)
+    let sn = sin(yaw)
+    let out = []
+    for d in [[half_len, half_wid], [half_len, -half_wid], [-half_len, -half_wid], [-half_len, half_wid]] {
+        out.push([c[0] + d[0] * cs - d[1] * sn, c[1] + d[0] * sn + d[1] * cs])
+    }
+    out
+}
+
+# Support polygon from the feet currently in contact (list of [x, y] centres).
+fn support_polygon(feet, half_len = 0.09, half_wid = 0.05) {
+    let pts = []
+    for f in feet { pts.extend(foot_corners(f, half_len, half_wid)) }
+    hull(pts)
+}
+
+# Signed distance from p to the polygon boundary: > 0 inside (stability margin), < 0 outside.
+fn margin(p, poly) {
+    if len(poly) < 3 { return -1.0 }
+    let best = 1e9
+    let inside = true
+    let n = len(poly)
+    for i in 0..n {
+        let a = poly[i]
+        let b = poly[(i + 1) % n]
+        let ex = b[0] - a[0]
+        let ey = b[1] - a[1]
+        let l = hypot(ex, ey)
+        let d = ((p[0] - a[0]) * ey - (p[1] - a[1]) * ex) / l     # > 0 means right of edge
+        if d > 0 { inside = false }
+        best = min(best, abs(d))
+    }
+    if inside { best } else { -best }
+}
+
+fn centroid(poly) {
+    if len(poly) == 0 { return [0.0, 0.0] }
+    [poly.map(|p| p[0]).sum() / len(poly), poly.map(|p| p[1]).sum() / len(poly)]
+}

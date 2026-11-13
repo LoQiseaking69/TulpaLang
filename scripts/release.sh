@@ -36,8 +36,9 @@ BIN="target/$TARGET/release/tulpa"
 NAME="tulpa-$VERSION-$TARGET"
 STAGE="$DIST/$NAME"
 rm -rf "$STAGE"
-mkdir -p "$STAGE/bin" "$STAGE/share/tulpa" "$STAGE/share/doc/tulpa"
+mkdir -p "$STAGE/bin" "$STAGE/lib/tulpa" "$STAGE/share/tulpa" "$STAGE/share/doc/tulpa"
 cp "$BIN" "$STAGE/bin/"
+cp stdlib/*.rav "$STAGE/lib/tulpa/"   # import "std/..." resolves to <bin>/../lib/tulpa
 cp -r examples editors "$STAGE/share/tulpa/"
 rm -rf "$STAGE/share/tulpa/editors/vscode/node_modules" "$STAGE/share/tulpa/editors/vscode/out" "$STAGE"/share/tulpa/editors/vscode/*.vsix
 cp README.md LICENSE "$STAGE/share/doc/tulpa/"
@@ -48,8 +49,9 @@ cat > "$STAGE/install.sh" <<'INSTALL'
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 if [ -n "$1" ]; then PREFIX="$1"; elif [ "$(id -u)" = 0 ]; then PREFIX=/usr/local; else PREFIX="$HOME/.local"; fi
-install -d "$PREFIX/bin" "$PREFIX/share/tulpa" "$PREFIX/share/doc/tulpa"
+install -d "$PREFIX/bin" "$PREFIX/lib/tulpa" "$PREFIX/share/tulpa" "$PREFIX/share/doc/tulpa"
 install -m 0755 "$HERE/bin/tulpa" "$PREFIX/bin/tulpa"
+cp -r "$HERE/lib/tulpa/." "$PREFIX/lib/tulpa/"
 cp -r "$HERE/share/tulpa/." "$PREFIX/share/tulpa/"
 cp -r "$HERE/share/doc/tulpa/." "$PREFIX/share/doc/tulpa/"
 echo "installed $PREFIX/bin/tulpa ($("$PREFIX/bin/tulpa" -V))"
@@ -82,8 +84,9 @@ if [ "$DEB" = 1 ] && command -v dpkg-deb >/dev/null 2>&1; then
     echo "==> .deb ($ARCH)"
     DEBROOT="$DIST/deb-$ARCH"
     rm -rf "$DEBROOT"
-    mkdir -p "$DEBROOT/DEBIAN" "$DEBROOT/usr/bin" "$DEBROOT/usr/share/tulpa" "$DEBROOT/usr/share/doc/tulpa"
+    mkdir -p "$DEBROOT/DEBIAN" "$DEBROOT/usr/bin" "$DEBROOT/usr/lib/tulpa" "$DEBROOT/usr/share/tulpa" "$DEBROOT/usr/share/doc/tulpa"
     install -m 0755 "$BIN" "$DEBROOT/usr/bin/tulpa"
+    cp stdlib/*.rav "$DEBROOT/usr/lib/tulpa/"
     cp -r "$STAGE/share/tulpa/." "$DEBROOT/usr/share/tulpa/"
     cp -r "$STAGE/share/doc/tulpa/." "$DEBROOT/usr/share/doc/tulpa/"
     SIZE=$(du -sk "$DEBROOT/usr" | cut -f1)
@@ -105,7 +108,7 @@ Description: Tulpa, a language for robots and hardware
  Python-flavoured scripting with units of measure, contracts, state machines,
  reactive safety rules, GPIO/I2C/SPI/UART/PWM/CAN/BLE devices with a simulator,
  record/replay of hardware sessions, a bytecode VM, LLVM native code
- generation and a language server.
+ generation, a language server, and nn/rl/rtl/eda libraries.
 CONTROL
     dpkg-deb --root-owner-group --build "$DEBROOT" "$DIST/tulpa_${VERSION}_${ARCH}.deb" >/dev/null
     rm -rf "$DEBROOT"

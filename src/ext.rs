@@ -391,6 +391,12 @@ impl Interpreter {
 
     /// Binary operator with struct operator overloading (`op_add`, `op_mul`, `op_eq`, `op_cmp`, ...).
     pub(crate) fn binary_op(&mut self, a: &Value, op: &str, b: &Value) -> R<Value> {
+        // Native objects (e.g. nn tensors) overload operators through op_* methods.
+        if let (Value::Native(_), _) | (_, Value::Native(_)) = (a, b) {
+            if let Some(v) = self.native_binary(a, op, b)? {
+                return Ok(v);
+            }
+        }
         let ((Value::Object(_), _) | (_, Value::Object(_))) = (a, b) else {
             return binary(a, op, b).map_err(Ctrl::from);
         };
@@ -448,6 +454,32 @@ impl Interpreter {
             return self.call_closure(&c, vec![b.clone(), a.clone()]);
         }
         binary(a, op, b).map_err(Ctrl::from)
+    }
+
+    fn native_binary(&mut self, a: &Value, op: &str, b: &Value) -> R<Option<Value>> {
+        let (fwd, refl) = match op {
+            "+" => ("op_add", "op_radd"),
+            "-" => ("op_sub", "op_rsub"),
+            "*" => ("op_mul", "op_rmul"),
+            "/" => ("op_div", "op_rdiv"),
+            "==" => ("op_eq", "op_eq"),
+            "!=" => ("op_eq", "op_eq"),
+            _ => return Ok(None),
+        };
+        let (recv, name, arg) = match (a, b) {
+            (Value::Native(_), _) => (a, fwd, b),
+            _ => (b, refl, a),
+        };
+        let Value::Native(n) = recv else {
+            return Ok(None);
+        };
+        let r = n.borrow_mut().call_method(name, std::slice::from_ref(arg));
+        match r {
+            Ok(v) if op == "!=" => Ok(Some(Value::Bool(!v.truthy()))),
+            Ok(v) => Ok(Some(v)),
+            Err(e) if e.contains("has no method") => Ok(None),
+            Err(e) => Err(Ctrl::from(e)),
+        }
     }
 
     // ------------------------------------------------------------------ fields
@@ -595,6 +627,14 @@ impl Interpreter {
             },
             Value::Signal(s) => self.signal_method(s, name, args),
             Value::Quantity(q) => quantity_method(q, name, &args).map_err(Ctrl::from),
+            // module.Struct(kw: ...) / module.func(kw: ...): imported modules are dicts
+            Value::Dict(d) if !kw.is_empty() => {
+                let member = d.borrow().get(&Value::str(name))?;
+                match member {
+                    Some(f) => self.call_kw(&f, args, kw),
+                    None => rt(format!("module has no member '{name}'")),
+                }
+            }
             other => {
                 if !kw.is_empty() {
                     return rt(format!(
@@ -1319,6 +1359,11 @@ impl Interpreter {
         let mut full = base.join(path);
         if !full.exists() && full.extension().is_none() {
             full.set_extension("rav");
+        }
+        if !full.exists() {
+            if let Some(found) = crate::stdx_path::resolve(path) {
+                full = found;
+            }
         }
         let canon = std::fs::canonicalize(&full)
             .map_err(|e| format!("import \"{path}\": {} ({e})", full.display()))?;

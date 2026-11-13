@@ -66,6 +66,19 @@ It also has everything you'd expect from a general-purpose scripting language:
 - `spawn`/`await` tasks, macros (`every!` fixed-rate loops, `define_macro!`)
 - a REPL, and a test runner
 
+## Libraries (3.2)
+
+Native modules: `nn::` (tensors + autodiff, MLP, Adam), `pack::` (binary layouts, CRC, COBS),
+`json::`, `tlm::` (live telemetry) and `cosim::` (lock-step physics co-simulation).
+The `std/` library is written in Tulpa: `std/rtl` (cycle-accurate RTL + VCD), `std/eda` (boards
+as code: ERC, power budgets, netlist/BOM), `std/rl` (PPO), `std/lipm` (capture point/ZMP),
+`std/topics` (ROS-style pub/sub) and `std/frame` (COBS+CRC packet framing).
+See the [library guide](docs/libraries.md).
+
+The [HermiSim](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer) IDE bundles Tulpa with
+a MuJoCo co-simulator, waveform viewer and live plots. Its Morty humanoid project is written
+entirely in Tulpa.
+
 ## Install
 
 Download a release package. Release builds come from the `release` workflow on every `v*` tag.
@@ -73,7 +86,7 @@ Download a release package. Release builds come from the `release` workflow on e
 - Debian/Ubuntu/Raspberry Pi OS: `sudo apt install ./tulpa_<version>_<arch>.deb`
 - VS Code: `code --install-extension tulpa-lang-<version>.vsix`
 
-Or build from source with `cargo build --release` (Rust 1.75+). `scripts/release.sh` builds all the packages for the host.
+Or build from source with `cargo build --release` (Rust 1.82+). `scripts/release.sh` builds all the packages for the host.
 
 ## Quick start
 
@@ -112,6 +125,7 @@ Install the binary with `scripts/deploy.sh [PREFIX]`. Cross-compile for a Raspbe
 ## Docs
 
 - [Language guide](docs/language_guide.md): syntax, types, units, structs, machines, reactive rules, verification, modules and the standard library.
+- [Library guide](docs/libraries.md): `nn`, `pack`, `json`, `tlm`, `cosim` and the `std/` library.
 - [Device integration guide](docs/device_integration.md): devices, backends, the simulator, record and replay, and wiring notes.
 
 ## Project layout
@@ -127,6 +141,9 @@ src/llvm.rs        LLVM IR generator for the typed numeric subset (tulpa build /
 src/lsp.rs         language server (tulpa lsp)
 src/units.rs       dimensional analysis (SI base vector, unit parser, conversions)
 src/builtins.rs    standard library, kin:: module, string/list/dict methods, formatting
+src/nn.rs          nn:: tensors, reverse-mode autodiff, layers, optimisers
+src/stdx.rs        pack:: json:: tlm:: cosim::
+stdlib/            std/ library written in Tulpa (rtl, eda, rl, lipm, topics, frame)
 src/devices/       GPIO/I2C/SPI/UART/PWM/Servo/PID; sim.rs, linux.rs, tape.rs (record/replay)
 examples/          runnable programs with expected.txt (checked by `cargo test`)
 tests/             78 Rust tests (run under both tiers) + Tulpa-level tests

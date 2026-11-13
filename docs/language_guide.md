@@ -381,6 +381,9 @@ drive.TRACK_WIDTH; d.wheels(t)
 
 - Paths are resolved relative to the importing file.
 - Each module runs once and is cached.
+- Paths not found next to the importing file are searched on the library path (`$TULPA_PATH`, the
+  installed `lib/tulpa`, the source tree's `stdlib/`). So `import "std/rtl"` works from anywhere.
+  See the [library guide](libraries.md).
 - Names starting with `_` stay private.
 - A circular import is an error.
 
