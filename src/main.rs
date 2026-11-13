@@ -513,7 +513,8 @@ fn balanced(src: &str) -> bool {
 
 fn repl(o: &Opts) -> ExitCode {
     println!(
-        "Tulpa 3.1 REPL — backend: {:?}. Type :quit to exit, :help for help.",
+        "Tulpa {} REPL — backend: {:?}. Type :quit to exit, :help for help.",
+        env!("CARGO_PKG_VERSION"),
         o.backend
     );
     let mut i = interpreter(o, &[]);
