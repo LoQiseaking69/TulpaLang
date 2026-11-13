@@ -386,7 +386,11 @@ fn graph_files(files: &[String], _o: &Opts) -> ExitCode {
         };
         for s in &prog {
             if let tulpa::ast::Stmt::Machine(def) = s {
-                println!("%% machine {} ({file})\n{}", def.name, tulpa::ext::mermaid(def));
+                println!(
+                    "%% machine {} ({file})\n{}",
+                    def.name,
+                    tulpa::ext::mermaid(def)
+                );
             }
         }
     }

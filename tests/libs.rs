@@ -1,7 +1,8 @@
 //! Tests for the extended libraries: nn (autograd), pack, json, tlm, and the std/ modules.
 
 fn run(src: &str) -> String {
-    tulpa::run_captured_in(src, env!("CARGO_MANIFEST_DIR")).unwrap_or_else(|e| panic!("{e}\n--- program ---\n{src}"))
+    tulpa::run_captured_in(src, env!("CARGO_MANIFEST_DIR"))
+        .unwrap_or_else(|e| panic!("{e}\n--- program ---\n{src}"))
 }
 
 #[test]
@@ -39,7 +40,8 @@ print(err < 1e-6)
 #[test]
 fn nn_learns_xor_and_round_trips_weights() {
     let dir = std::env::temp_dir().join("tulpa_nn_test.nn");
-    let out = run(&format!(r#"
+    let out = run(&format!(
+        r#"
 nn::seed(1)
 let net = nn::MLP([2, 16, 1], "tanh")
 let opt = nn::Adam(net.params(), 0.05)
@@ -51,7 +53,9 @@ net.save({p:?})
 let net2 = nn::MLP([2, 16, 1], "tanh")
 net2.load({p:?})
 print(nn::mse(net2.forward(X), net.forward(X)).item() < 1e-20)
-"#, p = dir.display().to_string()));
+"#,
+        p = dir.display().to_string()
+    ));
     assert_eq!(out, "true\ntrue\n");
 }
 

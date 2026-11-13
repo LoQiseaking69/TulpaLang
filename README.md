@@ -86,7 +86,7 @@ Download a release package. Release builds come from the `release` workflow on e
 - Debian/Ubuntu/Raspberry Pi OS: `sudo apt install ./tulpa_<version>_<arch>.deb`
 - VS Code: `code --install-extension tulpa-lang-<version>.vsix`
 
-Or build from source with `cargo build --release` (Rust 1.75+). `scripts/release.sh` builds all the packages for the host.
+Or build from source with `cargo build --release` (Rust 1.82+). `scripts/release.sh` builds all the packages for the host.
 
 ## Quick start
 

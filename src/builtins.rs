@@ -1532,7 +1532,17 @@ pub fn module_members(m: &str) -> Vec<&'static str> {
     match m {
         "kin" | "kinematics" => KIN.iter().map(|(n, _)| *n).collect(),
         "nn" => crate::nn::NN.iter().map(|(n, _)| *n).collect(),
-        "pack" => vec!["pack", "unpack", "calcsize", "f32s", "to_f32s", "crc16", "crc32", "cobs_encode", "cobs_decode"],
+        "pack" => vec![
+            "pack",
+            "unpack",
+            "calcsize",
+            "f32s",
+            "to_f32s",
+            "crc16",
+            "crc32",
+            "cobs_encode",
+            "cobs_decode",
+        ],
         "json" => vec!["encode", "decode", "load", "save"],
         "tlm" => vec!["enabled", "plot", "event", "status", "artifact"],
         "cosim" => vec!["connect", "available"],

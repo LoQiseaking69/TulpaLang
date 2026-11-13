@@ -470,7 +470,9 @@ impl Interpreter {
             (Value::Native(_), _) => (a, fwd, b),
             _ => (b, refl, a),
         };
-        let Value::Native(n) = recv else { return Ok(None) };
+        let Value::Native(n) = recv else {
+            return Ok(None);
+        };
         let r = n.borrow_mut().call_method(name, std::slice::from_ref(arg));
         match r {
             Ok(v) if op == "!=" => Ok(Some(Value::Bool(!v.truthy()))),

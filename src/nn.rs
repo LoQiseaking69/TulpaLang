@@ -50,7 +50,13 @@ pub fn gauss() -> f64 {
 }
 
 fn seed(s: u64) {
-    RNG.with(|r| r.set(if s == 0 { 0x9E37_79B9_7F4A_7C15 } else { s.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1 }));
+    RNG.with(|r| {
+        r.set(if s == 0 {
+            0x9E37_79B9_7F4A_7C15
+        } else {
+            s.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1
+        })
+    });
     for _ in 0..8 {
         next_u64();
     }
@@ -214,7 +220,13 @@ pub fn matmul(a: &T, b: &T) -> Result<T, String> {
         }
     }
     drop((ad, bd));
-    Ok(Node::derived(n, m, out, Op::MatMul, vec![a.clone(), b.clone()]))
+    Ok(Node::derived(
+        n,
+        m,
+        out,
+        Op::MatMul,
+        vec![a.clone(), b.clone()],
+    ))
 }
 
 fn sum_dim(a: &T, dim: usize) -> Result<T, String> {
@@ -240,7 +252,13 @@ fn sum_dim(a: &T, dim: usize) -> Result<T, String> {
         _ => return Err("nn: sum/mean dim must be 0 (over rows) or 1 (over columns)".into()),
     };
     drop(d);
-    Ok(Node::derived(out.0, out.1, out.2, Op::SumDim(dim), vec![a.clone()]))
+    Ok(Node::derived(
+        out.0,
+        out.1,
+        out.2,
+        Op::SumDim(dim),
+        vec![a.clone()],
+    ))
 }
 
 fn scale(a: &T, k: f64) -> T {
@@ -249,7 +267,10 @@ fn scale(a: &T, k: f64) -> T {
 
 fn slice_cols(a: &T, s: usize, e: usize) -> Result<T, String> {
     if s > e || e > a.cols {
-        return Err(format!("nn: column slice {s}..{e} out of range for {} columns", a.cols));
+        return Err(format!(
+            "nn: column slice {s}..{e} out of range for {} columns",
+            a.cols
+        ));
     }
     let d = a.data.borrow();
     let mut out = Vec::with_capacity(a.rows * (e - s));
@@ -257,15 +278,30 @@ fn slice_cols(a: &T, s: usize, e: usize) -> Result<T, String> {
         out.extend_from_slice(&d[i * a.cols + s..i * a.cols + e]);
     }
     drop(d);
-    Ok(Node::derived(a.rows, e - s, out, Op::SliceCols(s), vec![a.clone()]))
+    Ok(Node::derived(
+        a.rows,
+        e - s,
+        out,
+        Op::SliceCols(s),
+        vec![a.clone()],
+    ))
 }
 
 fn slice_rows(a: &T, s: usize, e: usize) -> Result<T, String> {
     if s > e || e > a.rows {
-        return Err(format!("nn: row slice {s}..{e} out of range for {} rows", a.rows));
+        return Err(format!(
+            "nn: row slice {s}..{e} out of range for {} rows",
+            a.rows
+        ));
     }
     let out = a.data.borrow()[s * a.cols..e * a.cols].to_vec();
-    Ok(Node::derived(e - s, a.cols, out, Op::SliceRows(s), vec![a.clone()]))
+    Ok(Node::derived(
+        e - s,
+        a.cols,
+        out,
+        Op::SliceRows(s),
+        vec![a.clone()],
+    ))
 }
 
 fn cat(ts: &[T], dim: usize) -> Result<T, String> {
@@ -429,28 +465,72 @@ fn propagate(n: &Node, g: &[f64]) -> Result<(), String> {
         Op::Neg => p[0].add_grad(&g.iter().map(|x| -x).collect::<Vec<_>>()),
         Op::PowS(e) => {
             let x = p[0].data.borrow();
-            let gr: Vec<f64> = g.iter().zip(x.iter()).map(|(g, x)| g * e * x.powf(e - 1.0)).collect();
+            let gr: Vec<f64> = g
+                .iter()
+                .zip(x.iter())
+                .map(|(g, x)| g * e * x.powf(e - 1.0))
+                .collect();
             p[0].add_grad(&gr);
         }
-        Op::Tanh => p[0].add_grad(&g.iter().zip(out.iter()).map(|(g, y)| g * (1.0 - y * y)).collect::<Vec<_>>()),
-        Op::Sigmoid => p[0].add_grad(&g.iter().zip(out.iter()).map(|(g, y)| g * y * (1.0 - y)).collect::<Vec<_>>()),
-        Op::Exp => p[0].add_grad(&g.iter().zip(out.iter()).map(|(g, y)| g * y).collect::<Vec<_>>()),
-        Op::Sqrt => p[0].add_grad(&g.iter().zip(out.iter()).map(|(g, y)| g * 0.5 / y.max(1e-300)).collect::<Vec<_>>()),
+        Op::Tanh => p[0].add_grad(
+            &g.iter()
+                .zip(out.iter())
+                .map(|(g, y)| g * (1.0 - y * y))
+                .collect::<Vec<_>>(),
+        ),
+        Op::Sigmoid => p[0].add_grad(
+            &g.iter()
+                .zip(out.iter())
+                .map(|(g, y)| g * y * (1.0 - y))
+                .collect::<Vec<_>>(),
+        ),
+        Op::Exp => p[0].add_grad(
+            &g.iter()
+                .zip(out.iter())
+                .map(|(g, y)| g * y)
+                .collect::<Vec<_>>(),
+        ),
+        Op::Sqrt => p[0].add_grad(
+            &g.iter()
+                .zip(out.iter())
+                .map(|(g, y)| g * 0.5 / y.max(1e-300))
+                .collect::<Vec<_>>(),
+        ),
         Op::Relu => {
             let x = p[0].data.borrow();
-            p[0].add_grad(&g.iter().zip(x.iter()).map(|(g, x)| if *x > 0.0 { *g } else { 0.0 }).collect::<Vec<_>>());
+            p[0].add_grad(
+                &g.iter()
+                    .zip(x.iter())
+                    .map(|(g, x)| if *x > 0.0 { *g } else { 0.0 })
+                    .collect::<Vec<_>>(),
+            );
         }
         Op::Log => {
             let x = p[0].data.borrow();
-            p[0].add_grad(&g.iter().zip(x.iter()).map(|(g, x)| g / x).collect::<Vec<_>>());
+            p[0].add_grad(
+                &g.iter()
+                    .zip(x.iter())
+                    .map(|(g, x)| g / x)
+                    .collect::<Vec<_>>(),
+            );
         }
         Op::Abs => {
             let x = p[0].data.borrow();
-            p[0].add_grad(&g.iter().zip(x.iter()).map(|(g, x)| g * x.signum()).collect::<Vec<_>>());
+            p[0].add_grad(
+                &g.iter()
+                    .zip(x.iter())
+                    .map(|(g, x)| g * x.signum())
+                    .collect::<Vec<_>>(),
+            );
         }
         Op::Softplus => {
             let x = p[0].data.borrow();
-            p[0].add_grad(&g.iter().zip(x.iter()).map(|(g, x)| g / (1.0 + (-x).exp())).collect::<Vec<_>>());
+            p[0].add_grad(
+                &g.iter()
+                    .zip(x.iter())
+                    .map(|(g, x)| g / (1.0 + (-x).exp()))
+                    .collect::<Vec<_>>(),
+            );
         }
         Op::Clamp(lo, hi) => {
             let x = p[0].data.borrow();
@@ -522,7 +602,12 @@ fn propagate(n: &Node, g: &[f64]) -> Result<(), String> {
                 }
             }
         }
-        Op::Mask(m) => p[0].add_grad(&g.iter().zip(m.iter()).map(|(g, m)| g * m).collect::<Vec<_>>()),
+        Op::Mask(m) => p[0].add_grad(
+            &g.iter()
+                .zip(m.iter())
+                .map(|(g, m)| g * m)
+                .collect::<Vec<_>>(),
+        ),
     }
     Ok(())
 }
@@ -534,9 +619,15 @@ fn floats_of(v: &Value, what: &str) -> Result<Vec<f64>, String> {
         Value::List(l) => l
             .borrow()
             .iter()
-            .map(|x| scalar(x).ok_or_else(|| format!("{what}: expected numbers, got {}", x.type_name())))
+            .map(|x| {
+                scalar(x).ok_or_else(|| format!("{what}: expected numbers, got {}", x.type_name()))
+            })
             .collect(),
-        Value::Native(_) => Ok(tensor_of(v, None).ok_or_else(|| format!("{what}: expected a list or tensor"))?.data.borrow().clone()),
+        Value::Native(_) => Ok(tensor_of(v, None)
+            .ok_or_else(|| format!("{what}: expected a list or tensor"))?
+            .data
+            .borrow()
+            .clone()),
         _ => Err(format!("{what}: expected a list, got {}", v.type_name())),
     }
 }
@@ -557,21 +648,30 @@ pub fn from_value(v: &Value) -> Result<T, String> {
         return Ok(t);
     }
     let Value::List(l) = v else {
-        return Err(format!("nn::tensor: expected a number, list or tensor, got {}", v.type_name()));
+        return Err(format!(
+            "nn::tensor: expected a number, list or tensor, got {}",
+            v.type_name()
+        ));
     };
     let l = l.borrow();
     if l.is_empty() {
         return Ok(Node::leaf(1, 0, vec![], false));
     }
     if matches!(l[0], Value::List(_)) {
-        let rows: Vec<Vec<f64>> = l.iter().map(|r| floats_of(r, "nn::tensor")).collect::<Result<_, _>>()?;
+        let rows: Vec<Vec<f64>> = l
+            .iter()
+            .map(|r| floats_of(r, "nn::tensor"))
+            .collect::<Result<_, _>>()?;
         let c = rows[0].len();
         if rows.iter().any(|r| r.len() != c) {
             return Err("nn::tensor: rows have different lengths".into());
         }
         Ok(Node::leaf(rows.len(), c, rows.concat(), false))
     } else {
-        let d = l.iter().map(|x| scalar(x).ok_or("nn::tensor: expected numbers")).collect::<Result<Vec<_>, _>>()?;
+        let d = l
+            .iter()
+            .map(|x| scalar(x).ok_or("nn::tensor: expected numbers"))
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(Node::leaf(1, d.len(), d, false))
     }
 }
@@ -581,7 +681,10 @@ pub fn from_value(v: &Value) -> Result<T, String> {
 fn tensor_of(v: &Value, me: Option<&T>) -> Option<T> {
     let Value::Native(rc) = v else { return None };
     match rc.try_borrow() {
-        Ok(b) => b.as_any().and_then(|a| a.downcast_ref::<Tensor>()).map(|t| t.0.clone()),
+        Ok(b) => b
+            .as_any()
+            .and_then(|a| a.downcast_ref::<Tensor>())
+            .map(|t| t.0.clone()),
         Err(_) => me.cloned(),
     }
 }
@@ -596,7 +699,10 @@ fn operand(v: &Value, me: Option<&T>) -> Result<T, String> {
     if matches!(v, Value::List(_)) {
         return from_value(v);
     }
-    Err(format!("nn: expected a tensor or number, got {}", v.type_name()))
+    Err(format!(
+        "nn: expected a tensor or number, got {}",
+        v.type_name()
+    ))
 }
 
 pub fn wrap(t: T) -> Value {
@@ -607,7 +713,14 @@ fn to_list(t: &Node) -> Value {
     let d = t.data.borrow();
     Value::list(
         (0..t.rows)
-            .map(|i| Value::list(d[i * t.cols..(i + 1) * t.cols].iter().map(|x| Value::Float(*x)).collect()))
+            .map(|i| {
+                Value::list(
+                    d[i * t.cols..(i + 1) * t.cols]
+                        .iter()
+                        .map(|x| Value::Float(*x))
+                        .collect(),
+                )
+            })
             .collect(),
     )
 }
@@ -648,7 +761,10 @@ impl Native for Tensor {
         if t.len() <= 8 {
             let body: Vec<String> = (0..t.rows)
                 .map(|i| {
-                    let r: Vec<String> = d[i * t.cols..(i + 1) * t.cols].iter().map(|x| format!("{x:.4}")).collect();
+                    let r: Vec<String> = d[i * t.cols..(i + 1) * t.cols]
+                        .iter()
+                        .map(|x| format!("{x:.4}"))
+                        .collect();
                     format!("[{}]", r.join(", "))
                 })
                 .collect();
@@ -660,18 +776,30 @@ impl Native for Tensor {
     fn call_method(&mut self, m: &str, a: &[Value]) -> Res {
         let me = &self.0;
         let bin = |a: &[Value], op: &str| -> Result<T, String> {
-            let b = operand(a.first().ok_or_else(|| format!("Tensor.{op}() needs an argument"))?, Some(me))?;
+            let b = operand(
+                a.first()
+                    .ok_or_else(|| format!("Tensor.{op}() needs an argument"))?,
+                Some(me),
+            )?;
             Ok(b)
         };
         let t = match m {
-            "shape" => return Ok(Value::list(vec![Value::Int(me.rows as i64), Value::Int(me.cols as i64)])),
+            "shape" => {
+                return Ok(Value::list(vec![
+                    Value::Int(me.rows as i64),
+                    Value::Int(me.cols as i64),
+                ]))
+            }
             "rows" => return Ok(Value::Int(me.rows as i64)),
             "cols" => return Ok(Value::Int(me.cols as i64)),
             "numel" | "len" => return Ok(Value::Int(me.len() as i64)),
             "requires_grad" => return Ok(Value::Bool(me.requires_grad)),
             "item" => {
                 if me.len() != 1 {
-                    return Err(format!("Tensor.item(): tensor is {}×{}, not 1×1", me.rows, me.cols));
+                    return Err(format!(
+                        "Tensor.item(): tensor is {}×{}, not 1×1",
+                        me.rows, me.cols
+                    ));
                 }
                 return Ok(Value::Float(me.data.borrow()[0]));
             }
@@ -683,19 +811,34 @@ impl Native for Tensor {
                     return Err(format!("Tensor.row({i}): only {} rows", me.rows));
                 }
                 let d = me.data.borrow();
-                return Ok(Value::list(d[i * me.cols..(i + 1) * me.cols].iter().map(|x| Value::Float(*x)).collect()));
+                return Ok(Value::list(
+                    d[i * me.cols..(i + 1) * me.cols]
+                        .iter()
+                        .map(|x| Value::Float(*x))
+                        .collect(),
+                ));
             }
             "get" => {
                 let (i, j) = (uarg(a, 0, "Tensor.get")?, uarg(a, 1, "Tensor.get")?);
                 if i >= me.rows || j >= me.cols {
-                    return Err(format!("Tensor.get({i}, {j}) out of range for {}×{}", me.rows, me.cols));
+                    return Err(format!(
+                        "Tensor.get({i}, {j}) out of range for {}×{}",
+                        me.rows, me.cols
+                    ));
                 }
                 return Ok(Value::Float(me.data.borrow()[i * me.cols + j]));
             }
             "set" => {
-                let (i, j, v) = (uarg(a, 0, "Tensor.set")?, uarg(a, 1, "Tensor.set")?, farg(a, 2, "Tensor.set")?);
+                let (i, j, v) = (
+                    uarg(a, 0, "Tensor.set")?,
+                    uarg(a, 1, "Tensor.set")?,
+                    farg(a, 2, "Tensor.set")?,
+                );
                 if i >= me.rows || j >= me.cols {
-                    return Err(format!("Tensor.set({i}, {j}) out of range for {}×{}", me.rows, me.cols));
+                    return Err(format!(
+                        "Tensor.set({i}, {j}) out of range for {}×{}",
+                        me.rows, me.cols
+                    ));
                 }
                 me.data.borrow_mut()[i * me.cols + j] = v;
                 return Ok(Value::Nil);
@@ -728,27 +871,61 @@ impl Native for Tensor {
             }
             "grad" => {
                 let g = me.grad.borrow();
-                let d = if g.is_empty() { vec![0.0; me.len()] } else { g.clone() };
+                let d = if g.is_empty() {
+                    vec![0.0; me.len()]
+                } else {
+                    g.clone()
+                };
                 return Ok(wrap(Node::leaf(me.rows, me.cols, d, false)));
             }
             "zero_grad" => {
                 me.grad.borrow_mut().clear();
                 return Ok(Value::Nil);
             }
-            "norm" => return Ok(Value::Float(me.data.borrow().iter().map(|x| x * x).sum::<f64>().sqrt())),
-            "max" => return Ok(Value::Float(me.data.borrow().iter().cloned().fold(f64::NEG_INFINITY, f64::max))),
-            "min" => return Ok(Value::Float(me.data.borrow().iter().cloned().fold(f64::INFINITY, f64::min))),
+            "norm" => {
+                return Ok(Value::Float(
+                    me.data.borrow().iter().map(|x| x * x).sum::<f64>().sqrt(),
+                ))
+            }
+            "max" => {
+                return Ok(Value::Float(
+                    me.data
+                        .borrow()
+                        .iter()
+                        .cloned()
+                        .fold(f64::NEG_INFINITY, f64::max),
+                ))
+            }
+            "min" => {
+                return Ok(Value::Float(
+                    me.data
+                        .borrow()
+                        .iter()
+                        .cloned()
+                        .fold(f64::INFINITY, f64::min),
+                ))
+            }
             "argmax" => {
                 let d = me.data.borrow();
-                let (i, _) = d.iter().enumerate().fold((0, f64::NEG_INFINITY), |b, (i, &x)| if x > b.1 { (i, x) } else { b });
+                let (i, _) = d
+                    .iter()
+                    .enumerate()
+                    .fold(
+                        (0, f64::NEG_INFINITY),
+                        |b, (i, &x)| if x > b.1 { (i, x) } else { b },
+                    );
                 return Ok(Value::Int(i as i64));
             }
             "isfinite" => return Ok(Value::Bool(me.data.borrow().iter().all(|x| x.is_finite()))),
             "detach" => Node::leaf(me.rows, me.cols, me.data.borrow().clone(), false),
-            "param" | "requires_grad_" => Node::leaf(me.rows, me.cols, me.data.borrow().clone(), true),
+            "param" | "requires_grad_" => {
+                Node::leaf(me.rows, me.cols, me.data.borrow().clone(), true)
+            }
             "clone" => Node::leaf(me.rows, me.cols, me.data.borrow().clone(), me.requires_grad),
             "matmul" | "mm" | "dot" => matmul(me, &bin(a, m)?)?,
-            "op_add" | "op_radd" | "add" => elementwise(Op::Add, me, &bin(a, m)?, |x, y| x + y, "add")?,
+            "op_add" | "op_radd" | "add" => {
+                elementwise(Op::Add, me, &bin(a, m)?, |x, y| x + y, "add")?
+            }
             "op_sub" | "sub" => elementwise(Op::Sub, me, &bin(a, m)?, |x, y| x - y, "sub")?,
             "op_rsub" => elementwise(Op::Sub, &bin(a, m)?, me, |x, y| x - y, "sub")?,
             "op_mul" | "op_rmul" | "mul" => {
@@ -784,7 +961,11 @@ impl Native for Tensor {
             "log" => unary(Op::Log, me, f64::ln),
             "sqrt" => unary(Op::Sqrt, me, f64::sqrt),
             "abs" => unary(Op::Abs, me, f64::abs),
-            "softplus" => unary(Op::Softplus, me, |x| if x > 30.0 { x } else { x.exp().ln_1p() }),
+            "softplus" => unary(
+                Op::Softplus,
+                me,
+                |x| if x > 30.0 { x } else { x.exp().ln_1p() },
+            ),
             "clamp" | "clip" => {
                 let (lo, hi) = (farg(a, 0, "Tensor.clamp")?, farg(a, 1, "Tensor.clamp")?);
                 unary(Op::Clamp(lo, hi), me, |x| x.clamp(lo, hi))
@@ -795,7 +976,10 @@ impl Native for Tensor {
                         let total: f64 = me.data.borrow().iter().sum();
                         Node::derived(1, 1, vec![total], Op::Sum, vec![me.clone()])
                     }
-                    Some(d) => sum_dim(me, d.as_i64().ok_or("Tensor.sum: dim must be 0 or 1")? as usize)?,
+                    Some(d) => sum_dim(
+                        me,
+                        d.as_i64().ok_or("Tensor.sum: dim must be 0 or 1")? as usize,
+                    )?,
                 };
                 if m == "mean" {
                     let n = match a.first() {
@@ -818,11 +1002,19 @@ impl Native for Tensor {
                 drop(d);
                 Node::derived(me.cols, me.rows, o, Op::Transpose, vec![me.clone()])
             }
-            "cols_slice" | "slice_cols" => slice_cols(me, uarg(a, 0, "Tensor.slice_cols")?, uarg(a, 1, "Tensor.slice_cols")?)?,
-            "rows_slice" | "slice_rows" => slice_rows(me, uarg(a, 0, "Tensor.slice_rows")?, uarg(a, 1, "Tensor.slice_rows")?)?,
+            "cols_slice" | "slice_cols" => slice_cols(
+                me,
+                uarg(a, 0, "Tensor.slice_cols")?,
+                uarg(a, 1, "Tensor.slice_cols")?,
+            )?,
+            "rows_slice" | "slice_rows" => slice_rows(
+                me,
+                uarg(a, 0, "Tensor.slice_rows")?,
+                uarg(a, 1, "Tensor.slice_rows")?,
+            )?,
             "dropout" => {
                 let p = farg(a, 0, "Tensor.dropout")?;
-                let training = a.get(1).map_or(true, |v| v.truthy());
+                let training = a.get(1).is_none_or(|v| v.truthy());
                 if !training || p <= 0.0 {
                     return Ok(wrap(me.clone()));
                 }
@@ -830,13 +1022,32 @@ impl Native for Tensor {
                     return Err("Tensor.dropout: p must be < 1".into());
                 }
                 let keep = 1.0 / (1.0 - p);
-                let mask: Vec<f64> = (0..me.len()).map(|_| if uniform() < p { 0.0 } else { keep }).collect();
-                let out: Vec<f64> = me.data.borrow().iter().zip(&mask).map(|(x, m)| x * m).collect();
-                Node::derived(me.rows, me.cols, out, Op::Mask(Rc::new(mask)), vec![me.clone()])
+                let mask: Vec<f64> = (0..me.len())
+                    .map(|_| if uniform() < p { 0.0 } else { keep })
+                    .collect();
+                let out: Vec<f64> = me
+                    .data
+                    .borrow()
+                    .iter()
+                    .zip(&mask)
+                    .map(|(x, m)| x * m)
+                    .collect();
+                Node::derived(
+                    me.rows,
+                    me.cols,
+                    out,
+                    Op::Mask(Rc::new(mask)),
+                    vec![me.clone()],
+                )
             }
             "op_eq" => {
                 let b = bin(a, m)?;
-                return Ok(Value::Bool(Rc::ptr_eq(me, &b) || (b.rows == me.rows && b.cols == me.cols && *b.data.borrow() == *me.data.borrow())));
+                return Ok(Value::Bool(
+                    Rc::ptr_eq(me, &b)
+                        || (b.rows == me.rows
+                            && b.cols == me.cols
+                            && *b.data.borrow() == *me.data.borrow()),
+                ));
             }
             _ => return Err(format!("Tensor has no method '{m}'")),
         };
@@ -879,8 +1090,13 @@ impl Native for Linear {
     }
     fn call_method(&mut self, m: &str, a: &[Value]) -> Res {
         match m {
-            "forward" | "call" => Ok(wrap(self.forward(&operand(a.first().ok_or("Linear.forward(x)")?, None)?)?)),
-            "params" | "parameters" => Ok(Value::list(vec![wrap(self.w.clone()), wrap(self.b.clone())])),
+            "forward" | "call" => Ok(wrap(
+                self.forward(&operand(a.first().ok_or("Linear.forward(x)")?, None)?)?,
+            )),
+            "params" | "parameters" => Ok(Value::list(vec![
+                wrap(self.w.clone()),
+                wrap(self.b.clone()),
+            ])),
             "weight" => Ok(wrap(self.w.clone())),
             "bias" => Ok(wrap(self.b.clone())),
             _ => Err(format!("Linear has no method '{m}'")),
@@ -905,7 +1121,11 @@ impl Act {
             "sigmoid" => Act::Sigmoid,
             "linear" | "none" | "identity" => Act::Linear,
             "elu" | "softplus" => Act::Elu,
-            _ => return Err(format!("nn: unknown activation '{s}' (tanh, relu, sigmoid, softplus, linear)")),
+            _ => {
+                return Err(format!(
+                    "nn: unknown activation '{s}' (tanh, relu, sigmoid, softplus, linear)"
+                ))
+            }
         })
     }
     fn name(self) -> &'static str {
@@ -923,7 +1143,11 @@ impl Act {
             Act::Relu => unary(Op::Relu, x, |v| v.max(0.0)),
             Act::Sigmoid => unary(Op::Sigmoid, x, |v| 1.0 / (1.0 + (-v).exp())),
             Act::Linear => x.clone(),
-            Act::Elu => unary(Op::Softplus, x, |v| if v > 30.0 { v } else { v.exp().ln_1p() }),
+            Act::Elu => unary(
+                Op::Softplus,
+                x,
+                |v| if v > 30.0 { v } else { v.exp().ln_1p() },
+            ),
         }
     }
 }
@@ -939,7 +1163,10 @@ pub struct Mlp {
 
 impl Mlp {
     fn params(&self) -> Vec<T> {
-        self.layers.iter().flat_map(|l| [l.w.clone(), l.b.clone()]).collect()
+        self.layers
+            .iter()
+            .flat_map(|l| [l.w.clone(), l.b.clone()])
+            .collect()
     }
     fn forward(&self, x: &T) -> Result<T, String> {
         let mut h = x.clone();
@@ -950,9 +1177,23 @@ impl Mlp {
                 h = self.act.apply(&h);
                 if self.training && self.dropout > 0.0 {
                     let keep = 1.0 / (1.0 - self.dropout);
-                    let mask: Vec<f64> = (0..h.len()).map(|_| if uniform() < self.dropout { 0.0 } else { keep }).collect();
-                    let out: Vec<f64> = h.data.borrow().iter().zip(&mask).map(|(x, m)| x * m).collect();
-                    h = Node::derived(h.rows, h.cols, out, Op::Mask(Rc::new(mask)), vec![h.clone()]);
+                    let mask: Vec<f64> = (0..h.len())
+                        .map(|_| if uniform() < self.dropout { 0.0 } else { keep })
+                        .collect();
+                    let out: Vec<f64> = h
+                        .data
+                        .borrow()
+                        .iter()
+                        .zip(&mask)
+                        .map(|(x, m)| x * m)
+                        .collect();
+                    h = Node::derived(
+                        h.rows,
+                        h.cols,
+                        out,
+                        Op::Mask(Rc::new(mask)),
+                        vec![h.clone()],
+                    );
                 }
             } else {
                 h = self.out_act.apply(&h);
@@ -977,10 +1218,14 @@ impl Native for Mlp {
                 let x = operand(a.first().ok_or("MLP.forward(x)")?, None)?;
                 Ok(wrap(self.forward(&x)?))
             }
-            "params" | "parameters" => Ok(Value::list(self.params().into_iter().map(wrap).collect())),
-            "n_params" => Ok(Value::Int(self.params().iter().map(|p| p.len() as i64).sum())),
+            "params" | "parameters" => {
+                Ok(Value::list(self.params().into_iter().map(wrap).collect()))
+            }
+            "n_params" => Ok(Value::Int(
+                self.params().iter().map(|p| p.len() as i64).sum(),
+            )),
             "train" => {
-                self.training = a.first().map_or(true, |v| v.truthy());
+                self.training = a.first().is_none_or(|v| v.truthy());
                 Ok(Value::Nil)
             }
             "eval" => {
@@ -1002,16 +1247,21 @@ impl Native for Mlp {
             "copy_from" => {
                 let src = match a.first() {
                     Some(Value::Native(rc)) => {
-                        let b = rc.try_borrow().map_err(|_| "MLP.copy_from: cannot copy from itself")?;
+                        let b = rc
+                            .try_borrow()
+                            .map_err(|_| "MLP.copy_from: cannot copy from itself")?;
                         let any = b.as_any().ok_or("MLP.copy_from: expected an MLP")?;
-                        let other = any.downcast_ref::<Mlp>().ok_or("MLP.copy_from: expected an MLP")?;
+                        let other = any
+                            .downcast_ref::<Mlp>()
+                            .ok_or("MLP.copy_from: expected an MLP")?;
                         other.params()
                     }
                     _ => return Err("MLP.copy_from: expected an MLP".into()),
                 };
                 let tau = a.get(1).and_then(scalar).unwrap_or(1.0);
                 let mine = self.params();
-                if mine.len() != src.len() || mine.iter().zip(&src).any(|(x, y)| x.len() != y.len()) {
+                if mine.len() != src.len() || mine.iter().zip(&src).any(|(x, y)| x.len() != y.len())
+                {
                     return Err("MLP.copy_from: architectures differ".into());
                 }
                 for (dst, s) in mine.iter().zip(&src) {
@@ -1056,9 +1306,15 @@ fn load_params(path: &str, ps: &[T]) -> Result<(), String> {
     if lines.next() != Some("tulpa-nn 1") {
         return Err(format!("nn: {path} is not a tulpa-nn weight file"));
     }
-    let n: usize = lines.next().and_then(|l| l.trim().parse().ok()).ok_or("nn: corrupt weight file")?;
+    let n: usize = lines
+        .next()
+        .and_then(|l| l.trim().parse().ok())
+        .ok_or("nn: corrupt weight file")?;
     if n != ps.len() {
-        return Err(format!("nn: {path} holds {n} tensors, model has {}", ps.len()));
+        return Err(format!(
+            "nn: {path} holds {n} tensors, model has {}",
+            ps.len()
+        ));
     }
     for p in ps {
         let shape: Vec<usize> = lines
@@ -1068,7 +1324,10 @@ fn load_params(path: &str, ps: &[T]) -> Result<(), String> {
             .map(|x| x.parse().map_err(|_| "nn: corrupt shape"))
             .collect::<Result<_, _>>()?;
         if shape != [p.rows, p.cols] {
-            return Err(format!("nn: shape {:?} in file vs {}×{} in model", shape, p.rows, p.cols));
+            return Err(format!(
+                "nn: shape {:?} in file vs {}×{} in model",
+                shape, p.rows, p.cols
+            ));
         }
         let vals: Vec<f64> = lines
             .next()
@@ -1119,7 +1378,12 @@ impl Native for Adam {
         }
     }
     fn describe(&self) -> String {
-        format!("<{} lr={} params={}>", self.type_name(), self.lr, self.params.len())
+        format!(
+            "<{} lr={} params={}>",
+            self.type_name(),
+            self.lr,
+            self.params.len()
+        )
     }
     fn call_method(&mut self, m: &str, a: &[Value]) -> Res {
         match m {
@@ -1203,28 +1467,59 @@ impl Native for Scaler {
     }
     fn call_method(&mut self, m: &str, a: &[Value]) -> Res {
         let std = |s: &Scaler| -> Vec<f64> {
-            s.m2.iter().map(|m2| if s.n > 1.0 { (m2 / (s.n - 1.0)).sqrt().max(1e-6) } else { 1.0 }).collect()
+            s.m2.iter()
+                .map(|m2| {
+                    if s.n > 1.0 {
+                        (m2 / (s.n - 1.0)).sqrt().max(1e-6)
+                    } else {
+                        1.0
+                    }
+                })
+                .collect()
         };
         match m {
             "save" => {
                 let path = str_arg(a, 0, "Scaler.save")?;
-                let line = |v: &[f64]| v.iter().map(|x| format!("{x:e}")).collect::<Vec<_>>().join(" ");
-                let body = format!("tulpa-scaler 1\n{} {} {}\n{}\n{}\n", self.mean.len(), self.n, self.clip, line(&self.mean), line(&self.m2));
+                let line = |v: &[f64]| {
+                    v.iter()
+                        .map(|x| format!("{x:e}"))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                };
+                let body = format!(
+                    "tulpa-scaler 1\n{} {} {}\n{}\n{}\n",
+                    self.mean.len(),
+                    self.n,
+                    self.clip,
+                    line(&self.mean),
+                    line(&self.m2)
+                );
                 std::fs::write(&path, body).map_err(|e| format!("Scaler.save {path}: {e}"))?;
                 Ok(Value::Nil)
             }
             "load" => {
                 let path = str_arg(a, 0, "Scaler.load")?;
-                let s = std::fs::read_to_string(&path).map_err(|e| format!("Scaler.load {path}: {e}"))?;
+                let s = std::fs::read_to_string(&path)
+                    .map_err(|e| format!("Scaler.load {path}: {e}"))?;
                 let mut l = s.lines();
                 if l.next() != Some("tulpa-scaler 1") {
                     return Err(format!("Scaler.load: {path} is not a scaler file"));
                 }
-                let head: Vec<f64> = l.next().unwrap_or("").split_whitespace().filter_map(|x| x.parse().ok()).collect();
+                let head: Vec<f64> = l
+                    .next()
+                    .unwrap_or("")
+                    .split_whitespace()
+                    .filter_map(|x| x.parse().ok())
+                    .collect();
                 if head.len() != 3 || head[0] as usize != self.mean.len() {
                     return Err(format!("Scaler.load: {path} has a different feature count"));
                 }
-                let parse = |x: Option<&str>| -> Vec<f64> { x.unwrap_or("").split_whitespace().filter_map(|v| v.parse().ok()).collect() };
+                let parse = |x: Option<&str>| -> Vec<f64> {
+                    x.unwrap_or("")
+                        .split_whitespace()
+                        .filter_map(|v| v.parse().ok())
+                        .collect()
+                };
                 let (mean, m2) = (parse(l.next()), parse(l.next()));
                 if mean.len() != self.mean.len() || m2.len() != self.m2.len() {
                     return Err("Scaler.load: corrupt file".into());
@@ -1237,7 +1532,11 @@ impl Native for Scaler {
             "update" | "observe" => {
                 let x = operand(a.first().ok_or("Scaler.update(x)")?, None)?;
                 if x.cols != self.mean.len() {
-                    return Err(format!("Scaler.update: expected {} features, got {}", self.mean.len(), x.cols));
+                    return Err(format!(
+                        "Scaler.update: expected {} features, got {}",
+                        self.mean.len(),
+                        x.cols
+                    ));
                 }
                 let d = x.data.borrow();
                 for i in 0..x.rows {
@@ -1254,21 +1553,33 @@ impl Native for Scaler {
             "transform" | "normalize" => {
                 let x = operand(a.first().ok_or("Scaler.transform(x)")?, None)?;
                 if x.cols != self.mean.len() {
-                    return Err(format!("Scaler.transform: expected {} features, got {}", self.mean.len(), x.cols));
+                    return Err(format!(
+                        "Scaler.transform: expected {} features, got {}",
+                        self.mean.len(),
+                        x.cols
+                    ));
                 }
                 let s = std(self);
                 let d = x.data.borrow();
                 let out: Vec<f64> = d
                     .iter()
                     .enumerate()
-                    .map(|(k, v)| ((v - self.mean[k % x.cols]) / s[k % x.cols]).clamp(-self.clip, self.clip))
+                    .map(|(k, v)| {
+                        ((v - self.mean[k % x.cols]) / s[k % x.cols]).clamp(-self.clip, self.clip)
+                    })
                     .collect();
                 Ok(wrap(Node::leaf(x.rows, x.cols, out, false)))
             }
-            "mean" => Ok(Value::list(self.mean.iter().map(|x| Value::Float(*x)).collect())),
-            "std" => Ok(Value::list(std(self).into_iter().map(Value::Float).collect())),
+            "mean" => Ok(Value::list(
+                self.mean.iter().map(|x| Value::Float(*x)).collect(),
+            )),
+            "std" => Ok(Value::list(
+                std(self).into_iter().map(Value::Float).collect(),
+            )),
             "count" => Ok(Value::Float(self.n)),
-            "ready" => Ok(Value::Bool(self.n >= a.first().and_then(scalar).unwrap_or(2.0))),
+            "ready" => Ok(Value::Bool(
+                self.n >= a.first().and_then(scalar).unwrap_or(2.0),
+            )),
             _ => Err(format!("Scaler has no method '{m}'")),
         }
     }
@@ -1278,13 +1589,17 @@ impl Native for Scaler {
 
 fn params_of(v: &Value, what: &str) -> Result<Vec<T>, String> {
     let Value::List(l) = v else {
-        return Err(format!("{what}: expected a list of tensors (e.g. net.params())"));
+        return Err(format!(
+            "{what}: expected a list of tensors (e.g. net.params())"
+        ));
     };
     let mut out = Vec::new();
     for x in l.borrow().iter() {
         match x {
             Value::List(_) => out.extend(params_of(x, what)?),
-            _ => out.push(tensor_of(x, None).ok_or_else(|| format!("{what}: list item is a {}, not a tensor", x.type_name()))?),
+            _ => out.push(tensor_of(x, None).ok_or_else(|| {
+                format!("{what}: list item is a {}, not a tensor", x.type_name())
+            })?),
         }
     }
     Ok(out)
@@ -1292,11 +1607,20 @@ fn params_of(v: &Value, what: &str) -> Result<Vec<T>, String> {
 
 fn make_opt(a: &[Value], sgd: bool) -> Res {
     let what = if sgd { "nn::SGD" } else { "nn::Adam" };
-    let params = params_of(a.first().ok_or_else(|| format!("{what}(params, lr)"))?, what)?;
+    let params = params_of(
+        a.first().ok_or_else(|| format!("{what}(params, lr)"))?,
+        what,
+    )?;
     if let Some(p) = params.iter().find(|p| !p.requires_grad) {
-        return Err(format!("{what}: a {}×{} tensor does not require gradients (use .param())", p.rows, p.cols));
+        return Err(format!(
+            "{what}: a {}×{} tensor does not require gradients (use .param())",
+            p.rows, p.cols
+        ));
     }
-    let lr = a.get(1).and_then(scalar).unwrap_or(if sgd { 0.01 } else { 1e-3 });
+    let lr = a
+        .get(1)
+        .and_then(scalar)
+        .unwrap_or(if sgd { 0.01 } else { 1e-3 });
     let zeros: Vec<Vec<f64>> = params.iter().map(|p| vec![0.0; p.len()]).collect();
     Ok(Value::native(Adam {
         m: zeros.clone(),
@@ -1304,10 +1628,18 @@ fn make_opt(a: &[Value], sgd: bool) -> Res {
         params,
         t: 0,
         lr,
-        b1: if sgd { a.get(2).and_then(scalar).unwrap_or(0.0) } else { 0.9 },
+        b1: if sgd {
+            a.get(2).and_then(scalar).unwrap_or(0.0)
+        } else {
+            0.9
+        },
         b2: 0.999,
         eps: 1e-8,
-        weight_decay: if sgd { 0.0 } else { a.get(2).and_then(scalar).unwrap_or(0.0) },
+        weight_decay: if sgd {
+            0.0
+        } else {
+            a.get(2).and_then(scalar).unwrap_or(0.0)
+        },
         clip: None,
         sgd,
     }))
@@ -1316,7 +1648,7 @@ fn make_opt(a: &[Value], sgd: bool) -> Res {
 pub const NN: &[(&str, NativeFn)] = &[
     ("tensor", |_, a: Vec<Value>| {
         let t = from_value(a.first().ok_or("nn::tensor(data)")?)?;
-        let rg = a.get(1).map_or(false, |v| v.truthy());
+        let rg = a.get(1).is_some_and(|v| v.truthy());
         let d = t.data.borrow().clone();
         Ok(wrap(Node::leaf(t.rows, t.cols, d, rg)))
     }),
@@ -1334,17 +1666,31 @@ pub const NN: &[(&str, NativeFn)] = &[
         Ok(wrap(Node::leaf(r, c, vec![1.0; r * c], false)))
     }),
     ("full", |_, a: Vec<Value>| {
-        let (r, c, v) = (uarg(&a, 0, "nn::full")?, uarg(&a, 1, "nn::full")?, farg(&a, 2, "nn::full")?);
+        let (r, c, v) = (
+            uarg(&a, 0, "nn::full")?,
+            uarg(&a, 1, "nn::full")?,
+            farg(&a, 2, "nn::full")?,
+        );
         Ok(wrap(Node::leaf(r, c, vec![v; r * c], false)))
     }),
     ("randn", |_, a: Vec<Value>| {
         let (r, c) = (uarg(&a, 0, "nn::randn")?, uarg(&a, 1, "nn::randn")?);
         let s = a.get(2).and_then(scalar).unwrap_or(1.0);
-        Ok(wrap(Node::leaf(r, c, (0..r * c).map(|_| gauss() * s).collect(), false)))
+        Ok(wrap(Node::leaf(
+            r,
+            c,
+            (0..r * c).map(|_| gauss() * s).collect(),
+            false,
+        )))
     }),
     ("rand", |_, a: Vec<Value>| {
         let (r, c) = (uarg(&a, 0, "nn::rand")?, uarg(&a, 1, "nn::rand")?);
-        Ok(wrap(Node::leaf(r, c, (0..r * c).map(|_| uniform()).collect(), false)))
+        Ok(wrap(Node::leaf(
+            r,
+            c,
+            (0..r * c).map(|_| uniform()).collect(),
+            false,
+        )))
     }),
     ("eye", |_, a: Vec<Value>| {
         let n = uarg(&a, 0, "nn::eye")?;
@@ -1359,7 +1705,10 @@ pub const NN: &[(&str, NativeFn)] = &[
         Ok(Value::Nil)
     }),
     ("gauss", |_, a: Vec<Value>| {
-        let (mu, s) = (a.first().and_then(scalar).unwrap_or(0.0), a.get(1).and_then(scalar).unwrap_or(1.0));
+        let (mu, s) = (
+            a.first().and_then(scalar).unwrap_or(0.0),
+            a.get(1).and_then(scalar).unwrap_or(1.0),
+        );
         Ok(Value::Float(mu + s * gauss()))
     }),
     ("uniform", |_, _| Ok(Value::Float(uniform()))),
@@ -1373,18 +1722,33 @@ pub const NN: &[(&str, NativeFn)] = &[
         Ok(wrap(cat(&ts, 0)?))
     }),
     ("mse", |_, a: Vec<Value>| {
-        let (x, y) = (operand(a.first().ok_or("nn::mse(a, b)")?, None)?, operand(a.get(1).ok_or("nn::mse(a, b)")?, None)?);
+        let (x, y) = (
+            operand(a.first().ok_or("nn::mse(a, b)")?, None)?,
+            operand(a.get(1).ok_or("nn::mse(a, b)")?, None)?,
+        );
         let d = elementwise(Op::Sub, &x, &y, |p, q| p - q, "mse")?;
         let sq = unary(Op::PowS(2.0), &d, |v| v * v);
         let total: f64 = sq.data.borrow().iter().sum();
         let n = sq.len().max(1) as f64;
-        Ok(wrap(scale(&Node::derived(1, 1, vec![total], Op::Sum, vec![sq.clone()]), 1.0 / n)))
+        Ok(wrap(scale(
+            &Node::derived(1, 1, vec![total], Op::Sum, vec![sq.clone()]),
+            1.0 / n,
+        )))
     }),
     ("gaussian_log_prob", |_, a: Vec<Value>| {
         // Σ over columns of log N(x; μ, exp(log_std)) → R×1
-        let x = operand(a.first().ok_or("nn::gaussian_log_prob(x, mu, log_std)")?, None)?;
-        let mu = operand(a.get(1).ok_or("nn::gaussian_log_prob(x, mu, log_std)")?, None)?;
-        let ls = operand(a.get(2).ok_or("nn::gaussian_log_prob(x, mu, log_std)")?, None)?;
+        let x = operand(
+            a.first().ok_or("nn::gaussian_log_prob(x, mu, log_std)")?,
+            None,
+        )?;
+        let mu = operand(
+            a.get(1).ok_or("nn::gaussian_log_prob(x, mu, log_std)")?,
+            None,
+        )?;
+        let ls = operand(
+            a.get(2).ok_or("nn::gaussian_log_prob(x, mu, log_std)")?,
+            None,
+        )?;
         let diff = elementwise(Op::Sub, &x, &mu, |p, q| p - q, "log_prob")?;
         let inv = unary(Op::Exp, &unary(Op::Neg, &ls, |v| -v), f64::exp);
         let z = elementwise(Op::Mul, &diff, &inv, |p, q| p * q, "log_prob")?;
@@ -1412,10 +1776,14 @@ pub const NN: &[(&str, NativeFn)] = &[
         Ok(Value::native(Linear::new(i, o, gain)))
     }),
     ("MLP", |_, a: Vec<Value>| {
-        let sizes: Vec<usize> = floats_of(a.first().ok_or("nn::MLP(sizes, act=\"tanh\", dropout=0, out_act=\"linear\")")?, "nn::MLP")?
-            .into_iter()
-            .map(|x| x as usize)
-            .collect();
+        let sizes: Vec<usize> = floats_of(
+            a.first()
+                .ok_or("nn::MLP(sizes, act=\"tanh\", dropout=0, out_act=\"linear\")")?,
+            "nn::MLP",
+        )?
+        .into_iter()
+        .map(|x| x as usize)
+        .collect();
         if sizes.len() < 2 || sizes.contains(&0) {
             return Err("nn::MLP: need at least two positive layer sizes".into());
         }
@@ -1433,28 +1801,59 @@ pub const NN: &[(&str, NativeFn)] = &[
         };
         let n = sizes.len() - 1;
         let layers = (0..n)
-            .map(|k| Linear::new(sizes[k], sizes[k + 1], if k + 1 == n { a.get(4).and_then(scalar).unwrap_or(1.0) } else { 1.0 }))
+            .map(|k| {
+                Linear::new(
+                    sizes[k],
+                    sizes[k + 1],
+                    if k + 1 == n {
+                        a.get(4).and_then(scalar).unwrap_or(1.0)
+                    } else {
+                        1.0
+                    },
+                )
+            })
             .collect();
-        Ok(Value::native(Mlp { layers, act, out_act, dropout, training: true }))
+        Ok(Value::native(Mlp {
+            layers,
+            act,
+            out_act,
+            dropout,
+            training: true,
+        }))
     }),
     ("Adam", |_, a: Vec<Value>| make_opt(&a, false)),
     ("SGD", |_, a: Vec<Value>| make_opt(&a, true)),
     ("Scaler", |_, a: Vec<Value>| {
         let n = uarg(&a, 0, "nn::Scaler(features)")?;
         let clip = a.get(1).and_then(scalar).unwrap_or(10.0);
-        Ok(Value::native(Scaler { n: 0.0, mean: vec![0.0; n], m2: vec![0.0; n], clip }))
+        Ok(Value::native(Scaler {
+            n: 0.0,
+            mean: vec![0.0; n],
+            m2: vec![0.0; n],
+            clip,
+        }))
     }),
     ("save", |_, a: Vec<Value>| {
         let path = str_arg(&a, 0, "nn::save(path, params)")?;
-        save_params(&path, &params_of(a.get(1).ok_or("nn::save(path, params)")?, "nn::save")?)?;
+        save_params(
+            &path,
+            &params_of(a.get(1).ok_or("nn::save(path, params)")?, "nn::save")?,
+        )?;
         Ok(Value::Nil)
     }),
     ("load", |_, a: Vec<Value>| {
         let path = str_arg(&a, 0, "nn::load(path, params)")?;
-        load_params(&path, &params_of(a.get(1).ok_or("nn::load(path, params)")?, "nn::load")?)?;
+        load_params(
+            &path,
+            &params_of(a.get(1).ok_or("nn::load(path, params)")?, "nn::load")?,
+        )?;
         Ok(Value::Nil)
     }),
-    ("is_tensor", |_, a: Vec<Value>| Ok(Value::Bool(a.first().and_then(|v| tensor_of(v, None)).is_some()))),
+    ("is_tensor", |_, a: Vec<Value>| {
+        Ok(Value::Bool(
+            a.first().and_then(|v| tensor_of(v, None)).is_some(),
+        ))
+    }),
 ];
 
 fn params_or_values(v: &Value) -> Result<Vec<T>, String> {
@@ -1463,4 +1862,3 @@ fn params_or_values(v: &Value) -> Result<Vec<T>, String> {
     };
     l.borrow().iter().map(|x| operand(x, None)).collect()
 }
-

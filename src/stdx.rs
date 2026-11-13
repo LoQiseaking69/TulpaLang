@@ -18,7 +18,10 @@ pub fn path(m: &str, name: &str) -> Option<Value> {
         "cosim" => COSIM,
         _ => return None,
     };
-    table.iter().find(|(n, _)| *n == name).map(|(n, f)| Value::Builtin(n, *f))
+    table
+        .iter()
+        .find(|(n, _)| *n == name)
+        .map(|(n, f)| Value::Builtin(n, *f))
 }
 
 fn s_arg(a: &[Value], i: usize, what: &str) -> Result<String, String> {
@@ -29,7 +32,10 @@ fn s_arg(a: &[Value], i: usize, what: &str) -> Result<String, String> {
 }
 
 fn bytes_arg(a: &[Value], i: usize, what: &str) -> Result<Vec<u8>, String> {
-    a.get(i).ok_or_else(|| format!("{what}: missing bytes argument"))?.to_bytes().map_err(|e| format!("{what}: {e}"))
+    a.get(i)
+        .ok_or_else(|| format!("{what}: missing bytes argument"))?
+        .to_bytes()
+        .map_err(|e| format!("{what}: {e}"))
 }
 
 fn num(v: &Value) -> Option<f64> {
@@ -88,7 +94,14 @@ fn parse_fmt(fmt: &str) -> Result<(bool, Vec<Code>), String> {
     Ok((little, out))
 }
 
-fn parse_rest(fmt: &str, little: bool, mut out: Vec<Code>, count: usize, code: char, rest: String) -> Result<(bool, Vec<Code>), String> {
+fn parse_rest(
+    fmt: &str,
+    little: bool,
+    mut out: Vec<Code>,
+    count: usize,
+    code: char,
+    rest: String,
+) -> Result<(bool, Vec<Code>), String> {
     push_code(fmt, &mut out, count, code)?;
     let (_, more) = parse_fmt(&format!("{}{}", if little { "<" } else { ">" }, rest))?;
     out.extend(more);
@@ -109,9 +122,13 @@ fn push_code(fmt: &str, out: &mut Vec<Code>, count: usize, c: char) -> Result<()
         'f' => Code::F32,
         'd' => Code::F64,
         '?' => Code::Bool,
-        _ => return Err(format!("pack: unknown format code '{c}' in '{fmt}' (use x b B h H i I q Q f d ?)")),
+        _ => {
+            return Err(format!(
+                "pack: unknown format code '{c}' in '{fmt}' (use x b B h H i I q Q f d ?)"
+            ))
+        }
     };
-    out.extend(std::iter::repeat(code).take(count));
+    out.extend(std::iter::repeat_n(code, count));
     Ok(())
 }
 
@@ -128,7 +145,10 @@ fn pack_values(fmt: &str, vals: &[Value]) -> Result<Vec<u8>, String> {
     let (little, codes) = parse_fmt(fmt)?;
     let need = codes.iter().filter(|c| !matches!(c, Code::Pad)).count();
     if need != vals.len() {
-        return Err(format!("pack('{fmt}'): format needs {need} values, got {}", vals.len()));
+        return Err(format!(
+            "pack('{fmt}'): format needs {need} values, got {}",
+            vals.len()
+        ));
     }
     let mut out = Vec::new();
     let mut it = vals.iter();
@@ -141,15 +161,24 @@ fn pack_values(fmt: &str, vals: &[Value]) -> Result<Vec<u8>, String> {
             Code::Bool => vec![it.next().unwrap().truthy() as u8],
             Code::F32 => {
                 let v = it.next().unwrap();
-                (num(v).ok_or_else(|| format!("pack: 'f' expects a number, got {}", v.type_name()))? as f32).to_le_bytes().to_vec()
+                (num(v)
+                    .ok_or_else(|| format!("pack: 'f' expects a number, got {}", v.type_name()))?
+                    as f32)
+                    .to_le_bytes()
+                    .to_vec()
             }
             Code::F64 => {
                 let v = it.next().unwrap();
-                num(v).ok_or_else(|| format!("pack: 'd' expects a number, got {}", v.type_name()))?.to_le_bytes().to_vec()
+                num(v)
+                    .ok_or_else(|| format!("pack: 'd' expects a number, got {}", v.type_name()))?
+                    .to_le_bytes()
+                    .to_vec()
             }
             Code::I(n, signed) => {
                 let v = it.next().unwrap();
-                let x = v.as_i64().ok_or_else(|| format!("pack: integer code expects an int, got {}", v.type_name()))?;
+                let x = v.as_i64().ok_or_else(|| {
+                    format!("pack: integer code expects an int, got {}", v.type_name())
+                })?;
                 let bits = (n * 8) as u32;
                 let ok = if signed {
                     bits == 64 || (x >= -(1i64 << (bits - 1)) && x < (1i64 << (bits - 1)))
@@ -157,7 +186,11 @@ fn pack_values(fmt: &str, vals: &[Value]) -> Result<Vec<u8>, String> {
                     x >= 0 && (bits == 64 || x < (1i64 << bits))
                 };
                 if !ok {
-                    return Err(format!("pack: {x} does not fit in {} {}-bit", if signed { "signed" } else { "unsigned" }, bits));
+                    return Err(format!(
+                        "pack: {x} does not fit in {} {}-bit",
+                        if signed { "signed" } else { "unsigned" },
+                        bits
+                    ));
                 }
                 x.to_le_bytes()[..n].to_vec()
             }
@@ -174,7 +207,10 @@ fn unpack_bytes(fmt: &str, data: &[u8]) -> Res {
     let (little, codes) = parse_fmt(fmt)?;
     let size: usize = codes.iter().map(|c| size_of(*c)).sum();
     if data.len() != size {
-        return Err(format!("unpack('{fmt}'): needs {size} bytes, got {}", data.len()));
+        return Err(format!(
+            "unpack('{fmt}'): needs {size} bytes, got {}",
+            data.len()
+        ));
     }
     let mut out = Vec::new();
     let mut off = 0;
@@ -188,7 +224,9 @@ fn unpack_bytes(fmt: &str, data: &[u8]) -> Res {
         match c {
             Code::Pad => {}
             Code::Bool => out.push(Value::Bool(b[0] != 0)),
-            Code::F32 => out.push(Value::Float(f32::from_le_bytes([b[0], b[1], b[2], b[3]]) as f64)),
+            Code::F32 => out.push(Value::Float(
+                f32::from_le_bytes([b[0], b[1], b[2], b[3]]) as f64
+            )),
             Code::F64 => out.push(Value::Float(f64::from_le_bytes(b.try_into().unwrap()))),
             Code::I(n, signed) => {
                 let mut buf = [0u8; 8];
@@ -210,7 +248,11 @@ pub fn crc16_ccitt(data: &[u8]) -> u16 {
     for &b in data {
         crc ^= (b as u16) << 8;
         for _ in 0..8 {
-            crc = if crc & 0x8000 != 0 { (crc << 1) ^ 0x1021 } else { crc << 1 };
+            crc = if crc & 0x8000 != 0 {
+                (crc << 1) ^ 0x1021
+            } else {
+                crc << 1
+            };
         }
     }
     crc
@@ -221,7 +263,11 @@ pub fn crc32(data: &[u8]) -> u32 {
     for &b in data {
         crc ^= b as u32;
         for _ in 0..8 {
-            crc = if crc & 1 != 0 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
+            crc = if crc & 1 != 0 {
+                (crc >> 1) ^ 0xEDB8_8320
+            } else {
+                crc >> 1
+            };
         }
     }
     !crc
@@ -293,21 +339,47 @@ const PACK: &[(&str, NativeFn)] = &[
         Ok(Value::Int(codes.iter().map(|c| size_of(*c) as i64).sum()))
     }),
     ("f32s", |_, a: Vec<Value>| {
-        let Some(Value::List(l)) = a.first() else { return Err("pack::f32s(list)".into()) };
+        let Some(Value::List(l)) = a.first() else {
+            return Err("pack::f32s(list)".into());
+        };
         let l = l.borrow();
-        Ok(Value::from_bytes(&pack_values(&format!("<{}f", l.len()), &l)?))
+        Ok(Value::from_bytes(&pack_values(
+            &format!("<{}f", l.len()),
+            &l,
+        )?))
     }),
     ("to_f32s", |_, a: Vec<Value>| {
         let b = bytes_arg(&a, 0, "pack::to_f32s")?;
         if b.len() % 4 != 0 {
-            return Err(format!("pack::to_f32s: {} bytes is not a multiple of 4", b.len()));
+            return Err(format!(
+                "pack::to_f32s: {} bytes is not a multiple of 4",
+                b.len()
+            ));
         }
         unpack_bytes(&format!("<{}f", b.len() / 4), &b)
     }),
-    ("crc16", |_, a: Vec<Value>| Ok(Value::Int(crc16_ccitt(&bytes_arg(&a, 0, "pack::crc16")?) as i64))),
-    ("crc32", |_, a: Vec<Value>| Ok(Value::Int(crc32(&bytes_arg(&a, 0, "pack::crc32")?) as i64))),
-    ("cobs_encode", |_, a: Vec<Value>| Ok(Value::from_bytes(&cobs_encode(&bytes_arg(&a, 0, "pack::cobs_encode")?)))),
-    ("cobs_decode", |_, a: Vec<Value>| Ok(Value::from_bytes(&cobs_decode(&bytes_arg(&a, 0, "pack::cobs_decode")?)?))),
+    ("crc16", |_, a: Vec<Value>| {
+        Ok(Value::Int(
+            crc16_ccitt(&bytes_arg(&a, 0, "pack::crc16")?) as i64
+        ))
+    }),
+    ("crc32", |_, a: Vec<Value>| {
+        Ok(Value::Int(crc32(&bytes_arg(&a, 0, "pack::crc32")?) as i64))
+    }),
+    ("cobs_encode", |_, a: Vec<Value>| {
+        Ok(Value::from_bytes(&cobs_encode(&bytes_arg(
+            &a,
+            0,
+            "pack::cobs_encode",
+        )?)))
+    }),
+    ("cobs_decode", |_, a: Vec<Value>| {
+        Ok(Value::from_bytes(&cobs_decode(&bytes_arg(
+            &a,
+            0,
+            "pack::cobs_decode",
+        )?)?))
+    }),
 ];
 
 // ---------------------------------------------------------------------------- json
@@ -320,7 +392,11 @@ pub fn to_json(v: &Value) -> Result<J, String> {
         Value::Float(f) => Number::from_f64(*f).map(J::Number).unwrap_or(J::Null),
         Value::Str(s) => J::String(s.to_string()),
         Value::Quantity(q) => Number::from_f64(q.si).map(J::Number).unwrap_or(J::Null),
-        Value::Range(a, b, incl) => J::Array((*a..if *incl { *b + 1 } else { *b }).map(|x| J::Number(x.into())).collect()),
+        Value::Range(a, b, incl) => J::Array(
+            (*a..if *incl { *b + 1 } else { *b })
+                .map(|x| J::Number(x.into()))
+                .collect(),
+        ),
         Value::List(l) => J::Array(l.borrow().iter().map(to_json).collect::<Result<_, _>>()?),
         Value::Dict(d) => {
             let mut m = Map::new();
@@ -336,14 +412,23 @@ pub fn to_json(v: &Value) -> Result<J, String> {
         Value::Object(o) => {
             let o = o.borrow();
             let mut m = Map::new();
-            for (k, v) in o.ty.def.fields.iter().map(|f| f.name.clone()).filter_map(|n| o.get(&n).map(|v| (n, v))) {
+            for (k, v) in
+                o.ty.def
+                    .fields
+                    .iter()
+                    .map(|f| f.name.clone())
+                    .filter_map(|n| o.get(&n).map(|v| (n, v)))
+            {
                 m.insert(k, to_json(&v)?);
             }
             J::Object(m)
         }
         Value::Native(n) => {
             let b = n.try_borrow().map_err(|_| "json: native object is busy")?;
-            if let Some(t) = b.as_any().and_then(|a| a.downcast_ref::<crate::nn::Tensor>()) {
+            if let Some(t) = b
+                .as_any()
+                .and_then(|a| a.downcast_ref::<crate::nn::Tensor>())
+            {
                 let rows = t.0.clone();
                 drop(b);
                 let _ = &rows;
@@ -391,8 +476,15 @@ pub fn from_json(j: &J) -> Value {
 const JSON: &[(&str, NativeFn)] = &[
     ("encode", |_, a: Vec<Value>| {
         let j = to_json(a.first().ok_or("json::encode(value, pretty=false)")?)?;
-        let pretty = a.get(1).map_or(false, |v| v.truthy());
-        Ok(Value::str(if pretty { serde_json::to_string_pretty(&j) } else { serde_json::to_string(&j) }.map_err(|e| e.to_string())?))
+        let pretty = a.get(1).is_some_and(|v| v.truthy());
+        Ok(Value::str(
+            if pretty {
+                serde_json::to_string_pretty(&j)
+            } else {
+                serde_json::to_string(&j)
+            }
+            .map_err(|e| e.to_string())?,
+        ))
     }),
     ("decode", |_, a: Vec<Value>| {
         let s = s_arg(&a, 0, "json::decode(text)")?;
@@ -408,7 +500,8 @@ const JSON: &[(&str, NativeFn)] = &[
     ("save", |_, a: Vec<Value>| {
         let p = s_arg(&a, 0, "json::save(path, value)")?;
         let j = to_json(a.get(1).ok_or("json::save(path, value)")?)?;
-        std::fs::write(&p, serde_json::to_string_pretty(&j).unwrap()).map_err(|e| format!("json::save({p}): {e}"))?;
+        std::fs::write(&p, serde_json::to_string_pretty(&j).unwrap())
+            .map_err(|e| format!("json::save({p}): {e}"))?;
         Ok(Value::Nil)
     }),
 ];
@@ -428,7 +521,10 @@ fn emit(i: &mut Interpreter, obj: J) {
 fn now_s() -> f64 {
     use std::sync::OnceLock;
     static START: OnceLock<std::time::Instant> = OnceLock::new();
-    START.get_or_init(std::time::Instant::now).elapsed().as_secs_f64()
+    START
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_secs_f64()
 }
 
 const TLM: &[(&str, NativeFn)] = &[
@@ -448,14 +544,20 @@ const TLM: &[(&str, NativeFn)] = &[
             Value::Quantity(q) => json!(q.unit.as_ref().map_or(q.si, |u| q.si / u.scale)),
             other => to_json(other)?,
         };
-        emit(i, json!({"k": "plot", "name": name, "t": t, "v": val, "unit": unit}));
+        emit(
+            i,
+            json!({"k": "plot", "name": name, "t": t, "v": val, "unit": unit}),
+        );
         Ok(Value::Nil)
     }),
     ("event", |i, a: Vec<Value>| {
         let name = s_arg(&a, 0, "tlm::event(name, data=nil)")?;
         if telemetry_on() {
             let data = a.get(1).map(to_json).transpose()?.unwrap_or(J::Null);
-            emit(i, json!({"k": "event", "name": name, "t": now_s(), "data": data}));
+            emit(
+                i,
+                json!({"k": "event", "name": name, "t": now_s(), "data": data}),
+            );
         }
         Ok(Value::Nil)
     }),
@@ -470,7 +572,9 @@ const TLM: &[(&str, NativeFn)] = &[
         // Tells the IDE a file was produced (VCD waveform, netlist, BOM, weights ...).
         let p = s_arg(&a, 0, "tlm::artifact(path, kind=nil)")?;
         if telemetry_on() {
-            let abs = std::fs::canonicalize(&p).map(|x| x.display().to_string()).unwrap_or(p);
+            let abs = std::fs::canonicalize(&p)
+                .map(|x| x.display().to_string())
+                .unwrap_or(p);
             let kind = a.get(1).map(|v| v.to_string());
             emit(i, json!({"k": "artifact", "path": abs, "kind": kind}));
         }
@@ -493,31 +597,49 @@ pub struct CoSim {
 
 impl CoSim {
     fn connect(addr: &str) -> Result<CoSim, String> {
-        let s = TcpStream::connect(addr).map_err(|e| format!("cosim: cannot reach co-simulator at {addr}: {e}"))?;
+        let s = TcpStream::connect(addr)
+            .map_err(|e| format!("cosim: cannot reach co-simulator at {addr}: {e}"))?;
         let _ = s.set_nodelay(true);
         let w = s.try_clone().map_err(|e| e.to_string())?;
-        Ok(CoSim { addr: addr.to_string(), reader: BufReader::new(s), writer: w, next_id: 1 })
+        Ok(CoSim {
+            addr: addr.to_string(),
+            reader: BufReader::new(s),
+            writer: w,
+            next_id: 1,
+        })
     }
 
     fn rpc(&mut self, method: &str, params: J) -> Result<J, String> {
         let id = self.next_id;
         self.next_id += 1;
-        let mut line = serde_json::to_string(&json!({"id": id, "method": method, "params": params})).unwrap();
+        let mut line =
+            serde_json::to_string(&json!({"id": id, "method": method, "params": params})).unwrap();
         line.push('\n');
-        self.writer.write_all(line.as_bytes()).map_err(|e| format!("cosim: connection lost: {e}"))?;
+        self.writer
+            .write_all(line.as_bytes())
+            .map_err(|e| format!("cosim: connection lost: {e}"))?;
         let mut resp = String::new();
         loop {
             resp.clear();
-            let n = self.reader.read_line(&mut resp).map_err(|e| format!("cosim: connection lost: {e}"))?;
+            let n = self
+                .reader
+                .read_line(&mut resp)
+                .map_err(|e| format!("cosim: connection lost: {e}"))?;
             if n == 0 {
                 return Err("cosim: simulator closed the connection".into());
             }
-            let j: J = serde_json::from_str(resp.trim()).map_err(|e| format!("cosim: bad reply: {e}"))?;
+            let j: J =
+                serde_json::from_str(resp.trim()).map_err(|e| format!("cosim: bad reply: {e}"))?;
             if j.get("id").and_then(|x| x.as_u64()) != Some(id) {
                 continue; // unsolicited notification
             }
             if let Some(e) = j.get("error") {
-                return Err(format!("cosim.{method}: {}", e.as_str().map(str::to_string).unwrap_or_else(|| e.to_string())));
+                return Err(format!(
+                    "cosim.{method}: {}",
+                    e.as_str()
+                        .map(str::to_string)
+                        .unwrap_or_else(|| e.to_string())
+                ));
             }
             return Ok(j.get("result").cloned().unwrap_or(J::Null));
         }
@@ -526,7 +648,9 @@ impl CoSim {
     fn notify(&mut self, method: &str, params: J) -> Result<(), String> {
         let mut line = serde_json::to_string(&json!({"method": method, "params": params})).unwrap();
         line.push('\n');
-        self.writer.write_all(line.as_bytes()).map_err(|e| format!("cosim: connection lost: {e}"))
+        self.writer
+            .write_all(line.as_bytes())
+            .map_err(|e| format!("cosim: connection lost: {e}"))
     }
 }
 
@@ -599,7 +723,11 @@ const COSIM: &[(&str, NativeFn)] = &[
                     .to_string()
             })?,
         };
-        Ok(Value::native(CoSim::connect(addr.trim_start_matches("tcp://"))?))
+        Ok(Value::native(CoSim::connect(
+            addr.trim_start_matches("tcp://"),
+        )?))
     }),
-    ("available", |_, _| Ok(Value::Bool(std::env::var_os("TULPA_COSIM").is_some()))),
+    ("available", |_, _| {
+        Ok(Value::Bool(std::env::var_os("TULPA_COSIM").is_some()))
+    }),
 ];
