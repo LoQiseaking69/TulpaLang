@@ -31,6 +31,14 @@ jobs:
           targets: ${{ matrix.target }}
       - if: matrix.cross
         run: cargo install cross --git https://github.com/cross-rs/cross --locked
+      - name: Install Clang for native Linux tests
+        if: ${{ runner.os == 'Linux' && !matrix.cross }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-15
+          mkdir -p "$RUNNER_TEMP/llvm-bin"
+          ln -s /usr/bin/clang-15 "$RUNNER_TEMP/llvm-bin/clang"
+          echo "$RUNNER_TEMP/llvm-bin" >> "$GITHUB_PATH"
       - name: test (native targets)
         if: ${{ !matrix.cross }}
         run: cargo test --release
