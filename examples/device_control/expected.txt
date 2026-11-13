@@ -1,0 +1,5 @@
+LED level: 1
+LED after toggle: 0
+I2C read data: [2, 3]
+SPI response: aa bb cc
+UART received: Hello, UART!

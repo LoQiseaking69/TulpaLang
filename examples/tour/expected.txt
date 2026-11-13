@@ -1,0 +1,13 @@
+Tulpa: n=42 x=3.50 flags=0b1011 cfg.baud=115200
+10 50 16 27
+[1, 4, 9] [1, 3, 5, 7, 9] 6
+first: a
+second: b
+rest: c
+zero | small | negative | list starting with 9 (+2 more)
+100 -3
+triangular(5) = 10
+macro body runs
+macro body runs
+Rust-style formatting: ok   3.14 0xff
+caught: motor stalled

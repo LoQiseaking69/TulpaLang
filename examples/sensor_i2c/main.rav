@@ -1,0 +1,33 @@
+# Reading a TMP102-style temperature sensor over I2C.
+# On the simulator we preload the sensor's registers so the script is fully reproducible.
+
+const ADDR = 0x48
+const TEMP_REG = 0x00
+
+if sim::backend() == "sim" {
+    # 25.0625 °C  ->  raw 12-bit value 401 (0x191) left-aligned in 16 bits: 0x19 0x10
+    sim::i2c_set(ADDR, TEMP_REG, [0x19, 0x10])
+}
+
+# Hehner-style specification: the conversion must stay inside the sensor's physical range.
+fn raw_to_celsius(raw)
+    require 0 <= raw and raw <= 0xFFFF
+    ensure -55.0 <= result' and result' <= 150.0
+{
+    let counts = raw >> 4              # 12-bit, left-aligned
+    if counts & 0x800 {                # sign bit
+        counts = counts - 4096
+    }
+    counts * 0.0625
+}
+
+let sensor = I2C::new(1, ADDR)
+let raw = sensor.read_u16(TEMP_REG)
+let c = raw_to_celsius(raw)
+print(f"raw=0x{raw:04x}  temperature={c:.4f} °C  ({c * 9 / 5 + 32:.1f} °F)")
+
+match c {
+    -55.0..0.0 => print("status: freezing"),
+    0.0..30.0  => print("status: nominal"),
+    _          => print("status: HOT — check cooling"),
+}

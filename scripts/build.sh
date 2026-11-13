@@ -1,38 +1,21 @@
-#!/bin/bash
-# Build script for Tulpa
+#!/usr/bin/env bash
+# Build, test and package Tulpa.
+set -euo pipefail
+cd "$(dirname "$0")/.."
 
-set -e  # Exit immediately if a command exits with a non-zero status
-
-echo "Starting Tulpa build process..."
-
-# Step 1: Clean previous builds
-echo "Cleaning previous builds..."
-cargo clean
-echo "Clean completed."
-
-# Step 2: Build the project in release mode
-echo "Building Tulpa project in release mode..."
+echo "==> building (release)"
 cargo build --release
-echo "Build completed."
 
-# Step 3: Run tests
-echo "Running tests..."
+echo "==> running tests"
 cargo test --release
-echo "Tests completed."
 
-# Step 4: Generate documentation
-echo "Generating documentation..."
-cargo doc --release --no-deps
-echo "Documentation generated."
+echo "==> checking examples parse"
+./target/release/tulpa check examples/*/main.rav
 
-# Step 5: Optionally, package the build
-echo "Packaging the build..."
-# Create a directory for the release package
-mkdir -p target/release-package
-# Copy the binary and documentation to the release package directory
-cp target/release/tulpa target/release-package/
-cp -r target/doc target/release-package/
-echo "Packaging completed."
-
-# Final message
-echo "Tulpa build process completed successfully."
+echo "==> packaging"
+pkg=target/release-package
+rm -rf "$pkg"
+mkdir -p "$pkg/bin"
+cp target/release/tulpa "$pkg/bin/"
+cp -r examples docs README.md LICENSE "$pkg/"
+echo "done: $pkg"

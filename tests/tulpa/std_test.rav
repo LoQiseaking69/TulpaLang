@@ -1,0 +1,31 @@
+# Tulpa-level tests, run with:  tulpa test tests/tulpa/std_test.rav
+
+define_test!(string_methods, {
+    assert_eq!("Tulpa".lower(), "tulpa")
+    assert_eq!("a-b".replace("-", "+"), "a+b")
+    assert "ana" in "banana"
+})
+
+define_test!(list_methods, {
+    let xs = [3, 1, 2]
+    xs.sort()
+    assert_eq!(xs, [1, 2, 3])
+    assert_eq!(xs.pop(), 3)
+    xs.insert(0, 9)
+    assert_eq!(xs, [9, 1, 2])
+    assert_eq!(xs[0..2], [9, 1])
+})
+
+define_test!(contract_catches_bad_input, {
+    fn sqrt_pos(x) require x >= 0 { sqrt(x) }
+    let caught = false
+    try { sqrt_pos(-1) } catch e { caught = true }
+    assert caught
+})
+
+define_test!(sensor_conversion, {
+    const ADDR = 0x48
+    sim::i2c_set(ADDR, 0, [0x19, 0x10])
+    let raw = I2C::new(ADDR).read_u16(0)
+    assert_eq!(raw >> 4, 401)
+})

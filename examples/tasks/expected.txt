@@ -1,0 +1,7 @@
+spawned 3 tasks
+[01:08:28.869 UTC] sampling imu
+[01:08:28.869 UTC] sampling lidar
+[01:08:28.869 UTC] sampling sonar
+results: [42, 100, 14]
+control ticks: 5
+background task finished

@@ -1,0 +1,25 @@
+# Tasks: spawn defers work; await runs it and returns the result.
+
+fn read_sensor(name, value) {
+    log_message!(f"sampling {name}")
+    value * 2
+}
+
+let jobs = [
+    spawn read_sensor("imu", 21),
+    spawn read_sensor("lidar", 50),
+    spawn read_sensor("sonar", 7),
+]
+print("spawned", len(jobs), "tasks")
+let results = await jobs
+print("results:", results)
+
+# Fixed-rate control loop: run the body every 10 ms, 5 times.
+let ticks = 0
+every!(10, 5, {
+    ticks += 1
+})
+print("control ticks:", ticks)
+
+# Tasks that are never awaited still run before the program exits.
+spawn fn() { print("background task finished") }

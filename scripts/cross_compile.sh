@@ -1,34 +1,19 @@
-#!/bin/bash
-# Cross-compilation script for Tulpa
-
-set -e  # Exit immediately if a command exits with a non-zero status
-
-echo "Starting cross-compilation for Tulpa..."
-
-# List of target architectures to cross-compile for
-targets=(
-    "armv7-unknown-linux-gnueabihf"
-    "aarch64-unknown-linux-gnu"
-    "x86_64-unknown-linux-gnu"
-    "i686-unknown-linux-gnu"
-)
-
-# Cross-compile for each target
-for target in "${targets[@]}"; do
-    echo "Cross-compiling for $target..."
-    cargo build --release --target=$target
-    echo "Cross-compilation for $target completed."
-done
-
-# Optional: Package the cross-compiled binaries
-echo "Packaging cross-compiled binaries..."
-mkdir -p target/release-cross-package
-
-for target in "${targets[@]}"; do
-    cp target/$target/release/tulpa target/release-cross-package/tulpa-$target
-done
-
-echo "Packaging completed."
-
-# Final message
-echo "Tulpa cross-compilation process completed successfully."
+#!/usr/bin/env bash
+# Cross-compile for single-board computers.
+#   scripts/cross_compile.sh            -> Raspberry Pi 3/4/5 (64-bit), aarch64-unknown-linux-gnu
+#   scripts/cross_compile.sh armv7      -> 32-bit Pi OS, armv7-unknown-linux-gnueabihf
+# Uses `cross` (https://github.com/cross-rs/cross) when installed, otherwise cargo + rustup target.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+case "${1:-aarch64}" in
+  aarch64) TARGET=aarch64-unknown-linux-gnu ;;
+  armv7)   TARGET=armv7-unknown-linux-gnueabihf ;;
+  *)       TARGET="$1" ;;
+esac
+if command -v cross >/dev/null 2>&1; then
+  cross build --release --target "$TARGET"
+else
+  rustup target add "$TARGET"
+  cargo build --release --target "$TARGET"
+fi
+echo "binary: target/$TARGET/release/tulpa"

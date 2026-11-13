@@ -1,0 +1,15 @@
+Hello, World!
+This will print 3 times!
+This will print 3 times!
+This will print 3 times!
+The Tulpa Is MANIFESTING!
+Hello, Tulpa User!
+Number is greater than 5
+Loop iteration:  0
+Loop iteration:  1
+Loop iteration:  2
+Loop iteration:  3
+Loop iteration:  4
+Result of the expression:  53
+Repeating this message twice!
+Repeating this message twice!

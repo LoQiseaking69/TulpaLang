@@ -1,0 +1,2 @@
+raw=0x1910  temperature=25.0625 °C  (77.1 °F)
+status: nominal

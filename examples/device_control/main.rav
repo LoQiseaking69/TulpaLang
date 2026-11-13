@@ -1,31 +1,30 @@
+# Device control example — runs on the simulator by default, on real hardware with --hw
+use gpio::GPIO
+use i2c::I2C
+use spi::SPI
+use uart::UART
 
-# Device control example of Tulpa
+# GPIO: drive an LED on BCM pin 17
+let led = GPIO::new(17, "out")
+led.set_high()
+print("LED level:", led.read())
+led.toggle()
+print("LED after toggle:", led.read())
 
-# Import necessary modules
-use gpio::GPIO;
-use i2c::I2C;
-use spi::SPI;
-use uart::UART;
+# I2C: device at 0x40 on bus 1 — write a register, read it back
+let i2c = I2C::new(1, 0x40)
+i2c.write([0x01, 0x02, 0x03])          # reg pointer 0x01, then data 0x02 0x03
+let buffer = i2c.write_read([0x01], 2)  # repeated-start register read
+print(f"I2C read data: {buffer}")
 
-// Example of controlling a GPIO pin
-let gpio = GPIO::new(17);
-gpio.set_high();
-gpio.set_low();
+# SPI: full-duplex transfer on /dev/spidev0.0
+let spi = SPI::new(0, 0)
+spi.set_mode(0)
+let response = spi.transfer([0xAA, 0xBB, 0xCC])
+print(f"SPI response: {response.hex()}")
 
-// Example of communicating with an I2C device
-let i2c = I2C::new(0x40);
-let mut buffer = [0; 3];
-i2c.write(&[0x01, 0x02, 0x03]);
-i2c.read(&mut buffer);
-print(&format!("I2C Read Data: {:?}", buffer));
-
-// Example of SPI communication
-let spi = SPI::new(0, 10);
-let response = spi.transfer(&[0xAA, 0xBB, 0xCC]);
-print(&format!("SPI Response: {:?}", response));
-
-// Example of UART communication
-let uart = UART::new("COM1".to_string(), 9600);
-uart.send(b"Hello, UART!");
-uart.receive(&mut buffer);
-print(&format!("UART Received Data: {:?}", buffer));
+# UART: send and receive (the simulator loops TX back to RX)
+let uart = UART::new("/dev/ttyS0", 9600)
+uart.send_line("Hello, UART!")
+let line = uart.read_line(500)
+print(f"UART received: {line}")

@@ -1,0 +1,73 @@
+# A tour of Tulpa
+
+# --- values -------------------------------------------------------------
+const n = 42                   # int (const: cannot be reassigned)
+let x = 3.5                    # float
+let name = "Tulpa"             # str
+let flags = 0b1010 | 0x01      # binary / hex literals, bit ops
+let items = [1, 2, 3]
+let cfg = {port: "/dev/ttyUSB0", baud: 115200}
+print(f"{name}: n={n} x={x:.2f} flags={flags:#06b} cfg.baud={cfg.baud}")
+
+# --- functions, defaults, lambdas ----------------------------------------
+fn scale(v, factor = 2) { v * factor }   # last expression is returned
+let square = |v| v * v
+let cube = fn(v) => v ** 3
+print(scale(5), scale(5, 10), square(4), cube(3))
+print(items.map(square), filter(|v| v % 2 == 1, 0..10), sum(items))
+
+# --- control flow -------------------------------------------------------
+for i, v in enumerate(["a", "b", "c"]) {
+    if i == 0 { print("first:", v) } elif i == 1 { print("second:", v) } else { print("rest:", v) }
+}
+let k = 0
+loop {
+    k += 1
+    if k == 3 { continue }
+    if k > 5 { break }
+}
+
+# --- pattern matching ---------------------------------------------------
+fn describe(v) {
+    match v {
+        0 => "zero",
+        1 | 2 | 3 => "small",
+        [first, ..rest] => f"list starting with {first} (+{len(rest)} more)",
+        n if n < 0 => "negative",
+        _ => "something else",
+    }
+}
+print(describe(0), "|", describe(2), "|", describe(-7), "|", describe([9, 8, 7]))
+
+# --- Hehner-style specifications ----------------------------------------
+# require = precondition, ensure = postcondition; x is the initial value, x' the final one.
+fn clamp_speed(v, limit)
+    require limit > 0
+    ensure -limit <= result' and result' <= limit
+{
+    clamp(v, -limit, limit)
+}
+print(clamp_speed(250, 100), clamp_speed(-3, 100))
+
+let i = 0
+let total = 0
+while i < 5 invariant total == i * (i - 1) / 2 {
+    total += i
+    i += 1
+}
+print("triangular(5) =", total)
+
+# --- macros -------------------------------------------------------------
+define_macro!(twice, (body) {
+    body
+    body
+})
+twice!({ print("macro body runs") })
+println!("Rust-style formatting: {} {:>6.2} {:#x}", "ok", PI, 255)
+
+# --- errors -------------------------------------------------------------
+try {
+    error("motor stalled")
+} catch e {
+    print("caught:", e)
+}

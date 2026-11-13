@@ -1,0 +1,40 @@
+# Two-link planar arm: inverse kinematics + a PID loop driving the shoulder joint.
+
+let L1 = 10.0
+let L2 = 7.5
+
+fn reach(x, y)
+    require hypot(x, y) <= L1 + L2
+    ensure abs(kin::fk2(L1, L2, result'[0], result'[1])[0] - x) < 1e-6
+{
+    kin::ik2(L1, L2, x, y)
+}
+
+let target = [12.0, 5.0]
+let angles = reach(target[0], target[1])
+print(f"IK for {target}: shoulder={angles[0]:.2f}°, elbow={angles[1]:.2f}°")
+
+let tip = kin::fk2(L1, L2, angles[0], angles[1])
+print(f"FK check: x={tip[0]:.3f}, y={tip[1]:.3f}")
+
+# Simulated joint with first-order dynamics, driven by a PID controller.
+let pid = PID::new(2.0, 0.5, 0.05)
+pid.set_limits(-90.0, 90.0)          # actuator saturation (deg/s)
+let shoulder = 0.0
+let dt = 0.02
+let steps = 0
+while abs(angles[0] - shoulder) > 0.05 and steps < 2000
+    invariant -180.0 <= shoulder and shoulder <= 180.0
+{
+    let rate = pid.update(angles[0], shoulder, dt)
+    shoulder += rate * dt
+    steps += 1
+}
+print(f"shoulder settled at {shoulder:.3f}° after {steps} steps ({steps * dt:.2f} s simulated)")
+
+# Out-of-reach targets violate the precondition and are caught cleanly.
+try {
+    reach(30.0, 0.0)
+} catch err {
+    print("rejected:", err)
+}

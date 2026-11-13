@@ -1,0 +1,22 @@
+[package]
+name = "tulpa"
+version = "1.0.0"
+edition = "2021"
+description = "Tulpa: a Python-flavoured, Rust-powered scripting language for device integration and robotics"
+license = "BSD-3-Clause"
+repository = "https://github.com/LoQiseaking69/TulpaLang"
+
+[lib]
+name = "tulpa"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tulpa"
+path = "src/main.rs"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+
+[profile.release]
+lto = true
+codegen-units = 1
