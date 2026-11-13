@@ -107,6 +107,15 @@ impl Parser {
             t => self.err(format!("expected identifier, found '{t}'")),
         }
     }
+    /// True when the token just consumed is directly followed by `[` (no whitespace).
+    fn unit_follows(&self) -> bool {
+        if !self.is_sym("[") || self.tok().nl_before {
+            return false;
+        }
+        let prev = &self.toks[self.pos - 1];
+        prev.line == self.tok().line && prev.end == self.tok().col
+    }
+
     fn skip_semis(&mut self) {
         while self.eat_sym(";") {}
     }
@@ -195,6 +204,68 @@ impl Parser {
                 self.next();
                 Ok(Stmt::Continue)
             }
+            Tok::Kw("struct") => {
+                self.next();
+                Ok(Stmt::Struct(Rc::new(self.struct_rest()?)))
+            }
+            Tok::Kw("machine") => {
+                self.next();
+                Ok(Stmt::Machine(Rc::new(self.machine_rest()?)))
+            }
+            Tok::Kw("when") => {
+                self.next();
+                let cond = self.expr()?;
+                let body = self.block()?;
+                let els = if self.eat_kw("else") {
+                    Some(self.block()?)
+                } else {
+                    None
+                };
+                Ok(Stmt::When(cond, body, els, line))
+            }
+            Tok::Kw("always") => {
+                self.next();
+                let c = self.contract()?;
+                let handler = if self.eat_kw("else") {
+                    Some(self.block()?)
+                } else {
+                    None
+                };
+                Ok(Stmt::Always(c, handler, line))
+            }
+            Tok::Kw("import") => {
+                self.next();
+                let path = match self.next() {
+                    Tok::Str(p) => p,
+                    t => {
+                        return self.err(format!(
+                            "expected a file path string after import, found '{t}'"
+                        ))
+                    }
+                };
+                let alias = if matches!(self.peek(), Tok::Ident(a) if a == "as") {
+                    self.next();
+                    Some(self.ident()?)
+                } else {
+                    None
+                };
+                Ok(Stmt::Import(path, alias, vec![], line))
+            }
+            Tok::Ident(ref f) if f == "from" && matches!(self.peek_at(1), Tok::Str(_)) => {
+                self.next();
+                let path = match self.next() {
+                    Tok::Str(p) => p,
+                    _ => unreachable!(),
+                };
+                if !self.eat_kw("import") {
+                    return self.err("expected 'import' after from \"...\"");
+                }
+                let mut names = vec![self.ident()?];
+                while self.eat_sym(",") {
+                    names.push(self.ident()?);
+                }
+                Ok(Stmt::Import(path, None, names, line))
+            }
             Tok::Kw("use") => {
                 self.next();
                 let mut path = vec![self.ident()?];
@@ -278,6 +349,188 @@ impl Parser {
         }
     }
 
+    fn is_ident(&self, name: &str) -> bool {
+        matches!(self.peek(), Tok::Ident(n) if n == name)
+    }
+
+    fn struct_rest(&mut self) -> PResult<StructDef> {
+        let name = self.ident()?;
+        self.expect_sym("{")?;
+        let (mut fields, mut methods, mut invariants) = (Vec::new(), Vec::new(), Vec::new());
+        loop {
+            while self.eat_sym(";") || self.eat_sym(",") {}
+            if self.eat_sym("}") {
+                break;
+            }
+            if self.at_eof() {
+                return self.err("unexpected end of file in struct; missing '}'");
+            }
+            if self.is_kw("fn") || self.is_kw("def") {
+                self.next();
+                let m = self.ident()?;
+                methods.push(Rc::new(self.fn_rest(m)?));
+            } else if self.eat_kw("invariant") {
+                invariants.push(self.contract()?);
+            } else {
+                let fname = self.ident()?;
+                let ty = if self.eat_sym(":") {
+                    Some(self.type_ann()?)
+                } else {
+                    None
+                };
+                let default = if self.eat_sym("=") {
+                    Some(self.expr()?)
+                } else {
+                    None
+                };
+                fields.push(Param {
+                    name: fname,
+                    default,
+                    ty,
+                });
+            }
+        }
+        Ok(StructDef {
+            name,
+            fields,
+            methods,
+            invariants,
+        })
+    }
+
+    fn transition(&mut self) -> PResult<Transition> {
+        let line = self.line();
+        // `on` already consumed
+        let event = self.ident()?;
+        let mut params = Vec::new();
+        if self.eat_sym("(") {
+            while !self.is_sym(")") {
+                params.push(self.ident()?);
+                if !self.eat_sym(",") {
+                    break;
+                }
+            }
+            self.expect_sym(")")?;
+        }
+        let guard = if self.eat_kw("if") {
+            Some(self.expr()?)
+        } else {
+            None
+        };
+        let target = if self.eat_sym("=>") {
+            Some(self.ident()?)
+        } else {
+            None
+        };
+        let action = if self.is_sym("{") && !self.tok().nl_before
+            || (target.is_none() && self.is_sym("{"))
+        {
+            Some(self.block()?)
+        } else {
+            None
+        };
+        if target.is_none() && action.is_none() {
+            return self.err("transition needs '=> State' and/or an action block");
+        }
+        Ok(Transition {
+            event,
+            params,
+            guard,
+            target,
+            action,
+            line,
+        })
+    }
+
+    fn machine_rest(&mut self) -> PResult<MachineDef> {
+        let name = self.ident()?;
+        let params = if self.is_sym("(") {
+            self.params()?
+        } else {
+            vec![]
+        };
+        self.expect_sym("{")?;
+        let (mut states, mut global) = (Vec::new(), Vec::new());
+        loop {
+            self.skip_semis();
+            if self.eat_sym("}") {
+                break;
+            }
+            if self.at_eof() {
+                return self.err("unexpected end of file in machine; missing '}'");
+            }
+            if self.is_ident("on") {
+                self.next();
+                global.push(self.transition()?);
+            } else if self.is_ident("state") {
+                let line = self.line();
+                self.next();
+                let sname = self.ident()?;
+                self.expect_sym("{")?;
+                let (mut enter, mut exit, mut transitions) = (None, None, Vec::new());
+                loop {
+                    self.skip_semis();
+                    if self.eat_sym("}") {
+                        break;
+                    }
+                    if self.is_ident("enter") {
+                        self.next();
+                        enter = Some(self.block()?);
+                    } else if self.is_ident("exit") {
+                        self.next();
+                        exit = Some(self.block()?);
+                    } else if self.is_ident("on") {
+                        self.next();
+                        transitions.push(self.transition()?);
+                    } else {
+                        let t = self.peek().clone();
+                        return self.err(format!(
+                            "expected 'enter', 'exit' or 'on' in state, found '{t}'"
+                        ));
+                    }
+                }
+                states.push(StateDef {
+                    name: sname,
+                    enter,
+                    exit,
+                    transitions,
+                    line,
+                });
+            } else {
+                let t = self.peek().clone();
+                return self.err(format!("expected 'state' or 'on' in machine, found '{t}'"));
+            }
+        }
+        if states.is_empty() {
+            return self.err(format!("machine {name} has no states"));
+        }
+        let known: Vec<&str> = states.iter().map(|s| s.name.as_str()).collect();
+        for t in states
+            .iter()
+            .flat_map(|s| s.transitions.iter())
+            .chain(global.iter())
+        {
+            if let Some(tg) = &t.target {
+                if !known.contains(&tg.as_str()) {
+                    return Err(ParseError {
+                        msg: format!(
+                            "machine {name}: transition '{}' targets unknown state '{tg}'",
+                            t.event
+                        ),
+                        line: t.line,
+                        col: 1,
+                    });
+                }
+            }
+        }
+        Ok(MachineDef {
+            name,
+            params,
+            states,
+            global,
+        })
+    }
+
     fn contract(&mut self) -> PResult<Contract> {
         let start = self.pos;
         let expr = self.expr()?;
@@ -310,15 +563,17 @@ impl Parser {
         while !self.is_sym(")") {
             self.eat_kw("mut");
             let name = self.ident()?;
-            if self.eat_sym(":") {
-                self.ident()?; // optional type annotation, ignored
-            }
+            let ty = if self.eat_sym(":") {
+                Some(self.type_ann()?)
+            } else {
+                None
+            };
             let default = if self.eat_sym("=") {
                 Some(self.expr()?)
             } else {
                 None
             };
-            ps.push(Param { name, default });
+            ps.push(Param { name, default, ty });
             if !self.eat_sym(",") {
                 break;
             }
@@ -327,11 +582,47 @@ impl Parser {
         Ok(ps)
     }
 
+    /// `int`, `str?`, `Motor`, `[m/s]`, `[deg]?`
+    fn type_ann(&mut self) -> PResult<TypeAnn> {
+        if self.is_sym("[") {
+            let u = self.unit_bracket()?;
+            let opt = self.eat_sym("?");
+            return Ok(TypeAnn::Unit(u, opt));
+        }
+        let name = match self.next() {
+            Tok::Ident(n) => n,
+            Tok::Kw("fn") => "fn".into(),
+            Tok::Kw("nil") => "nil".into(),
+            t => return self.err(format!("expected a type, found '{t}'")),
+        };
+        let opt = self.eat_sym("?");
+        Ok(TypeAnn::Name(name, opt))
+    }
+
+    /// Parses `[unit expr]` starting at `[`.
+    fn unit_bracket(&mut self) -> PResult<Rc<crate::units::Unit>> {
+        self.expect_sym("[")?;
+        let mut text = String::new();
+        while !self.is_sym("]") {
+            if self.at_eof() {
+                return self.err("unterminated unit, expected ']'");
+            }
+            let t = self.next();
+            text.push_str(&t.to_string());
+        }
+        self.next();
+        crate::units::parse(&text)
+            .map(Rc::new)
+            .or_else(|m| self.err(m))
+    }
+
     fn fn_rest(&mut self, name: String) -> PResult<FnDef> {
         let params = self.params()?;
-        if self.eat_sym("->") {
-            self.ident()?; // optional return annotation, ignored
-        }
+        let ret = if self.eat_sym("->") {
+            Some(self.type_ann()?)
+        } else {
+            None
+        };
         let (mut requires, mut ensures) = (Vec::new(), Vec::new());
         loop {
             if self.eat_kw("require") {
@@ -352,6 +643,7 @@ impl Parser {
                 ensures,
                 body: vec![Stmt::Return(Some(e), line)],
                 is_expr: true,
+                ret,
             });
         }
         let body = self.block()?;
@@ -362,13 +654,37 @@ impl Parser {
             ensures,
             body,
             is_expr: false,
+            ret,
         })
     }
 
     // ---------------------------------------------------------------- expressions
 
     pub fn expr(&mut self) -> PResult<Expr> {
-        self.or_expr()
+        let mut lhs = self.or_expr()?;
+        // `a |> f(b)` == `f(a, b)`;  `a |> f` == `f(a)`;  `a |> obj.m(b)` == `obj.m(a, b)`
+        while self.is_sym("|>") {
+            let line = self.line();
+            self.next();
+            let rhs = self.or_expr()?;
+            lhs = match rhs {
+                Expr::Call(f, mut args, l) => {
+                    args.insert(0, lhs);
+                    Expr::Call(f, args, l)
+                }
+                Expr::MethodCall(o, m, mut args, l) => {
+                    args.insert(0, lhs);
+                    Expr::MethodCall(o, m, args, l)
+                }
+                Expr::MacroCall(n, mut args, l) => {
+                    args.insert(0, MacroArg::Expr(lhs));
+                    Expr::MacroCall(n, args, l)
+                }
+                Expr::Field(o, m, l) => Expr::MethodCall(o, m, vec![lhs], l),
+                other => Expr::Call(Box::new(other), vec![lhs], line),
+            };
+        }
+        Ok(lhs)
     }
 
     fn or_expr(&mut self) -> PResult<Expr> {
@@ -496,6 +812,18 @@ impl Parser {
     fn args(&mut self) -> PResult<Vec<Expr>> {
         let mut a = Vec::new();
         while !self.is_sym(")") {
+            if let (Tok::Ident(n), Tok::Sym(":")) = (self.peek().clone(), self.peek_at(1).clone()) {
+                if !matches!(self.peek_at(2), Tok::Sym(":")) {
+                    self.next();
+                    self.next();
+                    let v = self.expr()?;
+                    a.push(Expr::Named(n, Box::new(v)));
+                    if !self.eat_sym(",") {
+                        break;
+                    }
+                    continue;
+                }
+            }
             a.push(self.expr()?);
             if !self.eat_sym(",") {
                 break;
@@ -522,6 +850,7 @@ impl Parser {
                 let name = match self.next() {
                     Tok::Ident(n) => n,
                     Tok::Int(n) => n.to_string(),
+                    Tok::Kw(k) => k.to_string(), // `.in(...)`, `.loop`, ...
                     t => return self.err(format!("expected field name, found '{t}'")),
                 };
                 if !self.tok().nl_before && self.eat_sym("(") {
@@ -540,6 +869,14 @@ impl Parser {
     fn primary(&mut self) -> PResult<Expr> {
         let line = self.line();
         match self.next() {
+            Tok::Int(n) if self.unit_follows() => {
+                let u = self.unit_bracket()?;
+                Ok(Expr::Quantity(n as f64, u))
+            }
+            Tok::Float(n) if self.unit_follows() => {
+                let u = self.unit_bracket()?;
+                Ok(Expr::Quantity(n, u))
+            }
             Tok::Int(n) => Ok(Expr::Int(n)),
             Tok::Float(n) => Ok(Expr::Float(n)),
             Tok::Str(s) => Ok(Expr::Str(s)),
@@ -644,6 +981,7 @@ impl Parser {
                         params.push(Param {
                             name: self.ident()?,
                             default: None,
+                            ty: None,
                         });
                         if !self.eat_sym(",") {
                             break;
@@ -664,6 +1002,7 @@ impl Parser {
                     ensures: vec![],
                     body,
                     is_expr: true,
+                    ret: None,
                 })))
             }
             Tok::Kw("if") => {
@@ -888,6 +1227,7 @@ fn split_spec(s: &str) -> (&str, Option<&str>) {
 fn render_tokens(toks: &[Token]) -> String {
     let mut out = String::new();
     let mut prev: Option<&Tok> = None;
+    let mut prev2: Option<&Tok> = None;
     for t in toks {
         let text = match &t.tok {
             Tok::Str(s) => format!("{s:?}"),
@@ -896,12 +1236,18 @@ fn render_tokens(toks: &[Token]) -> String {
         let no_space_before = matches!(&t.tok, Tok::Sym(")" | "]" | "," | "." | "::"))
             || (matches!(&t.tok, Tok::Sym("(" | "["))
                 && matches!(prev, Some(Tok::Ident(_)) | Some(Tok::Sym(")" | "]"))));
+        let unary_minus = matches!(prev, Some(Tok::Sym("-")))
+            && !matches!(
+                prev2,
+                Some(Tok::Ident(_) | Tok::Int(_) | Tok::Float(_) | Tok::Sym(")" | "]"))
+            );
         let no_space_after_prev =
-            matches!(prev, None | Some(Tok::Sym("(" | "[" | "." | "::" | "!")));
+            unary_minus || matches!(prev, None | Some(Tok::Sym("(" | "[" | "." | "::" | "!")));
         if !no_space_before && !no_space_after_prev {
             out.push(' ');
         }
         out.push_str(&text);
+        prev2 = prev;
         prev = Some(&t.tok);
     }
     out

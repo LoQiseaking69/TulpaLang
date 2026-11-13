@@ -1,0 +1,31 @@
+# Contracts double as test oracles: check() fuzzes a function with inputs that satisfy
+# every `require`, and shrinks any failure to a minimal counterexample.
+# Run `tulpa verify examples/verify/main.rav` to check every contracted function at once.
+
+fn wrap_angle(a: float) ensure -180.0 <= result' and result' < 180.0 {
+    (a + 180.0) % 360.0 - 180.0
+}
+
+fn mid(lo: int, hi: int)
+    require lo <= hi
+    ensure lo <= result' and result' <= hi
+{ (lo + hi) / 2 }
+
+fn brake_distance(v: [m/s], decel: [m/s^2]) -> [m]
+    require v >= 0 and decel > 0
+    ensure result' >= 0
+{ v * v / (2 * decel) }
+
+# Bug: saturates the wrong way for large negative inputs.
+fn saturate(x: int) ensure -100 <= result' and result' <= 100 {
+    if x > 100 { 100 } elif x < -1000 { -100 } elif x < -100 { x } else { x }
+}
+
+for f in [wrap_angle, mid, brake_distance, saturate] {
+    let r = check(f, 300)
+    if r.ok {
+        print(f"ok    {r.name}: {r.passed} cases")
+    } else {
+        print(f"FAIL  {r.name}{r.counterexample}: {r.error}")
+    }
+}

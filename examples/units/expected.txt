@@ -1,0 +1,8 @@
+0.5 m/s -> 146.9 rpm
+stop within 6.25 cm | gentle: 25 cm
+1.80 km/h = 1.118 mph
+runtime: 293.3 min
+energy at 11.1 V: 24.42 Wh
+sin(30 deg) = 0.5 | 1 rev = 360.0 deg
+unit mismatch: cannot apply '+' to speed [m/s] and length [m]
+type error: wheel_rpm() parameter 'speed' expects [m/s] (speed), got int 5 (did you mean 5[m/s]?)

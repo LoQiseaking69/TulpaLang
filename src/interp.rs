@@ -28,7 +28,19 @@ pub fn new_env(parent: Option<Env>) -> Env {
     }))
 }
 
-fn lookup(env: &Env, name: &str) -> Option<Value> {
+/// All variables defined directly in `env` (not parents), sorted by name.
+pub(crate) fn env_vars(env: &Env) -> Vec<(String, Value)> {
+    let mut v: Vec<(String, Value)> = env
+        .borrow()
+        .vars
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    v.sort_by(|a, b| a.0.cmp(&b.0));
+    v
+}
+
+pub(crate) fn lookup(env: &Env, name: &str) -> Option<Value> {
     let s = env.borrow();
     match s.vars.get(name) {
         Some(v) => Some(v.clone()),
@@ -37,7 +49,7 @@ fn lookup(env: &Env, name: &str) -> Option<Value> {
 }
 
 /// Ok(true) assigned, Ok(false) undeclared, Err if the name is a constant.
-fn assign(env: &Env, name: &str, v: Value) -> Result<bool, String> {
+pub(crate) fn assign_var(env: &Env, name: &str, v: Value) -> Result<bool, String> {
     let mut s = env.borrow_mut();
     if s.vars.contains_key(name) {
         if s.consts.contains(name) {
@@ -47,7 +59,7 @@ fn assign(env: &Env, name: &str, v: Value) -> Result<bool, String> {
         return Ok(true);
     }
     match &s.parent {
-        Some(p) => assign(p, name, v),
+        Some(p) => assign_var(p, name, v),
         None => Ok(false),
     }
 }
@@ -109,13 +121,13 @@ impl From<String> for Ctrl {
     }
 }
 
-type R<T> = Result<T, Ctrl>;
+pub(crate) type R<T> = Result<T, Ctrl>;
 
-fn rt<T>(msg: impl Into<String>) -> R<T> {
+pub(crate) fn rt<T>(msg: impl Into<String>) -> R<T> {
     Err(Ctrl::from(msg.into()))
 }
 
-fn at_line(c: Ctrl, line: usize) -> Ctrl {
+pub(crate) fn at_line(c: Ctrl, line: usize) -> Ctrl {
     match c {
         Ctrl::Error(mut e) if e.line.is_none() => {
             e.line = Some(line);
@@ -146,6 +158,17 @@ pub struct TestCase {
 
 pub struct Interpreter {
     pub globals: Env,
+    /// Builtins live here; `globals` and every module scope are children of it.
+    pub builtins_env: Env,
+    pub(crate) rules: Vec<Rc<RefCell<crate::ext::Rule>>>,
+    pub(crate) monitors: Vec<Rc<RefCell<crate::ext::Monitor>>>,
+    pub(crate) reacting: bool,
+    /// Directory stack used to resolve `import` paths.
+    pub base_dirs: Vec<std::path::PathBuf>,
+    pub(crate) modules: HashMap<std::path::PathBuf, Value>,
+    pub(crate) loading: Vec<std::path::PathBuf>,
+    /// Device record/replay tape (`--record` / `--replay`).
+    pub tape: Option<Rc<RefCell<crate::devices::Tape>>>,
     macros: HashMap<String, Rc<MacroDef>>,
     pending: Vec<Rc<RefCell<Task>>>,
     pub tests: Vec<TestCase>,
@@ -154,7 +177,7 @@ pub struct Interpreter {
     pub trace_devices: bool,
     pub output: Output,
     pub start: Instant,
-    depth: usize,
+    pub(crate) depth: usize,
 }
 
 const MAX_DEPTH: usize = 2500;
@@ -167,10 +190,19 @@ impl Default for Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
-        let globals = new_env(None);
-        builtins::install(&globals);
+        let builtins_env = new_env(None);
+        builtins::install(&builtins_env);
+        let globals = new_env(Some(builtins_env.clone()));
         Interpreter {
             globals,
+            builtins_env,
+            rules: Vec::new(),
+            monitors: Vec::new(),
+            reacting: false,
+            base_dirs: vec![std::path::PathBuf::from(".")],
+            modules: HashMap::new(),
+            loading: Vec::new(),
+            tape: None,
             macros: HashMap::new(),
             pending: Vec::new(),
             tests: Vec::new(),
@@ -241,7 +273,7 @@ impl Interpreter {
     }
 
     /// Function declarations are visible before their definition line.
-    fn hoist(&mut self, stmts: &[Stmt], env: &Env) {
+    pub(crate) fn hoist(&mut self, stmts: &[Stmt], env: &Env) {
         for s in stmts {
             match s {
                 Stmt::Fn(def) => define(env, &def.name, self.closure(def, env)),
@@ -254,7 +286,7 @@ impl Interpreter {
         }
     }
 
-    fn closure(&self, def: &Rc<FnDef>, env: &Env) -> Value {
+    pub(crate) fn closure(&self, def: &Rc<FnDef>, env: &Env) -> Value {
         Value::Func(Rc::new(Closure {
             def: def.clone(),
             env: env.clone(),
@@ -263,13 +295,13 @@ impl Interpreter {
 
     // ------------------------------------------------------------------ statements
 
-    fn exec_block(&mut self, stmts: &[Stmt], parent: &Env) -> R<Value> {
+    pub(crate) fn exec_block(&mut self, stmts: &[Stmt], parent: &Env) -> R<Value> {
         let env = new_env(Some(parent.clone()));
         self.hoist(stmts, &env);
         self.exec_block_in(stmts, &env)
     }
 
-    fn exec_block_in(&mut self, stmts: &[Stmt], env: &Env) -> R<Value> {
+    pub(crate) fn exec_block_in(&mut self, stmts: &[Stmt], env: &Env) -> R<Value> {
         let mut last = Value::Nil;
         for s in stmts {
             last = self.exec(s, env)?;
@@ -303,8 +335,36 @@ impl Interpreter {
             Stmt::Assign(target, op, e, line) => {
                 self.assign(target, op.as_deref(), e, env)
                     .map_err(|c| at_line(c, *line))?;
+                if !self.rules.is_empty() || !self.monitors.is_empty() {
+                    self.react().map_err(|c| at_line(c, *line))?;
+                }
                 Ok(Value::Nil)
             }
+            Stmt::Struct(def) => {
+                let t = crate::value::StructType {
+                    def: def.clone(),
+                    env: env.clone(),
+                };
+                define(env, &def.name, Value::StructType(Rc::new(t)));
+                Ok(Value::Nil)
+            }
+            Stmt::Machine(def) => {
+                let t = crate::value::MachineType {
+                    def: def.clone(),
+                    env: env.clone(),
+                };
+                define(env, &def.name, Value::MachineType(Rc::new(t)));
+                Ok(Value::Nil)
+            }
+            Stmt::When(cond, body, els, line) => self
+                .register_when(cond, body, els.as_ref(), env)
+                .map_err(|c| at_line(c, *line)),
+            Stmt::Always(c, handler, line) => self
+                .register_always(c, handler.as_ref(), env)
+                .map_err(|c| at_line(c, *line)),
+            Stmt::Import(path, alias, names, line) => self
+                .import(path, alias.as_deref(), names, env)
+                .map_err(|c| at_line(c, *line)),
             Stmt::Fn(def) => {
                 define(env, &def.name, self.closure(def, env));
                 Ok(Value::Nil)
@@ -434,11 +494,11 @@ impl Interpreter {
                     Some(op) => {
                         let cur =
                             lookup(env, n).ok_or_else(|| format!("undefined variable '{n}'"))?;
-                        binary(&cur, op, &rhs)?
+                        self.binary_op(&cur, op, &rhs)?
                     }
                     None => rhs,
                 };
-                if !assign(env, n, v)? {
+                if !assign_var(env, n, v)? {
                     return rt(format!(
                         "assignment to undeclared variable '{n}' (use 'let {n} = ...')"
                     ));
@@ -448,19 +508,21 @@ impl Interpreter {
                 let o = self.eval(obj, env)?;
                 let i = self.eval(idx, env)?;
                 let v = match op {
-                    Some(op) => binary(&index(&o, &i)?, op, &rhs)?,
+                    Some(op) => self.binary_op(&index(&o, &i)?, op, &rhs)?,
                     None => rhs,
                 };
                 set_index(&o, &i, v)?;
             }
             Target::Field(obj, f) => {
                 let o = self.eval(obj, env)?;
-                let k = Value::str(f.as_str());
                 let v = match op {
-                    Some(op) => binary(&index(&o, &k)?, op, &rhs)?,
+                    Some(op) => {
+                        let cur = self.get_field(&o, f)?;
+                        self.binary_op(&cur, op, &rhs)?
+                    }
                     None => rhs,
                 };
-                set_index(&o, &k, v)?;
+                self.set_field(&o, f, v)?;
             }
         }
         Ok(())
@@ -504,7 +566,10 @@ impl Interpreter {
                 for p in parts {
                     match p {
                         FPart::Lit(l) => s.push_str(l),
-                        FPart::Expr(e) => s.push_str(&self.eval(e, env)?.to_string()),
+                        FPart::Expr(e) => {
+                            let v = self.eval(e, env)?;
+                            s.push_str(&self.stringify(&v)?)
+                        }
                     }
                 }
                 Ok(Value::str(s))
@@ -550,8 +615,12 @@ impl Interpreter {
             Expr::Binary(l, op, r, line) => {
                 let a = self.eval(l, env)?;
                 let b = self.eval(r, env)?;
-                binary(&a, op, &b).map_err(|m| at_line(m.into(), *line))
+                self.binary_op(&a, op, &b).map_err(|c| at_line(c, *line))
             }
+            Expr::Quantity(v, u) => Ok(Value::Quantity(crate::units::Quantity::new(*v, u.clone()))),
+            Expr::Named(n, _) => rt(format!(
+                "keyword argument '{n}:' is only allowed inside a call"
+            )),
             Expr::Logic(l, is_and, r) => {
                 let a = self.eval(l, env)?;
                 if a.truthy() != *is_and {
@@ -573,17 +642,16 @@ impl Interpreter {
             }
             Expr::Call(f, args, line) => {
                 let fv = self.eval(f, env)?;
-                let mut av = Vec::with_capacity(args.len());
-                for a in args {
-                    av.push(self.eval(a, env)?);
-                }
-                self.call(&fv, av).map_err(|c| at_line(c, *line))
+                let (av, kw) = self.eval_args(args, env)?;
+                self.call_kw(&fv, av, kw).map_err(|c| at_line(c, *line))
             }
             Expr::MethodCall(obj, name, args, line) => {
                 let o = self.eval(obj, env)?;
-                let mut av = Vec::with_capacity(args.len());
-                for a in args {
-                    av.push(self.eval(a, env)?);
+                let (av, kw) = self.eval_args(args, env)?;
+                if !kw.is_empty() {
+                    return self
+                        .call_method_kw(&o, name, av, kw)
+                        .map_err(|c| at_line(c, *line));
                 }
                 self.call_method(&o, name, av)
                     .map_err(|c| at_line(c, *line))
@@ -595,7 +663,7 @@ impl Interpreter {
             }
             Expr::Field(o, f, line) => {
                 let o = self.eval(o, env)?;
-                field(&o, f).map_err(|m| at_line(m.into(), *line))
+                self.get_field(&o, f).map_err(|c| at_line(c, *line))
             }
             Expr::Lambda(def) => Ok(self.closure(def, env)),
             Expr::MacroCall(name, args, line) => self
@@ -752,14 +820,28 @@ impl Interpreter {
         match f {
             Value::Builtin(_, func) => func(self, args).map_err(Ctrl::from),
             Value::Func(c) => self.call_closure(c, args),
-            other => rt(format!("{} is not callable", other.type_name())),
+            _ => self.call_kw(f, args, vec![]),
         }
     }
 
-    fn call_closure(&mut self, c: &Rc<Closure>, mut args: Vec<Value>) -> R<Value> {
+    pub(crate) fn call_closure(&mut self, c: &Rc<Closure>, args: Vec<Value>) -> R<Value> {
+        self.call_closure_kw(c, args, vec![])
+    }
+
+    pub(crate) fn call_closure_kw(
+        &mut self,
+        c: &Rc<Closure>,
+        mut args: Vec<Value>,
+        kw: Vec<(String, Value)>,
+    ) -> R<Value> {
         let def = &c.def;
         let required = def.params.iter().filter(|p| p.default.is_none()).count();
-        if args.len() < required || args.len() > def.params.len() {
+        let kw_used = !kw.is_empty();
+        if kw_used {
+            // Gaps left by keyword arguments are filled with `Value::Thunk` placeholders.
+            args = self.merge_kwargs(&def.name, &def.params, args, kw)?;
+        }
+        if (!kw_used && args.len() < required) || args.len() > def.params.len() {
             return rt(format!(
                 "{}() takes {} argument{}, got {}",
                 def.name,
@@ -779,11 +861,17 @@ impl Interpreter {
         let n_given = args.len();
         args.reverse();
         for (i, p) in def.params.iter().enumerate() {
-            let v = if i < n_given {
-                args.pop().unwrap()
-            } else {
-                self.eval(p.default.as_ref().unwrap(), &env)?
+            let given = if i < n_given { args.pop() } else { None };
+            let v = match given {
+                Some(Value::Thunk(_)) | None => match &p.default {
+                    Some(d) => self.eval(d, &env)?,
+                    None => return rt(format!("{}() missing argument '{}'", def.name, p.name)),
+                },
+                Some(v) => v,
             };
+            if let Some(ty) = &p.ty {
+                self.check_type(ty, &v, &format!("{}() parameter '{}'", def.name, p.name))?;
+            }
             define(&env, &p.name, v);
         }
         let pre: Vec<(String, Value)> = if def.ensures.is_empty() {
@@ -824,6 +912,9 @@ impl Interpreter {
             }
         };
 
+        if let Some(ty) = &def.ret {
+            self.check_type(ty, &value, &format!("{}() return value", def.name))?;
+        }
         if !def.ensures.is_empty() {
             // Hehner-style post-state: `x` = initial value, `x'` = final value, `result'` = return value.
             let post = new_env(Some(c.env.clone()));
@@ -861,8 +952,18 @@ impl Interpreter {
                         Err(e) => eprintln!("[trace] {desc}.{name}({}) !! {e}", a.join(", ")),
                     }
                 }
-                r.map_err(Ctrl::from)
+                let v = r.map_err(Ctrl::from)?;
+                if !self.rules.is_empty() || !self.monitors.is_empty() {
+                    self.react()?;
+                }
+                Ok(v)
             }
+            Value::Object(_)
+            | Value::Machine(_)
+            | Value::Signal(_)
+            | Value::StructType(_)
+            | Value::MachineType(_)
+            | Value::Quantity(_) => self.call_method_kw(o, name, args, vec![]),
             Value::Dict(d) => {
                 let member = d.borrow().get(&Value::str(name))?;
                 match member {
@@ -915,10 +1016,9 @@ impl Interpreter {
                 if args.len() != 2 && args.len() != 3 {
                     return rt("every! expects (period_ms, body) or (period_ms, count, body)");
                 }
-                let period = self
-                    .macro_arg(&args[0], env)?
-                    .as_f64()
-                    .ok_or("every! period must be a number")?;
+                let pv = self.macro_arg(&args[0], env)?;
+                let period = crate::ext::millis_of(&pv)
+                    .ok_or("every! period must be milliseconds or a time quantity like 20[ms]")?;
                 let count = if args.len() == 3 {
                     Some(
                         self.macro_arg(&args[1], env)?
@@ -939,6 +1039,9 @@ impl Interpreter {
                         Err(e) => return Err(e),
                     }
                     i += 1;
+                    if !self.rules.is_empty() || !self.monitors.is_empty() {
+                        self.react()?;
+                    }
                     next += dt;
                     let now = Instant::now();
                     if next > now {
@@ -1070,6 +1173,19 @@ impl Interpreter {
         }
     }
 
+    /// User-defined global values, sorted by name.
+    pub fn global_values(&self) -> Vec<(String, Value)> {
+        env_vars(&self.globals)
+    }
+
+    /// User-defined global functions, sorted by name.
+    pub fn global_functions(&self) -> Vec<(String, Value)> {
+        self.global_values()
+            .into_iter()
+            .filter(|(_, v)| matches!(v, Value::Func(_)))
+            .collect()
+    }
+
     /// Runs every `define_test!` registered by the program. Returns (passed, failed).
     pub fn run_tests(&mut self) -> (usize, Vec<(String, String)>) {
         let tests = std::mem::take(&mut self.tests);
@@ -1109,6 +1225,10 @@ pub fn unary(op: &str, v: &Value) -> Result<Value, String> {
             .map(Value::Int)
             .ok_or_else(|| "integer overflow".into()),
         ("-", Value::Float(f)) => Ok(Value::Float(-f)),
+        ("-", Value::Quantity(q)) => Ok(Value::Quantity(crate::units::Quantity {
+            si: -q.si,
+            ..q.clone()
+        })),
         ("!", v) => Ok(Value::Bool(!v.truthy())),
         ("~", Value::Int(i)) => Ok(Value::Int(!i)),
         _ => Err(format!(
@@ -1120,6 +1240,9 @@ pub fn unary(op: &str, v: &Value) -> Result<Value, String> {
 
 pub fn binary(a: &Value, op: &str, b: &Value) -> Result<Value, String> {
     use Value::*;
+    if matches!(a, Quantity(_)) || matches!(b, Quantity(_)) {
+        return crate::ext::quantity_binary(a, op, b);
+    }
     let overflow = || format!("integer overflow in {a} {op} {b}");
     Ok(match (op, a, b) {
         ("==", _, _) => Bool(a.equals(b)),
@@ -1197,6 +1320,9 @@ pub fn binary(a: &Value, op: &str, b: &Value) -> Result<Value, String> {
 
 pub fn compare(a: &Value, b: &Value) -> Result<std::cmp::Ordering, String> {
     use std::cmp::Ordering;
+    if matches!(a, Value::Quantity(_)) || matches!(b, Value::Quantity(_)) {
+        return crate::ext::quantity_compare(a, b);
+    }
     match (a, b) {
         (Value::Int(x), Value::Int(y)) => Ok(x.cmp(y)),
         (Value::Str(x), Value::Str(y)) => Ok(x.cmp(y)),
@@ -1290,7 +1416,7 @@ pub fn index(o: &Value, i: &Value) -> Result<Value, String> {
     }
 }
 
-fn set_index(o: &Value, i: &Value, v: Value) -> Result<(), String> {
+pub(crate) fn set_index(o: &Value, i: &Value, v: Value) -> Result<(), String> {
     match o {
         Value::List(l) => {
             let mut l = l.borrow_mut();
@@ -1306,7 +1432,7 @@ fn set_index(o: &Value, i: &Value, v: Value) -> Result<(), String> {
     }
 }
 
-fn field(o: &Value, f: &str) -> Result<Value, String> {
+pub(crate) fn field(o: &Value, f: &str) -> Result<Value, String> {
     match o {
         Value::Dict(d) => d
             .borrow()

@@ -36,6 +36,8 @@ pub struct Token {
     pub col: usize,
     /// True when a line break separates this token from the previous one.
     pub nl_before: bool,
+    /// Column just past the token's last character.
+    pub end: usize,
 }
 
 pub const KEYWORDS: &[&str] = &[
@@ -70,13 +72,18 @@ pub const KEYWORDS: &[&str] = &[
     "try",
     "catch",
     "const",
+    "struct",
+    "machine",
+    "when",
+    "always",
+    "import",
 ];
 
 // Longest first so greedy matching works.
 const SYMBOLS: &[&str] = &[
-    "..=", "**", "==", "!=", "<=", ">=", "&&", "||", "::", "=>", "->", "..", "+=", "-=", "*=",
-    "/=", "%=", "<<", ">>", "+", "-", "*", "/", "%", "=", "<", ">", "!", "(", ")", "{", "}", "[",
-    "]", ",", ";", ":", ".", "|", "&", "^", "~", "?",
+    "..=", "|>", "**", "==", "!=", "<=", ">=", "&&", "||", "::", "=>", "->", "..", "+=", "-=",
+    "*=", "/=", "%=", "<<", ">>", "+", "-", "*", "/", "%", "=", "<", ">", "!", "(", ")", "{", "}",
+    "[", "]", ",", ";", ":", ".", "|", "&", "^", "~", "?",
 ];
 
 #[derive(Debug, Clone)]
@@ -143,12 +150,13 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
         }
 
         let (tl, tc) = (line, col);
-        let push = |out: &mut Vec<Token>, tok, nl: &mut bool| {
+        let push = |out: &mut Vec<Token>, tok, nl: &mut bool, end: usize| {
             out.push(Token {
                 tok,
                 line: tl,
                 col: tc,
                 nl_before: *nl,
+                end,
             });
             *nl = false;
         };
@@ -158,7 +166,7 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
             bump!();
             let s = read_string(&chars, &mut i, &mut line, &mut col, true)
                 .map_err(|m| err(m, tl, tc))?;
-            push(&mut out, Tok::FStr(s), &mut nl);
+            push(&mut out, Tok::FStr(s), &mut nl, col);
             continue;
         }
         if c.is_alphabetic() || c == '_' {
@@ -175,18 +183,18 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
                 Some(k) => Tok::Kw(k),
                 None => Tok::Ident(word),
             };
-            push(&mut out, tok, &mut nl);
+            push(&mut out, tok, &mut nl, col);
             continue;
         }
         if c.is_ascii_digit() {
             let tok = read_number(&chars, &mut i, &mut col).map_err(|m| err(m, tl, tc))?;
-            push(&mut out, tok, &mut nl);
+            push(&mut out, tok, &mut nl, col);
             continue;
         }
         if c == '"' || c == '\'' {
             let s = read_string(&chars, &mut i, &mut line, &mut col, false)
                 .map_err(|m| err(m, tl, tc))?;
-            push(&mut out, Tok::Str(s), &mut nl);
+            push(&mut out, Tok::Str(s), &mut nl, col);
             continue;
         }
         let mut matched = None;
@@ -202,7 +210,7 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
                 for _ in 0..s.len() {
                     bump!();
                 }
-                push(&mut out, Tok::Sym(s), &mut nl);
+                push(&mut out, Tok::Sym(s), &mut nl, col);
             }
             None => return Err(err(format!("unexpected character '{c}'"), tl, tc)),
         }
@@ -212,6 +220,7 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
         line,
         col,
         nl_before: true,
+        end: col,
     });
     Ok(out)
 }

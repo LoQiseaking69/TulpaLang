@@ -1,0 +1,3 @@
+spin: left=-0.141 m/s right=0.141 m/s
+arc: left=0.255 m/s right=0.345 m/s
+track: 0.18 m | calls: 2 | private visible: false

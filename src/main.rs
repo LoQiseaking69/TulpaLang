@@ -5,7 +5,7 @@ use std::process::ExitCode;
 use tulpa::{parse, Backend, Interpreter, ParseError};
 
 const USAGE: &str = "\
-Tulpa 1.0 — device-integration scripting language
+Tulpa 2.0 — device-integration scripting language
 
 USAGE:
     tulpa [FLAGS] <file.tlp|file.rav> [args...]   run a program
@@ -14,11 +14,15 @@ USAGE:
     tulpa check <file>...                         parse only, report syntax errors
     tulpa repl [FLAGS]                            interactive prompt (default with no file)
     tulpa ast <file>                              dump the parsed syntax tree
+    tulpa verify [--trials=N] <file>...           fuzz every fn against its own require/ensure
+    tulpa graph <file>...                         print Mermaid diagrams of every state machine
 
 FLAGS:
     --hw        use real Linux hardware (sysfs GPIO, /dev/i2c-*, /dev/spidev*, TTYs)
     --sim       use the in-memory simulator (default)
     --trace     log every device call to stderr
+    --record F  record all device traffic to tape file F
+    --replay F  answer device calls from tape F; fail on the first divergence
     -h, --help  show this help
     -V          print version
 ";
@@ -26,6 +30,8 @@ FLAGS:
 struct Opts {
     backend: Backend,
     trace: bool,
+    record: Option<String>,
+    replay: Option<String>,
 }
 
 fn report_parse(file: &str, src: &str, e: &ParseError) {
@@ -54,6 +60,19 @@ fn interpreter(o: &Opts, args: &[String]) -> Interpreter {
     let mut i = Interpreter::new();
     i.backend = o.backend;
     i.trace_devices = o.trace;
+    if let Some(p) = &o.replay {
+        match tulpa::devices::Tape::load(std::path::Path::new(p)) {
+            Ok(t) => i.tape = Some(std::rc::Rc::new(std::cell::RefCell::new(t))),
+            Err(e) => {
+                eprintln!("tulpa: cannot load replay tape: {e}");
+                std::process::exit(2);
+            }
+        }
+    } else if let Some(p) = &o.record {
+        i.tape = Some(std::rc::Rc::new(std::cell::RefCell::new(
+            tulpa::devices::Tape::record(std::path::Path::new(p)),
+        )));
+    }
     let argv = tulpa::Value::list(args.iter().map(|a| tulpa::Value::str(a.as_str())).collect());
     tulpa::interp::define(&i.globals, "ARGS", argv);
     i
@@ -65,13 +84,163 @@ fn run_file(file: &str, args: &[String], o: &Opts) -> ExitCode {
         Err(c) => return c,
     };
     let mut i = interpreter(o, args);
-    match i.run(&prog) {
+    set_base(&mut i, file);
+    let result = i.run(&prog);
+    let mut code = match result {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("{file}: runtime error: {e}");
             ExitCode::from(70)
         }
+    };
+    if let Some(t) = &i.tape {
+        let t = t.borrow();
+        match t.mode {
+            tulpa::devices::TapeMode::Record => match t.save() {
+                Ok(()) => eprintln!(
+                    "tulpa: recorded {} device events to {}",
+                    t.events.len(),
+                    t.path.display()
+                ),
+                Err(e) => eprintln!("tulpa: failed to save tape: {e}"),
+            },
+            tulpa::devices::TapeMode::Replay => {
+                if t.remaining() > 0 && code == ExitCode::SUCCESS {
+                    eprintln!(
+                        "{file}: replay diverged: script finished with {} recorded device event(s) unused (next: {} {})",
+                        t.remaining(),
+                        t.events[t.pos].dev,
+                        t.events[t.pos].op
+                    );
+                    code = ExitCode::from(70);
+                } else if code == ExitCode::SUCCESS {
+                    eprintln!("tulpa: replay matched all {} device events", t.events.len());
+                }
+            }
+        }
     }
+    code
+}
+
+fn set_base(i: &mut Interpreter, file: &str) {
+    let dir = std::path::Path::new(file)
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_default();
+    i.base_dirs = vec![if dir.as_os_str().is_empty() {
+        ".".into()
+    } else {
+        dir
+    }];
+}
+
+/// Runs only the definitions of a program (fn, struct, machine, let/const, import, macros),
+/// skipping top-level actions — used by `verify` and `graph`.
+fn load_definitions(file: &str, o: &Opts) -> Result<Interpreter, ExitCode> {
+    use tulpa::ast::Stmt;
+    let (_, prog) = load(file)?;
+    let defs: Vec<Stmt> = prog
+        .into_iter()
+        .filter(|s| {
+            matches!(
+                s,
+                Stmt::Fn(_)
+                    | Stmt::Struct(_)
+                    | Stmt::Machine(_)
+                    | Stmt::Let(..)
+                    | Stmt::Import(..)
+                    | Stmt::MacroDef(..)
+                    | Stmt::Use(_)
+            )
+        })
+        .collect();
+    let mut i = interpreter(o, &[]);
+    set_base(&mut i, file);
+    let (_, buf) = Interpreter::captured();
+    i.output = tulpa::interp::Output::Buffer(buf);
+    if let Err(e) = i.run(&defs) {
+        eprintln!("{file}: error while loading definitions: {e}");
+        return Err(ExitCode::from(70));
+    }
+    i.output = tulpa::interp::Output::Stdout;
+    Ok(i)
+}
+
+fn verify_files(files: &[String], o: &Opts, trials: usize) -> ExitCode {
+    let mut failed = 0;
+    let mut checked = 0;
+    for file in files {
+        let mut i = match load_definitions(file, o) {
+            Ok(i) => i,
+            Err(c) => return c,
+        };
+        for (name, v) in i.global_functions() {
+            let tulpa::Value::Func(c) = &v else { continue };
+            if c.def.ensures.is_empty() && c.def.ret.is_none() {
+                continue;
+            }
+            checked += 1;
+            let r = match i.check_fn(&v, trials) {
+                Ok(r) => r,
+                Err(_) => continue,
+            };
+            let get = |k: &str| match &r {
+                tulpa::Value::Dict(d) => d
+                    .borrow()
+                    .get(&tulpa::Value::str(k))
+                    .ok()
+                    .flatten()
+                    .unwrap_or(tulpa::Value::Nil),
+                _ => tulpa::Value::Nil,
+            };
+            if get("ok").truthy() {
+                println!(
+                    "  ok    {name}()  {} cases, {} discarded",
+                    get("passed"),
+                    get("discarded")
+                );
+            } else {
+                failed += 1;
+                let args = match get("counterexample") {
+                    tulpa::Value::List(l) => l
+                        .borrow()
+                        .iter()
+                        .map(|v| v.repr())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    _ => String::new(),
+                };
+                println!("  FAIL  {name}({args})\n        {}", get("error"));
+            }
+        }
+    }
+    println!(
+        "\nverified {checked} function(s): {} passed, {failed} failed",
+        checked - failed
+    );
+    if failed == 0 {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(1)
+    }
+}
+
+fn graph_files(files: &[String], o: &Opts) -> ExitCode {
+    for file in files {
+        let i = match load_definitions(file, o) {
+            Ok(i) => i,
+            Err(c) => return c,
+        };
+        for (name, v) in i.global_values() {
+            if let tulpa::Value::MachineType(t) = v {
+                println!(
+                    "%% machine {name} ({file})\n{}",
+                    tulpa::ext::mermaid(&t.def)
+                );
+            }
+        }
+    }
+    ExitCode::SUCCESS
 }
 
 fn test_files(files: &[String], o: &Opts) -> ExitCode {
@@ -82,6 +251,7 @@ fn test_files(files: &[String], o: &Opts) -> ExitCode {
             Err(c) => return c,
         };
         let mut i = interpreter(o, &[]);
+        set_base(&mut i, file);
         let (src, buf) = Interpreter::captured();
         drop(src);
         i.output = tulpa::interp::Output::Buffer(buf);
@@ -138,7 +308,7 @@ fn balanced(src: &str) -> bool {
 
 fn repl(o: &Opts) -> ExitCode {
     println!(
-        "Tulpa 1.0 REPL — backend: {:?}. Type :quit to exit, :help for help.",
+        "Tulpa 2.0 REPL — backend: {:?}. Type :quit to exit, :help for help.",
         o.backend
     );
     let mut i = interpreter(o, &[]);
@@ -203,6 +373,8 @@ fn real_main() -> ExitCode {
     let mut o = Opts {
         backend: Backend::Sim,
         trace: false,
+        record: None,
+        replay: None,
     };
     if std::env::var("TULPA_BACKEND")
         .map(|v| v == "linux" || v == "hw")
@@ -213,12 +385,35 @@ fn real_main() -> ExitCode {
     // Flags may appear anywhere before the script path.
     let mut rest = Vec::new();
     let mut seen_file = false;
+    let mut want_value: Option<&'static str> = None;
     for a in args.drain(..) {
         if seen_file {
             rest.push(a);
             continue;
         }
+        if let Some(flag) = want_value.take() {
+            if flag == "--record" {
+                o.record = Some(a)
+            } else {
+                o.replay = Some(a)
+            }
+            continue;
+        }
+        if let Some(v) = a.strip_prefix("--record=") {
+            o.record = Some(v.to_string());
+            continue;
+        }
+        if let Some(v) = a.strip_prefix("--replay=") {
+            o.replay = Some(v.to_string());
+            continue;
+        }
+        if a.starts_with("--trials=") {
+            rest.push(a);
+            continue;
+        }
         match a.as_str() {
+            "--record" => want_value = Some("--record"),
+            "--replay" => want_value = Some("--replay"),
             "--hw" => o.backend = Backend::Linux,
             "--sim" => o.backend = Backend::Sim,
             "--trace" => o.trace = true,
@@ -235,8 +430,10 @@ fn real_main() -> ExitCode {
                 return ExitCode::from(2);
             }
             _ => {
-                if !matches!(a.as_str(), "run" | "test" | "check" | "repl" | "ast")
-                    || !rest.is_empty()
+                if !matches!(
+                    a.as_str(),
+                    "run" | "test" | "check" | "repl" | "ast" | "verify" | "graph"
+                ) || !rest.is_empty()
                 {
                     seen_file = true;
                 }
@@ -268,6 +465,18 @@ fn real_main() -> ExitCode {
                 ExitCode::from(65)
             }
         }
+        Some("verify") => {
+            let mut trials = 300;
+            let mut files = Vec::new();
+            for a in &rest[1..] {
+                match a.strip_prefix("--trials=") {
+                    Some(n) => trials = n.parse().unwrap_or(300),
+                    None => files.push(a.clone()),
+                }
+            }
+            verify_files(&files, &o, trials)
+        }
+        Some("graph") => graph_files(&rest[1..], &o),
         Some("ast") => match rest.get(1).map(|f| load(f)) {
             Some(Ok((_, prog))) => {
                 for s in prog {

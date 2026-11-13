@@ -1,5 +1,6 @@
 //! Abstract syntax tree.
 
+use crate::units::Unit;
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
@@ -37,6 +38,54 @@ pub enum Expr {
     Block(Vec<Stmt>),
     Spawn(Box<Expr>, usize),
     Await(Box<Expr>, usize),
+    /// Number with a unit: `9.81[m/s^2]`
+    Quantity(f64, Rc<Unit>),
+    /// Keyword argument inside a call: `f(x, speed: 3)`
+    Named(String, Box<Expr>),
+}
+
+/// Runtime-checked type annotation: `x: int`, `v: [m/s]`, `name: str?`
+#[derive(Debug, Clone)]
+pub enum TypeAnn {
+    Name(String, bool),
+    Unit(Rc<Unit>, bool),
+}
+
+#[derive(Debug, Clone)]
+pub struct StructDef {
+    pub name: String,
+    pub fields: Vec<Param>,
+    pub methods: Vec<Rc<FnDef>>,
+    pub invariants: Vec<Contract>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MachineDef {
+    pub name: String,
+    pub params: Vec<Param>,
+    pub states: Vec<StateDef>,
+    /// Transitions valid in every state (e.g. emergency stop).
+    pub global: Vec<Transition>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StateDef {
+    pub name: String,
+    pub enter: Option<Vec<Stmt>>,
+    pub exit: Option<Vec<Stmt>>,
+    pub transitions: Vec<Transition>,
+    pub line: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct Transition {
+    pub event: String,
+    pub params: Vec<String>,
+    pub guard: Option<Expr>,
+    /// None = internal transition (stay, no enter/exit).
+    pub target: Option<String>,
+    pub action: Option<Vec<Stmt>>,
+    pub line: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -76,6 +125,7 @@ pub struct FnDef {
     pub body: Vec<Stmt>,
     /// Lambda written as `fn(x) => expr`.
     pub is_expr: bool,
+    pub ret: Option<TypeAnn>,
 }
 
 /// A Hehner-style specification clause together with its source text.
@@ -89,6 +139,7 @@ pub struct Contract {
 pub struct Param {
     pub name: String,
     pub default: Option<Expr>,
+    pub ty: Option<TypeAnn>,
 }
 
 #[derive(Debug, Clone)]
@@ -114,6 +165,14 @@ pub enum Stmt {
     Continue,
     Use(Vec<String>),
     Assert(Expr, Option<Expr>, String, usize),
+    Struct(Rc<StructDef>),
+    Machine(Rc<MachineDef>),
+    /// Edge-triggered reactive rule: `when cond { rising } else { falling }`
+    When(Expr, Vec<Stmt>, Option<Vec<Stmt>>, usize),
+    /// Safety monitor: `always cond else { handler }`
+    Always(Contract, Option<Vec<Stmt>>, usize),
+    /// `import "path" as name` / `from "path" import a, b`
+    Import(String, Option<String>, Vec<String>, usize),
     /// `try { ... } catch err { ... }`
     Try(Vec<Stmt>, Option<String>, Vec<Stmt>),
     /// `define_macro!(name, (params) { body })`

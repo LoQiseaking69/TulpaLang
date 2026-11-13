@@ -31,8 +31,8 @@ Assigning to a name you never declared is an error. This catches typos.
 
 ## Types
 
-`int`, `float`, `str`, `bool`, `nil`, `list`, `dict`, `range`, `fn`, `task`, plus native objects
-(`GPIO`, `I2C`, `SPI`, `UART`, `PID`). Use `type(v)` to get the type name.
+`int`, `float`, `str`, `bool`, `nil`, `list`, `dict`, `range`, `fn`, `task`, `quantity`, `signal`,
+struct objects, machine instances, plus native objects (`GPIO`, `I2C`, `SPI`, `UART`, `PWM`, `Servo`, `PID`). Use `type(v)` to get the type name.
 
 - `int / int` is floor division, as in C and Rust (`7 / 2 == 3`). Use a float operand to get a float result (`7.0 / 2 == 3.5`).
 - `%` is Euclidean modulo, so the result is never negative for a positive divisor. `**` is exponentiation and is right-associative.
@@ -197,6 +197,193 @@ spawn fn() { print("runs before exit if never awaited") }
 Tasks run cooperatively and in a deterministic order. A task runs when it's awaited, when you call
 `join_all()`, or at the end of the program. Use `every!` for periodic work.
 
+
+## Units of measure
+
+Write a unit in brackets directly after a number, with no space: `5[m]`, `0.5[m/s]`, `9.81[m/s^2]`,
+`90[deg]`, `2200[mAh]`. A quantity stores its SI value and its dimension, and remembers the unit
+it was written in, for display.
+
+```tulpa
+let v = 120[m] / 9.5[s]          # 12.63 m/s
+v.to("km/h")                     # quantity in another unit
+v.in("mph")                      # plain float in that unit
+v.value; v.unit; v.si            # display value, unit string, SI value
+2[m] + 50[cm]                    # 2.5 m
+5[m] / 2[m]                      # 2.5: the dimensions cancel, giving a plain float
+sin(30[deg]); sqrt(16[m^2])      # math functions understand angles and dimensions
+f"{v:.1f}"                       # "12.6 m/s"
+quantity(3, "ft")                # build a quantity at runtime
+```
+
+**Rules:**
+- `+`, `-`, `%` and comparisons need matching dimensions. `*` and `/` combine dimensions; `**` takes an integer exponent.
+- Comparing against a bare `0` is always allowed (`speed > 0`).
+- `float(q)` is an error. Say what you mean with `.in("unit")` or `.si`.
+
+**Built-in units** (combine them with `*`, `.`, `/` and `^n`):
+
+| Group | Units |
+|---|---|
+| Length | `m km cm mm um nm in ft yd mi` |
+| Mass | `kg g mg t lb oz` |
+| Time | `s ms us ns min h` |
+| Current, voltage, resistance, charge | `A mA uA V mV kV ohm kohm Mohm C mAh Ah` |
+| Base units | `K mol cd` |
+| Angle | `rad deg rev` |
+| Frequency | `Hz kHz MHz rpm` |
+| Force, energy, power | `N kN J kJ Wh W mW kW` |
+| Pressure | `Pa kPa bar psi` |
+| Speed, acceleration | `kph mph gee` |
+
+`C` is the coulomb, not Celsius. Offset temperature scales aren't modelled; use `K`.
+
+## Type annotations
+
+Annotations are optional and **checked at runtime**:
+
+```tulpa
+fn drive(speed: [m/s], duration: [s] = 2[s], label: str? = nil) -> [m] { speed * duration }
+```
+
+| Annotation | Accepts |
+|---|---|
+| `any` | anything |
+| `int`, `float`, `str`, `bool`, `list`, `dict`, `range`, `task`, `nil` | that type |
+| `num` | `int` or `float` |
+| `fn` | a function or callable |
+| `quantity` | any quantity |
+| `signal` | a signal |
+| `[unit]` | a quantity of that dimension |
+| a struct or machine name, or a device type such as `GPIO` | an instance of it |
+| any of the above followed by `?` | that type, or `nil` |
+
+Struct fields accept the same annotations.
+
+## Keyword arguments and the pipe
+
+```tulpa
+area(4, scale: 10)            # positional, then keyword
+Motor(pin: 12, speed: 0)      # works for struct and machine constructors too
+xs |> map(|x| x * 2) |> sum   # a |> f(b) == f(a, b);  a |> f == f(a);  a |> o.m == o.m(a)
+```
+
+## Structs
+
+```tulpa
+struct Motor {
+    pin: int
+    speed = 0                                  # default (may refer to earlier fields)
+    invariant -100 <= self.speed and self.speed <= 100
+    fn set(self, s) { self.speed = s }         # method: first parameter is self
+    fn stopped() { Motor(pin: 0) }             # no self: static method, called as Motor.stopped()
+    fn to_str(self) { f"motor@{self.pin}" }    # used by print / str / f-strings
+    fn init(self) { }                          # optional hook, runs after construction
+}
+```
+
+- **Construction:** positional (`Motor(12)`), keyword (`Motor(pin: 12)`), or a mix.
+- **Invariants:** checked after construction, after every method call, and after every field write. A field write that breaks an invariant is **rolled back** before the error is raised.
+- **Operator overloading:** `op_add op_sub op_mul op_div op_mod op_eq op_cmp`. `op_cmp` returns a number that is negative, zero or positive. `2 * v` and `1 + v` try `op_rmul`/`op_radd` first, then fall back to `op_mul`/`op_add`.
+- **Reflection:** `Type.fields()` and `Type.name()`.
+
+## State machines
+
+```tulpa
+machine Door(locked = false) {              # parameters become per-instance variables
+    on estop => Closed { print("E-STOP") }  # global: valid in every state
+    state Closed {                          # the first state is the initial state
+        enter { print("closed") }
+        on open if not locked => Open
+        on lock => Locked { locked = true } # action runs between exit and enter
+    }
+    state Open {
+        exit { print("leaving") }
+        on close => Closed
+        on knock { print("internal transition, no exit/enter") }
+    }
+    state Locked {
+        on unlock(code) if code == 1234 => Closed { locked = false }
+    }
+}
+
+let d = Door()                 # or Door(locked: true)
+d.send("open")                 # true if a transition fired, false if none matched
+d.open()                       # shorthand for send("open")
+d.unlock(1234)                 # event arguments bind to the declared parameters
+d.state; d.history; d.locked   # current state, visited states, instance variables
+d.can("open"); d.is("Open"); d.events(); d.restart()
+Door.mermaid()                 # Mermaid stateDiagram source (also: tulpa graph file.rav)
+```
+
+How transitions are chosen and run:
+- The current state's transitions are tried in order, then the global ones. The first one whose guard passes fires.
+- An event the machine defines always takes precedence over a convenience method of the same name. The exceptions are `send`, `can`, `is`, `in_state` and `events`.
+- A transition to an unknown state is a **syntax error**.
+
+## Signals and reactive rules
+
+```tulpa
+let temp = signal(20[K])            # a reactive value (keeps the last 256 samples)
+let f = derive(|| temp.get() * 2)   # computed on read
+temp.set(300[K]); temp.value = 301[K]
+temp.get(); temp.prev(); temp.history(); temp.avg(10); temp.min(); temp.max()
+temp.rate()                         # change per second between the last two samples
+temp.subscribe(|new, old| print(old, "->", new))
+
+when temp.get() > 310[K] { fan.set_high() } else { fan.set_low() }
+```
+
+`when` is **edge-triggered**: the body runs when the condition goes from false to true, and the
+optional `else` runs when it goes back to false. A rule is re-evaluated:
+- when it's registered
+- after every signal change, variable assignment, device call and state-machine transition
+- on every `every!` tick
+
+If rules keep re-triggering each other for 100 rounds, that's reported as an error.
+
+## Safety envelopes
+
+```tulpa
+always not (heater.read() == 1 and fan.read() == 0)           # fail-stop
+always speed <= 2[m/s] else { speed = 2[m/s]; log.push("limited") }
+```
+
+An `always` monitor is checked at the same points as `when` rules.
+- With no `else`, a violation is a runtime error naming the clause: `safety envelope violated: always ...`.
+- With an `else` handler, the handler runs once per violation. It re-arms when the condition holds again.
+
+Monitors run *after* the action that caused the violation, so put the corrective action (stop, e-stop, clamp) in the handler.
+
+## Contract-driven verification
+
+```tulpa
+let r = check(my_fn, 500)   # {ok, passed, discarded, counterexample, error, name}
+```
+
+`check` generates arguments from the parameter annotations: ints, floats, bools, strings, lists, or
+quantities in the annotated unit. It keeps only argument sets that satisfy every `require`, then
+calls the function. Any `ensure` violation, type error or crash counts as a failure, and the
+failing input is **shrunk** toward the smallest counterexample. Generation is seeded per function, so
+results are reproducible.
+
+`tulpa verify file.rav [--trials=N]` loads only the definitions in a file, runs `check` on every
+function that has an `ensure` or a return annotation, and exits with code 1 if any fail.
+
+## Modules
+
+```tulpa
+import "lib/drive.rav"              # binds `drive` (the file stem) to a module
+import "lib/drive" as d             # `.rav` is optional; alias with `as`
+from "lib/drive" import Twist, wheels
+drive.TRACK_WIDTH; d.wheels(t)
+```
+
+- Paths are resolved relative to the importing file.
+- Each module runs once and is cached.
+- Names starting with `_` stay private.
+- A circular import is an error.
+
 ## Standard library (globals)
 
 - **I/O:** `print(...)`, `input(prompt)`, `read_file`, `write_file`, `append_file`
@@ -209,6 +396,7 @@ Tasks run cooperatively and in a deterministic order. A task runs when it's awai
 - **Time:** `sleep(s) sleep_ms(ms) millis() micros() now()`
 - **Random:** `random() randint(a, b) choice(xs)`
 - **Misc:** `format(v, spec)`, `error(msg)`, `exit(code)`, `join_all()`, `ARGS` (the script's arguments)
+- **2.0:** `quantity(v, unit)`, `signal(v, capacity)`, `derive(fn)`, `check(fn, trials)`
 
 ## Modules
 
@@ -231,7 +419,10 @@ tulpa test file.rav ...      run define_test! blocks
 tulpa check file.rav ...     syntax check only
 tulpa ast file.rav           dump the AST
 tulpa                        REPL (:log, :reset, :quit)
+tulpa verify file.rav        fuzz contracted functions (--trials=N)
+tulpa graph file.rav         Mermaid diagrams of all state machines
 --hw / --sim / --trace       backend selection and device tracing (also TULPA_BACKEND=linux)
+--record F / --replay F      record device traffic to a tape / replay and check against it
 ```
 
 Exit codes: 0 means OK, 1 means tests failed, 2 means a usage error, 65 means a syntax error, and 70 means a runtime error.

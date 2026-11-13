@@ -1,0 +1,18 @@
+# A reusable differential-drive module. Names starting with _ stay private.
+
+const TRACK_WIDTH = 0.18[m]
+let _calls = 0
+
+struct Twist {
+    linear: [m/s] = 0[m/s]
+    angular: [rad/s] = 0[rad/s]
+}
+
+# Wheel speeds for a body twist (left, right).
+fn wheels(t: Twist) -> list {
+    _calls += 1
+    let half = t.angular * TRACK_WIDTH / 2[rad]
+    [t.linear - half, t.linear + half]
+}
+
+fn calls() { _calls }

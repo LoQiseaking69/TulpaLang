@@ -1,0 +1,30 @@
+# Units of measure: the interpreter does the dimensional analysis.
+
+const WHEEL_DIAMETER = 6.5[cm]
+const MAX_SPEED = 0.8[m/s]
+
+fn wheel_rpm(speed: [m/s]) -> [rpm]
+    require speed >= 0 and speed <= MAX_SPEED
+{
+    let circumference = PI * WHEEL_DIAMETER
+    (speed / circumference * 1[rev]).to("rpm")
+}
+
+fn stopping_distance(v: [m/s], decel: [m/s^2] = 2[m/s^2]) -> [m] {
+    (v ** 2 / (2 * decel)).to("cm")
+}
+
+let v = 0.5[m/s]
+print(f"{v} -> {wheel_rpm(v):.1f}")
+print("stop within", stopping_distance(v), "| gentle:", stopping_distance(v, decel: 0.5[m/s^2]))
+print(f"{v.to("km/h"):.2f} = {v.to("mph"):.3f}")
+
+let battery = 2200[mAh]
+let draw = 450[mA]
+print("runtime:", (battery / draw).to("min").round(1))
+print("energy at 11.1 V:", (battery * 11.1[V]).to("Wh").round(2))
+print("sin(30 deg) =", round(sin(30[deg]), 3), "| 1 rev =", 1[rev].in("deg"), "deg")
+
+# Mixing incompatible units is an error, not a silent bug.
+try { print(MAX_SPEED + WHEEL_DIAMETER) } catch e { print(e) }
+try { wheel_rpm(5) } catch e { print(e) }

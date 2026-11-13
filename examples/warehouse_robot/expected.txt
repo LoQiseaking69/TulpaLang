@@ -1,0 +1,6 @@
+state=Idle cycles=2 lift=150 deg grip=0 deg
+cell faulted: overweight part: 3.5 kg
+cell faulted: e-stop
+state=Fault conveyor=0 faults=["overweight part: 3.5 kg", "e-stop"]
+struct invariant violated for Joint: self.min <= self.angle and self.angle <= self.max (now Joint(servo: <Servo 0.0 at 40 deg>, angle: 175 deg, min: 10 deg, max: 170 deg))
+path: Idle -> Picking -> Placing -> Idle -> Picking -> Placing -> Idle -> Picking -> Fault -> Idle -> Fault

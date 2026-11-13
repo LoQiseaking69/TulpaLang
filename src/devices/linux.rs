@@ -1,6 +1,6 @@
 //! Real hardware on Linux: sysfs GPIO, i2c-dev, spidev and termios serial ports.
 
-use super::{GpioIo, I2cIo, SpiIo, UartIo};
+use super::{GpioIo, I2cIo, PwmIo, SpiIo, UartIo};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::os::unix::io::AsRawFd;
@@ -359,4 +359,67 @@ impl UartIo for LinuxUart {
         }
         Ok(n.max(0) as usize)
     }
+}
+
+// ---------------------------------------------------------------------------- PWM (sysfs)
+
+pub struct SysfsPwm {
+    root: String,
+}
+
+impl SysfsPwm {
+    pub fn open(chip: u32, ch: u32) -> Result<Self, String> {
+        let chip_dir = format!("/sys/class/pwm/pwmchip{chip}");
+        let root = format!("{chip_dir}/pwm{ch}");
+        if !Path::new(&root).exists() {
+            std::fs::write(format!("{chip_dir}/export"), ch.to_string()).map_err(|e| {
+                format!("PWM {chip}.{ch}: cannot export via {chip_dir}/export ({e})")
+            })?;
+            for _ in 0..50 {
+                if Path::new(&format!("{root}/period")).exists() {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+        }
+        Ok(SysfsPwm { root })
+    }
+    fn put(&self, file: &str, v: impl ToString) -> Result<(), String> {
+        std::fs::write(format!("{}/{file}", self.root), v.to_string())
+            .map_err(|e| format!("{}/{file}: {e}", self.root))
+    }
+}
+
+impl PwmIo for SysfsPwm {
+    fn set_period_ns(&mut self, ns: u64) -> Result<(), String> {
+        self.put("period", ns)
+    }
+    fn set_duty_ns(&mut self, ns: u64) -> Result<(), String> {
+        self.put("duty_cycle", ns)
+    }
+    fn enable(&mut self, on: bool) -> Result<(), String> {
+        self.put("enable", if on { 1 } else { 0 })
+    }
+}
+
+/// Probes 7-bit addresses 0x03..=0x77 with a 1-byte read (like `i2cdetect -r`).
+pub fn scan(bus: u32) -> Result<Vec<u16>, String> {
+    let path = format!("/dev/i2c-{bus}");
+    let mut file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&path)
+        .map_err(|e| format!("{path}: {e}"))?;
+    let mut found = Vec::new();
+    for addr in 0x03u16..=0x77 {
+        // SAFETY: valid fd; I2C_SLAVE takes the address as an integer argument.
+        if unsafe { libc::ioctl(file.as_raw_fd(), I2C_SLAVE as _, addr as libc::c_ulong) } < 0 {
+            continue;
+        }
+        let mut b = [0u8; 1];
+        if file.read(&mut b).is_ok() {
+            found.push(addr);
+        }
+    }
+    Ok(found)
 }

@@ -74,6 +74,46 @@ let out = pid.update(setpoint, measured, dt_seconds)
 pid.reset(); pid.set_gains(kp, ki, kd); pid.integral()
 ```
 
+## PWM and servos
+
+```tulpa
+let pwm = PWM::new(0, 1)               # /sys/class/pwm/pwmchip0/pwm1
+pwm.frequency(1[kHz])                  # or a plain number in Hz
+pwm.duty(0.25)                         # fraction 0..1
+pwm.pulse(1500[us])                    # or a plain number in µs
+pwm.enable(); pwm.disable(); pwm.state()
+
+let s = Servo::new(0, 0)               # chip, channel, min_us=500, max_us=2500, range=180
+s.angle(45[deg])                       # or a plain number in degrees; out of range is an error
+s.center(); s.detach(); s.angle(); s.pulse_us()
+```
+
+`sim::pwm(chip, channel)` returns `{period_ns, duty_ns, enabled}` in the simulator.
+
+## Finding devices
+
+`I2C::scan(bus = 1)` returns the addresses that respond.
+- On hardware it probes 0x03 to 0x77 with a 1-byte read, as `i2cdetect -r` does.
+- In the simulator it returns every address that has been opened or preloaded.
+
+## Record and replay
+
+```bash
+tulpa --hw --record bench.tape robot.rav   # capture a real session
+tulpa --replay bench.tape robot.rav        # rerun anywhere, no hardware needed
+```
+
+**Recording.** Every device operation is logged to a plain-text tape, along with what the device
+returned: GPIO direction, writes and reads; I2C writes, reads and register reads; SPI transfers;
+UART traffic; PWM settings. Each line holds the device, the operation, the input and the output, in hex.
+
+**Replaying.** No real or simulated device is opened. Each operation must match the next one on the
+tape, and gets the recorded answer back. The run fails in either of two cases:
+- At the first operation that differs, with a message like `replay diverged at event #2: tape has gpio17 write [01], script did gpio17 write [00]`.
+- If the script ends before using the whole tape.
+
+This turns a field session into a regression test for your control logic.
+
 ## The simulator
 
 Each device type behaves the way the real thing usually does:
@@ -92,6 +132,7 @@ The `sim::` helpers:
 | `sim::spi_respond(bus, cs, bytes)` | queue the next SPI response |
 | `sim::uart_feed(port, data)` / `sim::uart_sent(port)` | inject RX / take everything sent |
 | `sim::uart_loopback(port, on)` | toggle loopback |
+| `sim::pwm(chip, ch)` | inspect a PWM channel |
 | `sim::log()` / `sim::clear_log()` / `sim::reset()` | transaction log and reset |
 
 This makes hardware logic unit-testable:

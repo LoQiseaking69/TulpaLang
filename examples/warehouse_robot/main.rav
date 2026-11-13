@@ -1,0 +1,78 @@
+# A pick-and-place cell: state machine + reactive signals + safety envelope + typed structs.
+# Runs fully on the simulator; add --hw on the real cell, --record/--replay to capture runs.
+
+struct Joint {
+    servo
+    angle: [deg] = 90[deg]
+    min: [deg] = 0[deg]
+    max: [deg] = 180[deg]
+    invariant self.min <= self.angle and self.angle <= self.max
+    fn move_to(self, a: [deg]) {
+        self.angle = a            # struct invariant rejects out-of-range targets
+        self.servo.angle(a)
+    }
+}
+
+let lift = Joint(Servo::new(0, 0), min: 10[deg], max: 170[deg])
+let grip = Joint(Servo::new(0, 1), angle: 0[deg])
+let conveyor = GPIO::new(23)
+let beam = GPIO::new(24, "in")                # light barrier: 1 = part present
+let load = signal(0[kg])                      # from a load cell
+let faults = []
+
+machine Cell(cycles = 0) {
+    on estop => Fault { conveyor.set_low(); faults.push("e-stop") }
+    state Idle {
+        enter { lift.move_to(150[deg]); conveyor.set_high() }
+        on part => Picking { conveyor.set_low() }
+    }
+    state Picking {
+        enter { lift.move_to(30[deg]); grip.move_to(80[deg]) }
+        on gripped(mass) if mass <= 2[kg] => Placing
+        on gripped(mass) => Fault { faults.push(f"overweight part: {mass}") }
+    }
+    state Placing {
+        enter { lift.move_to(150[deg]) }
+        on placed => Idle { grip.move_to(0[deg]); cycles += 1 }
+    }
+    state Fault {
+        enter { print("cell faulted:", faults[-1]) }
+        on reset => Idle
+    }
+}
+
+let cell = Cell()
+
+# Reactive glue: hardware events drive the machine.
+when beam.read() == 1 and cell.is("Idle") { cell.part() }
+when load.get() > 0[kg] and cell.is("Picking") { cell.gripped(load.get()) }
+
+# Safety envelope: the conveyor must never run while the arm is down in the pick zone.
+always not (conveyor.read() == 1 and lift.angle < 60[deg]) else {
+    conveyor.set_low()
+    cell.estop()
+}
+
+fn run_part(mass: [kg]) {
+    sim::gpio_input(24, 1)            # part arrives
+    beam.read()                        # device access lets the when-rules see the new input
+    sim::gpio_input(24, 0)            # part leaves the light barrier
+    beam.read()
+    load.set(mass)                     # gripper reports the load
+    load.set(0[kg])
+    cell.placed()
+}
+
+run_part(1.2[kg])
+run_part(0.4[kg])
+print(f"state={cell.state} cycles={cell.cycles} lift={lift.angle} grip={grip.angle}")
+
+run_part(3.5[kg])                      # too heavy -> Fault
+cell.reset()
+
+conveyor.set_high()
+lift.move_to(40[deg])                  # violates the envelope -> handler trips the e-stop
+print(f"state={cell.state} conveyor={conveyor.read()} faults={faults}")
+
+try { lift.move_to(175[deg]) } catch e { print(e) }
+print("path:", cell.history.join(" -> "))

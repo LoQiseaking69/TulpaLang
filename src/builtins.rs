@@ -100,10 +100,10 @@ const GLOBALS: &[(&str, NativeFn)] = &[
         m1("floor", a, f64::floor).map(to_int_if_whole)
     }),
     ("ceil", |_, a| m1("ceil", a, f64::ceil).map(to_int_if_whole)),
-    ("sqrt", |_, a| m1("sqrt", a, f64::sqrt)),
-    ("sin", |_, a| m1("sin", a, f64::sin)),
-    ("cos", |_, a| m1("cos", a, f64::cos)),
-    ("tan", |_, a| m1("tan", a, f64::tan)),
+    ("sqrt", b_sqrt),
+    ("sin", |_, a| trig("sin", a, f64::sin)),
+    ("cos", |_, a| trig("cos", a, f64::cos)),
+    ("tan", |_, a| trig("tan", a, f64::tan)),
     ("asin", |_, a| m1("asin", a, f64::asin)),
     ("acos", |_, a| m1("acos", a, f64::acos)),
     ("atan", |_, a| m1("atan", a, f64::atan)),
@@ -180,10 +180,48 @@ const GLOBALS: &[(&str, NativeFn)] = &[
     ("sleep", b_sleep),
     ("sleep_ms", |_, a| {
         arity("sleep_ms", &a, 1, 1)?;
-        std::thread::sleep(std::time::Duration::from_secs_f64(
-            num("sleep_ms", &a[0])?.max(0.0) / 1000.0,
-        ));
+        let ms = crate::ext::millis_of(&a[0])
+            .ok_or("sleep_ms() expects milliseconds or a time quantity")?;
+        std::thread::sleep(std::time::Duration::from_secs_f64(ms.max(0.0) / 1000.0));
         Ok(Value::Nil)
+    }),
+    ("quantity", |_, a| {
+        arity("quantity", &a, 2, 2)?;
+        let u = crate::units::parse(&s_arg("quantity", &a[1])?)?;
+        Ok(Value::Quantity(crate::units::Quantity::new(
+            num("quantity", &a[0])?,
+            Rc::new(u),
+        )))
+    }),
+    ("signal", |_, a| {
+        arity("signal", &a, 0, 2)?;
+        let cap = a
+            .get(1)
+            .map(|v| int("signal", v))
+            .transpose()?
+            .unwrap_or(256) as usize;
+        Ok(crate::ext::new_signal(
+            a.first().cloned().unwrap_or(Value::Nil),
+            cap,
+            None,
+        ))
+    }),
+    ("derive", |_, a| {
+        arity("derive", &a, 1, 1)?;
+        if !matches!(a[0], Value::Func(_) | Value::Builtin(..)) {
+            return Err("derive() expects a function, e.g. derive(|| a.get() * 2)".into());
+        }
+        Ok(crate::ext::new_signal(Value::Nil, 1, Some(a[0].clone())))
+    }),
+    ("check", |i, a| {
+        arity("check", &a, 1, 2)?;
+        let trials = a
+            .get(1)
+            .map(|v| int("check", v))
+            .transpose()?
+            .unwrap_or(200)
+            .max(1) as usize;
+        unwrap_ctrl(i.check_fn(&a[0], trials))
     }),
     ("millis", |i, _| {
         Ok(Value::Int(i.start.elapsed().as_millis() as i64))
@@ -442,7 +480,13 @@ const KIN: &[(&str, NativeFn)] = &[
 // ---------------------------------------------------------------------------- globals
 
 fn b_print(i: I, a: Vec<Value>) -> Res {
-    let s: Vec<String> = a.iter().map(|v| v.to_string()).collect();
+    let mut s: Vec<String> = Vec::with_capacity(a.len());
+    for v in &a {
+        s.push(
+            i.stringify(v)
+                .map_err(|c| unwrap_ctrl(Err(c)).unwrap_err())?,
+        );
+    }
     i.write_out(&format!("{}\n", s.join(" ")));
     Ok(Value::Nil)
 }
@@ -469,11 +513,15 @@ fn b_len(_: I, a: Vec<Value>) -> Res {
     }))
 }
 
-fn b_str(_: I, a: Vec<Value>) -> Res {
+fn b_str(i: I, a: Vec<Value>) -> Res {
     arity("str", &a, 0, 1)?;
-    Ok(Value::str(
-        a.first().map(|v| v.to_string()).unwrap_or_default(),
-    ))
+    match a.first() {
+        Some(v) => Ok(Value::str(
+            i.stringify(v)
+                .map_err(|c| unwrap_ctrl(Err(c)).unwrap_err())?,
+        )),
+        None => Ok(Value::str("")),
+    }
 }
 
 fn b_repr(_: I, a: Vec<Value>) -> Res {
@@ -521,6 +569,10 @@ fn b_float(_: I, a: Vec<Value>) -> Res {
             .parse()
             .map(Value::Float)
             .map_err(|_| format!("float(): invalid literal {:?}", s.as_ref())),
+        Value::Quantity(q) => Err(format!(
+            "float() of a quantity is ambiguous; use .in(\"{}\") or .si",
+            q.unit_name()
+        )),
         v => num("float", v).map(Value::Float),
     }
 }
@@ -582,6 +634,10 @@ fn b_abs(_: I, a: Vec<Value>) -> Res {
     arity("abs", &a, 1, 1)?;
     match &a[0] {
         Value::Int(n) => Ok(Value::Int(n.abs())),
+        Value::Quantity(q) => Ok(Value::Quantity(crate::units::Quantity {
+            si: q.si.abs(),
+            ..q.clone()
+        })),
         v => Ok(Value::Float(num("abs", v)?.abs())),
     }
 }
@@ -642,8 +698,12 @@ fn b_log(_: I, a: Vec<Value>) -> Res {
     }))
 }
 
-fn b_round(_: I, a: Vec<Value>) -> Res {
+fn b_round(i: I, a: Vec<Value>) -> Res {
     arity("round", &a, 1, 2)?;
+    if let Value::Quantity(_) = &a[0] {
+        let args: Vec<Value> = a[1..].to_vec();
+        return unwrap_ctrl(i.call_method(&a[0], "round", args));
+    }
     let x = num("round", &a[0])?;
     match a.get(1) {
         None => Ok(Value::Int(x.round() as i64)),
@@ -768,9 +828,39 @@ fn b_zip(i: I, a: Vec<Value>) -> Res {
     ))
 }
 
+fn b_sqrt(_: I, a: Vec<Value>) -> Res {
+    arity("sqrt", &a, 1, 1)?;
+    if let Value::Quantity(q) = &a[0] {
+        if q.dim.iter().any(|e| e % 2 != 0) {
+            return Err(format!(
+                "sqrt() of {} has no unit",
+                crate::units::describe(&q.dim)
+            ));
+        }
+        let mut d = q.dim;
+        for e in d.iter_mut() {
+            *e /= 2;
+        }
+        return Ok(Value::Quantity(crate::units::Quantity::si(q.si.sqrt(), d)));
+    }
+    Ok(Value::Float(num("sqrt", &a[0])?.sqrt()))
+}
+
+fn trig(name: &str, a: Vec<Value>, f: fn(f64) -> f64) -> Res {
+    arity(name, &a, 1, 1)?;
+    let r = crate::ext::radians_of(&a[0]).ok_or_else(|| {
+        format!(
+            "{name}() expects an angle (radians or e.g. 30[deg]), got {}",
+            a[0]
+        )
+    })?;
+    Ok(Value::Float(f(r)))
+}
+
 fn b_sleep(_: I, a: Vec<Value>) -> Res {
     arity("sleep", &a, 1, 1)?;
-    let s = num("sleep", &a[0])?;
+    let s = crate::ext::seconds_of(&a[0])
+        .ok_or("sleep() expects seconds or a time quantity like 250[ms]")?;
     std::thread::sleep(std::time::Duration::from_secs_f64(s.max(0.0)));
     Ok(Value::Nil)
 }
@@ -898,6 +988,16 @@ pub fn timestamp() -> String {
 pub fn format_spec(v: &Value, spec: &str) -> Result<String, String> {
     if spec.is_empty() {
         return Ok(v.to_string());
+    }
+    if let Value::Quantity(q) = v {
+        if spec != "?" {
+            // format the number in its display unit, then append the unit
+            return Ok(format!(
+                "{} {}",
+                format_spec(&Value::Float(q.display_value()), spec)?,
+                q.unit_name()
+            ));
+        }
     }
     if spec == "?" {
         return Ok(v.repr());

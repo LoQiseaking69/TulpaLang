@@ -10,9 +10,11 @@
 pub mod ast;
 pub mod builtins;
 pub mod devices;
+pub mod ext;
 pub mod interp;
 pub mod lexer;
 pub mod parser;
+pub mod units;
 pub mod value;
 
 pub use devices::Backend;
@@ -25,18 +27,28 @@ pub use value::Value;
 /// Runs on a dedicated thread with a large stack, because the evaluator recurses on the
 /// native stack (deep Tulpa recursion needs more than the default 2 MiB).
 pub fn run_captured(src: &str) -> Result<String, String> {
+    run_captured_in(src, ".")
+}
+
+/// Like [`run_captured`], resolving `import` paths relative to `base_dir`.
+pub fn run_captured_in(
+    src: &str,
+    base_dir: impl Into<std::path::PathBuf>,
+) -> Result<String, String> {
     let src = src.to_string();
+    let base = base_dir.into();
     std::thread::Builder::new()
         .stack_size(256 * 1024 * 1024)
-        .spawn(move || run_captured_here(&src))
+        .spawn(move || run_captured_here(&src, base))
         .map_err(|e| e.to_string())?
         .join()
         .map_err(|_| "interpreter thread panicked".to_string())?
 }
 
-fn run_captured_here(src: &str) -> Result<String, String> {
+fn run_captured_here(src: &str, base: std::path::PathBuf) -> Result<String, String> {
     let prog = parse(src).map_err(|e| format!("parse error at {}:{}: {}", e.line, e.col, e.msg))?;
     let (mut i, out) = Interpreter::captured();
+    i.base_dirs = vec![base];
     i.run(&prog).map_err(|e| e.to_string())?;
     let s = out.borrow().clone();
     Ok(s)

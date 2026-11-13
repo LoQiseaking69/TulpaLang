@@ -6,6 +6,9 @@
 
 mod sim;
 pub use sim::SimBus;
+mod tape;
+use tape::Taped;
+pub use tape::{Mode as TapeMode, Tape};
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -41,6 +44,37 @@ pub trait SpiIo {
     fn transfer(&mut self, data: &[u8]) -> Result<Vec<u8>, String>;
     fn set_speed(&mut self, hz: u32) -> Result<(), String>;
     fn set_mode(&mut self, mode: u8) -> Result<(), String>;
+}
+
+pub trait PwmIo {
+    fn set_period_ns(&mut self, ns: u64) -> Result<(), String>;
+    fn set_duty_ns(&mut self, ns: u64) -> Result<(), String>;
+    fn enable(&mut self, on: bool) -> Result<(), String>;
+}
+
+/// Builds a device I/O object, wrapping it in a record/replay tape when one is active.
+/// In replay mode the real backend is never opened.
+macro_rules! make_io {
+    ($i:expr, $dev:expr, $tr:ty, $real:expr) => {{
+        let tape = $i.tape.clone();
+        let boxed: Box<$tr> = match tape {
+            Some(t) if t.borrow().mode == tape::Mode::Replay => Box::new(Taped::<Box<$tr>> {
+                inner: None,
+                tape: t,
+                dev: $dev,
+            }),
+            Some(t) => {
+                let real: Box<$tr> = $real;
+                Box::new(Taped::<Box<$tr>> {
+                    inner: Some(real),
+                    tape: t,
+                    dev: $dev,
+                })
+            }
+            None => $real,
+        };
+        boxed
+    }};
 }
 
 pub trait UartIo {
@@ -446,10 +480,15 @@ fn b_gpio_new(i: &mut Interpreter, a: Vec<Value>) -> Res {
         Some(d) => parse_direction(d)?,
         None => true,
     };
-    let mut io: Box<dyn GpioIo> = match i.backend {
-        Backend::Sim => Box::new(sim::SimGpio::new(i.sim.clone(), pin)),
-        Backend::Linux => linux_gpio(pin)?,
-    };
+    let mut io = make_io!(
+        i,
+        format!("gpio{pin}"),
+        dyn GpioIo,
+        match i.backend {
+            Backend::Sim => Box::new(sim::SimGpio::new(i.sim.clone(), pin)),
+            Backend::Linux => linux_gpio(pin)?,
+        }
+    );
     io.set_output(output)?;
     Ok(Value::native(Gpio { pin, output, io }))
 }
@@ -465,10 +504,15 @@ fn b_i2c_new(i: &mut Interpreter, a: Vec<Value>) -> Res {
         return Err(format!("I2C address 0x{addr:x} out of 7-bit range"));
     }
     let (bus, addr) = (bus as u32, addr as u16);
-    let io: Box<dyn I2cIo> = match i.backend {
-        Backend::Sim => Box::new(sim::SimI2c::new(i.sim.clone(), bus, addr)),
-        Backend::Linux => linux_i2c(bus, addr)?,
-    };
+    let io = make_io!(
+        i,
+        format!("i2c{bus}:0x{addr:02x}"),
+        dyn I2cIo,
+        match i.backend {
+            Backend::Sim => Box::new(sim::SimI2c::new(i.sim.clone(), bus, addr)),
+            Backend::Linux => linux_i2c(bus, addr)?,
+        }
+    );
     Ok(Value::native(I2c { bus, addr, io }))
 }
 
@@ -484,10 +528,15 @@ fn b_spi_new(i: &mut Interpreter, a: Vec<Value>) -> Res {
         .map(|v| int("SPI::new", v))
         .transpose()?
         .unwrap_or(0) as u32;
-    let io: Box<dyn SpiIo> = match i.backend {
-        Backend::Sim => Box::new(sim::SimSpi::new(i.sim.clone(), bus, cs)),
-        Backend::Linux => linux_spi(bus, cs)?,
-    };
+    let io = make_io!(
+        i,
+        format!("spi{bus}.{cs}"),
+        dyn SpiIo,
+        match i.backend {
+            Backend::Sim => Box::new(sim::SimSpi::new(i.sim.clone(), bus, cs)),
+            Backend::Linux => linux_spi(bus, cs)?,
+        }
+    );
     Ok(Value::native(Spi { bus, cs, io }))
 }
 
@@ -499,11 +548,278 @@ fn b_uart_new(i: &mut Interpreter, a: Vec<Value>) -> Res {
         .map(|v| int("UART::new", v))
         .transpose()?
         .unwrap_or(9600) as u32;
-    let io: Box<dyn UartIo> = match i.backend {
-        Backend::Sim => Box::new(sim::SimUart::new(i.sim.clone(), port.clone())),
-        Backend::Linux => linux_uart(&port, baud)?,
-    };
+    let io = make_io!(
+        i,
+        format!("uart:{port}"),
+        dyn UartIo,
+        match i.backend {
+            Backend::Sim => Box::new(sim::SimUart::new(i.sim.clone(), port.clone())),
+            Backend::Linux => linux_uart(&port, baud)?,
+        }
+    );
     Ok(Value::native(Uart { port, baud, io }))
+}
+
+pub struct Pwm {
+    chip: u32,
+    ch: u32,
+    period_ns: u64,
+    duty_ns: u64,
+    enabled: bool,
+    io: Box<dyn PwmIo>,
+}
+
+impl Pwm {
+    fn set_period(&mut self, ns: u64) -> Result<(), String> {
+        if ns == 0 {
+            return Err("PWM period must be > 0".into());
+        }
+        if self.duty_ns > ns {
+            self.duty_ns = ns;
+            self.io.set_duty_ns(ns)?;
+        }
+        self.io.set_period_ns(ns)?;
+        self.period_ns = ns;
+        Ok(())
+    }
+    fn set_duty(&mut self, ns: u64) -> Result<(), String> {
+        if ns > self.period_ns {
+            return Err(format!(
+                "PWM pulse {ns} ns exceeds period {} ns",
+                self.period_ns
+            ));
+        }
+        self.io.set_duty_ns(ns)?;
+        self.duty_ns = ns;
+        Ok(())
+    }
+    fn enable(&mut self, on: bool) -> Result<(), String> {
+        self.io.enable(on)?;
+        self.enabled = on;
+        Ok(())
+    }
+}
+
+fn ns_of(v: &Value, unit_if_plain: f64, what: &str) -> Result<u64, String> {
+    let secs = match v {
+        Value::Quantity(_) => {
+            crate::ext::seconds_of(v).ok_or_else(|| format!("{what} expects a time, got {v}"))?
+        }
+        other => num(what, other)? * unit_if_plain,
+    };
+    if secs < 0.0 {
+        return Err(format!("{what} must be non-negative"));
+    }
+    Ok((secs * 1e9).round() as u64)
+}
+
+fn hz_of(v: &Value) -> Result<f64, String> {
+    match v {
+        Value::Quantity(q) if q.dim == [0, 0, -1, 0, 0, 0, 0, 0] => Ok(q.si),
+        Value::Quantity(_) => Err(format!("frequency() expects Hz, got {v}")),
+        other => num("frequency", other),
+    }
+}
+
+impl Native for Pwm {
+    fn type_name(&self) -> &'static str {
+        "PWM"
+    }
+    fn describe(&self) -> String {
+        format!(
+            "<PWM {}.{} {} Hz duty {:.1}%>",
+            self.chip,
+            self.ch,
+            1e9 / self.period_ns as f64,
+            100.0 * self.duty_ns as f64 / self.period_ns as f64
+        )
+    }
+    fn call_method(&mut self, m: &str, a: &[Value]) -> Res {
+        match m {
+            "frequency" | "set_frequency" => {
+                let hz = hz_of(arg(a, 0, "frequency")?)?;
+                if hz <= 0.0 {
+                    return Err("frequency must be > 0".into());
+                }
+                let frac = self.duty_ns as f64 / self.period_ns as f64;
+                let period = (1e9 / hz).round() as u64;
+                self.set_period(period)?;
+                self.set_duty((frac * period as f64).round() as u64)?;
+                Ok(Value::Nil)
+            }
+            "period" => {
+                self.set_period(ns_of(arg(a, 0, "period")?, 1e-9, "period")?)?;
+                Ok(Value::Nil)
+            }
+            "duty" | "set_duty" => {
+                let f = num("duty", arg(a, 0, "fraction")?)?;
+                if !(0.0..=1.0).contains(&f) {
+                    return Err(format!("duty fraction {f} outside 0..1"));
+                }
+                self.set_duty((f * self.period_ns as f64).round() as u64)?;
+                Ok(Value::Nil)
+            }
+            "pulse" | "pulse_width" => {
+                self.set_duty(ns_of(arg(a, 0, "pulse")?, 1e-6, "pulse")?)?; // plain numbers are µs
+                Ok(Value::Nil)
+            }
+            "enable" | "on" => {
+                self.enable(true)?;
+                Ok(Value::Nil)
+            }
+            "disable" | "off" => {
+                self.enable(false)?;
+                Ok(Value::Nil)
+            }
+            "state" => {
+                let mut d = crate::value::Dict::default();
+                d.set(Value::str("period_ns"), Value::Int(self.period_ns as i64))?;
+                d.set(Value::str("duty_ns"), Value::Int(self.duty_ns as i64))?;
+                d.set(Value::str("enabled"), Value::Bool(self.enabled))?;
+                Ok(Value::dict(d))
+            }
+            _ => Err(format!("PWM has no method '{m}'")),
+        }
+    }
+}
+
+/// Hobby servo on a PWM channel (50 Hz, pulse width proportional to angle).
+pub struct Servo {
+    pwm: Pwm,
+    min_us: f64,
+    max_us: f64,
+    range_deg: f64,
+    angle: Option<f64>,
+}
+
+impl Native for Servo {
+    fn type_name(&self) -> &'static str {
+        "Servo"
+    }
+    fn describe(&self) -> String {
+        match self.angle {
+            Some(a) => format!("<Servo {}.{} at {a} deg>", self.pwm.chip, self.pwm.ch),
+            None => format!("<Servo {}.{} detached>", self.pwm.chip, self.pwm.ch),
+        }
+    }
+    fn call_method(&mut self, m: &str, a: &[Value]) -> Res {
+        match m {
+            "angle" | "write" | "move_to" => {
+                let Some(v) = a.first() else {
+                    return Ok(match self.angle {
+                        Some(x) => Value::Quantity(crate::units::Quantity::new(
+                            x,
+                            std::rc::Rc::new(crate::units::parse("deg").unwrap()),
+                        )),
+                        None => Value::Nil,
+                    });
+                };
+                let deg = match v {
+                    Value::Quantity(_) => crate::ext::radians_of(v)
+                        .ok_or_else(|| format!("Servo.angle expects an angle, got {v}"))?
+                        .to_degrees(),
+                    other => num("angle", other)?,
+                };
+                if deg < -1e-9 || deg > self.range_deg + 1e-9 {
+                    return Err(format!(
+                        "servo angle {deg:.2} deg outside 0..{} deg",
+                        self.range_deg
+                    ));
+                }
+                let us = self.min_us + (self.max_us - self.min_us) * deg / self.range_deg;
+                self.pwm.set_duty((us * 1000.0).round() as u64)?;
+                if !self.pwm.enabled {
+                    self.pwm.enable(true)?;
+                }
+                self.angle = Some(deg);
+                Ok(Value::Nil)
+            }
+            "center" => self.call_method("angle", &[Value::Float(self.range_deg / 2.0)]),
+            "detach" => {
+                self.pwm.enable(false)?;
+                self.angle = None;
+                Ok(Value::Nil)
+            }
+            "pulse_us" => Ok(Value::Float(self.pwm.duty_ns as f64 / 1000.0)),
+            _ => Err(format!("Servo has no method '{m}'")),
+        }
+    }
+}
+
+fn open_pwm(i: &mut Interpreter, chip: u32, ch: u32) -> Result<Pwm, String> {
+    let io = make_io!(
+        i,
+        format!("pwm{chip}.{ch}"),
+        dyn PwmIo,
+        match i.backend {
+            Backend::Sim => Box::new(sim::SimPwm::new(i.sim.clone(), chip, ch)),
+            Backend::Linux => linux_pwm(chip, ch)?,
+        }
+    );
+    let mut p = Pwm {
+        chip,
+        ch,
+        period_ns: 20_000_000,
+        duty_ns: 0,
+        enabled: false,
+        io,
+    };
+    p.io.set_period_ns(p.period_ns)?;
+    Ok(p)
+}
+
+fn b_pwm_new(i: &mut Interpreter, a: Vec<Value>) -> Res {
+    pad_args("PWM::new", &a, 0, 2)?;
+    let chip = a
+        .first()
+        .map(|v| int("PWM::new", v))
+        .transpose()?
+        .unwrap_or(0) as u32;
+    let ch = a
+        .get(1)
+        .map(|v| int("PWM::new", v))
+        .transpose()?
+        .unwrap_or(0) as u32;
+    Ok(Value::native(open_pwm(i, chip, ch)?))
+}
+
+fn b_servo_new(i: &mut Interpreter, a: Vec<Value>) -> Res {
+    pad_args("Servo::new", &a, 0, 5)?;
+    let g = |k: usize, d: f64| {
+        a.get(k)
+            .map(|v| num("Servo::new", v))
+            .transpose()
+            .map(|x| x.unwrap_or(d))
+    };
+    let (chip, ch) = (g(0, 0.0)? as u32, g(1, 0.0)? as u32);
+    let (min_us, max_us, range_deg) = (g(2, 500.0)?, g(3, 2500.0)?, g(4, 180.0)?);
+    if min_us >= max_us || range_deg <= 0.0 {
+        return Err("Servo::new: need min_us < max_us and range > 0".into());
+    }
+    let pwm = open_pwm(i, chip, ch)?;
+    Ok(Value::native(Servo {
+        pwm,
+        min_us,
+        max_us,
+        range_deg,
+        angle: None,
+    }))
+}
+
+fn b_i2c_scan(i: &mut Interpreter, a: Vec<Value>) -> Res {
+    pad_args("I2C::scan", &a, 0, 1)?;
+    let bus = a
+        .first()
+        .map(|v| int("I2C::scan", v))
+        .transpose()?
+        .unwrap_or(1) as u32;
+    let found: Vec<u16> = match i.backend {
+        Backend::Sim => i.sim.borrow().i2c_addresses(bus),
+        Backend::Linux => linux_scan(bus)?,
+    };
+    Ok(Value::list(
+        found.into_iter().map(|x| Value::Int(x as i64)).collect(),
+    ))
 }
 
 fn b_pid_new(_: &mut Interpreter, a: Vec<Value>) -> Res {
@@ -518,6 +834,22 @@ fn b_pid_new(_: &mut Interpreter, a: Vec<Value>) -> Res {
     }))
 }
 
+#[cfg(target_os = "linux")]
+fn linux_pwm(chip: u32, ch: u32) -> Result<Box<dyn PwmIo>, String> {
+    Ok(Box::new(linux::SysfsPwm::open(chip, ch)?))
+}
+#[cfg(target_os = "linux")]
+fn linux_scan(bus: u32) -> Result<Vec<u16>, String> {
+    linux::scan(bus)
+}
+#[cfg(not(target_os = "linux"))]
+fn linux_pwm(_: u32, _: u32) -> Result<Box<dyn PwmIo>, String> {
+    unsupported()
+}
+#[cfg(not(target_os = "linux"))]
+fn linux_scan(_: u32) -> Result<Vec<u16>, String> {
+    unsupported()
+}
 #[cfg(target_os = "linux")]
 fn linux_gpio(pin: u32) -> Result<Box<dyn GpioIo>, String> {
     Ok(Box::new(linux::SysfsGpio::open(pin)?))
@@ -572,6 +904,17 @@ fn sim_only(i: &Interpreter, f: &str) -> Result<(), String> {
 }
 
 const SIM: &[(&str, NativeFn)] = &[
+    ("pwm", |i, a| {
+        sim_only(i, "pwm")?;
+        pad_args("sim::pwm", &a, 2, 2)?;
+        let (chip, ch) = (int("pwm", &a[0])? as u32, int("pwm", &a[1])? as u32);
+        let (p, d, e) = i.sim.borrow().pwm_state(chip, ch);
+        let mut dict = crate::value::Dict::default();
+        dict.set(Value::str("period_ns"), Value::Int(p as i64))?;
+        dict.set(Value::str("duty_ns"), Value::Int(d as i64))?;
+        dict.set(Value::str("enabled"), Value::Bool(e))?;
+        Ok(Value::dict(dict))
+    }),
     ("backend", |i, _| {
         Ok(Value::str(if i.backend == Backend::Sim {
             "sim"
@@ -685,6 +1028,9 @@ const SIM: &[(&str, NativeFn)] = &[
 pub fn path(m: &str, name: &str) -> Option<Value> {
     let f: NativeFn = match (m, name) {
         ("GPIO" | "gpio", "new" | "open") => b_gpio_new,
+        ("I2C" | "i2c", "scan") => b_i2c_scan,
+        ("PWM" | "pwm", "new" | "open") => b_pwm_new,
+        ("Servo" | "servo", "new" | "open") => b_servo_new,
         ("I2C" | "i2c", "new" | "open") => b_i2c_new,
         ("SPI" | "spi", "new" | "open") => b_spi_new,
         ("UART" | "uart", "new" | "open") => b_uart_new,
@@ -698,10 +1044,13 @@ pub fn path(m: &str, name: &str) -> Option<Value> {
         _ => return None,
     };
     let label: &'static str = match m {
+        _ if name == "scan" => "I2C::scan",
         "GPIO" | "gpio" => "GPIO::new",
         "I2C" | "i2c" => "I2C::new",
         "SPI" | "spi" => "SPI::new",
         "UART" | "uart" => "UART::new",
+        "PWM" | "pwm" => "PWM::new",
+        "Servo" | "servo" => "Servo::new",
         _ => "PID::new",
     };
     Some(Value::Builtin(label, f))

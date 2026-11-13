@@ -1,0 +1,10 @@
+import "lib/drive.rav"
+from "lib/drive" import Twist, wheels
+
+let spin = Twist(angular: 90[deg].to("rad") / 1[s])
+let arc = Twist(linear: 0.3[m/s], angular: 0.5[rad/s])
+for name, t in [["spin", spin], ["arc", arc]] {
+    let lr = wheels(t)
+    print(f"{name}: left={lr[0].round(3)} right={lr[1].round(3)}")
+}
+print("track:", drive.TRACK_WIDTH, "| calls:", drive.calls(), "| private visible:", "_calls" in drive)

@@ -1,6 +1,6 @@
 //! In-memory simulated hardware bus.
 
-use super::{GpioIo, I2cIo, SpiIo, UartIo};
+use super::{GpioIo, I2cIo, PwmIo, SpiIo, UartIo};
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
@@ -13,6 +13,7 @@ pub struct SimBus {
     uart_rx: HashMap<String, VecDeque<u8>>,
     uart_tx: HashMap<String, Vec<u8>>,
     uart_no_loop: HashMap<String, bool>,
+    pwm: HashMap<(u32, u32), (u64, u64, bool)>,
     /// Human-readable transaction log, readable from scripts via `sim::log()`.
     pub log: Vec<String>,
 }
@@ -76,6 +77,19 @@ impl SimBus {
     }
     pub fn uart_set_loopback(&mut self, port: &str, on: bool) {
         self.uart_no_loop.insert(port.to_string(), !on);
+    }
+    pub fn i2c_addresses(&self, bus: u32) -> Vec<u16> {
+        let mut v: Vec<u16> = self
+            .i2c
+            .keys()
+            .filter(|(b, _)| *b == bus)
+            .map(|(_, a)| *a)
+            .collect();
+        v.sort_unstable();
+        v
+    }
+    pub fn pwm_state(&self, chip: u32, ch: u32) -> (u64, u64, bool) {
+        self.pwm.get(&(chip, ch)).copied().unwrap_or((0, 0, false))
     }
     pub fn spi_queue(&mut self, bus: u32, cs: u32, data: Vec<u8>) {
         self.spi.entry((bus, cs)).or_default().push_back(data);
@@ -262,5 +276,49 @@ impl UartIo for SimUart {
             .uart_rx
             .get(&self.port)
             .map_or(0, |q| q.len()))
+    }
+}
+
+pub struct SimPwm {
+    bus: Rc<RefCell<SimBus>>,
+    id: (u32, u32),
+}
+
+impl SimPwm {
+    pub fn new(bus: Rc<RefCell<SimBus>>, chip: u32, ch: u32) -> Self {
+        bus.borrow_mut()
+            .pwm
+            .entry((chip, ch))
+            .or_insert((0, 0, false));
+        SimPwm {
+            bus,
+            id: (chip, ch),
+        }
+    }
+}
+
+impl PwmIo for SimPwm {
+    fn set_period_ns(&mut self, ns: u64) -> Result<(), String> {
+        let mut b = self.bus.borrow_mut();
+        b.pwm.get_mut(&self.id).unwrap().0 = ns;
+        b.note(format!("pwm {}.{} period {ns} ns", self.id.0, self.id.1));
+        Ok(())
+    }
+    fn set_duty_ns(&mut self, ns: u64) -> Result<(), String> {
+        let mut b = self.bus.borrow_mut();
+        b.pwm.get_mut(&self.id).unwrap().1 = ns;
+        b.note(format!("pwm {}.{} duty {ns} ns", self.id.0, self.id.1));
+        Ok(())
+    }
+    fn enable(&mut self, on: bool) -> Result<(), String> {
+        let mut b = self.bus.borrow_mut();
+        b.pwm.get_mut(&self.id).unwrap().2 = on;
+        b.note(format!(
+            "pwm {}.{} {}",
+            self.id.0,
+            self.id.1,
+            if on { "enabled" } else { "disabled" }
+        ));
+        Ok(())
     }
 }

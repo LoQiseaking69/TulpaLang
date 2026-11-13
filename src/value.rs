@@ -1,7 +1,8 @@
 //! Runtime values.
 
-use crate::ast::{FnDef, MacroArg};
+use crate::ast::{FnDef, MachineDef, MacroArg, StructDef};
 use crate::interp::Env;
+use crate::units::Quantity;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
@@ -34,6 +35,13 @@ pub enum Value {
     Task(Rc<RefCell<Task>>),
     /// Call-by-name macro parameter (expression or block + defining scope).
     Thunk(Rc<(MacroArg, Env)>),
+    /// Number with physical dimension.
+    Quantity(Quantity),
+    StructType(Rc<StructType>),
+    Object(Rc<RefCell<Object>>),
+    MachineType(Rc<MachineType>),
+    Machine(Rc<RefCell<MachineInst>>),
+    Signal(Rc<RefCell<Signal>>),
 }
 
 pub struct Closure {
@@ -142,6 +150,12 @@ impl Value {
             Value::Native(n) => n.borrow().type_name(),
             Value::Task(_) => "task",
             Value::Thunk(_) => "thunk",
+            Value::Quantity(_) => "quantity",
+            Value::StructType(_) => "struct",
+            Value::Object(_) => "object",
+            Value::MachineType(_) => "machine",
+            Value::Machine(_) => "machine instance",
+            Value::Signal(_) => "signal",
         }
     }
 
@@ -243,6 +257,15 @@ impl Value {
             (Value::Func(a), Value::Func(b)) => Rc::ptr_eq(a, b),
             (Value::Native(a), Value::Native(b)) => Rc::ptr_eq(a, b),
             (Value::Task(a), Value::Task(b)) => Rc::ptr_eq(a, b),
+            (Value::Quantity(a), Value::Quantity(b)) => {
+                a.dim == b.dim
+                    && (a.si - b.si).abs() <= 1e-12 * a.si.abs().max(b.si.abs()).max(1e-300)
+            }
+            (Value::Object(a), Value::Object(b)) => Rc::ptr_eq(a, b),
+            (Value::Machine(a), Value::Machine(b)) => Rc::ptr_eq(a, b),
+            (Value::Signal(a), Value::Signal(b)) => Rc::ptr_eq(a, b),
+            (Value::StructType(a), Value::StructType(b)) => Rc::ptr_eq(a, b),
+            (Value::MachineType(a), Value::MachineType(b)) => Rc::ptr_eq(a, b),
             _ => false,
         }
     }
@@ -291,6 +314,27 @@ impl fmt::Display for Value {
                 _ => write!(f, "<task pending>"),
             },
             Value::Thunk(_) => write!(f, "<thunk>"),
+            Value::Quantity(q) => write!(f, "{q}"),
+            Value::StructType(t) => write!(f, "<struct {}>", t.def.name),
+            Value::Object(o) => {
+                let o = o.borrow();
+                let fields: Vec<String> = o
+                    .fields
+                    .iter()
+                    .map(|(k, v)| format!("{k}: {}", v.repr()))
+                    .collect();
+                write!(f, "{}({})", o.ty.def.name, fields.join(", "))
+            }
+            Value::MachineType(t) => write!(f, "<machine {}>", t.def.name),
+            Value::Machine(m) => {
+                let m = m.borrow();
+                write!(
+                    f,
+                    "<{} in {}>",
+                    m.ty.def.name, m.ty.def.states[m.state].name
+                )
+            }
+            Value::Signal(sig) => write!(f, "signal({})", sig.borrow().value.repr()),
         }
     }
 }
@@ -299,4 +343,55 @@ impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.repr())
     }
+}
+
+pub struct StructType {
+    pub def: Rc<StructDef>,
+    pub env: Env,
+}
+
+pub struct Object {
+    pub ty: Rc<StructType>,
+    pub fields: Vec<(String, Value)>,
+}
+
+impl Object {
+    pub fn get(&self, k: &str) -> Option<Value> {
+        self.fields
+            .iter()
+            .find(|(n, _)| n == k)
+            .map(|(_, v)| v.clone())
+    }
+    pub fn set(&mut self, k: &str, v: Value) -> bool {
+        match self.fields.iter_mut().find(|(n, _)| n == k) {
+            Some(slot) => {
+                slot.1 = v;
+                true
+            }
+            None => false,
+        }
+    }
+}
+
+pub struct MachineType {
+    pub def: Rc<MachineDef>,
+    pub env: Env,
+}
+
+pub struct MachineInst {
+    pub ty: Rc<MachineType>,
+    pub env: Env,
+    pub state: usize,
+    pub history: Vec<String>,
+}
+
+pub struct Signal {
+    pub value: Value,
+    pub prev: Value,
+    pub changed_at: f64,
+    pub prev_at: f64,
+    pub history: std::collections::VecDeque<Value>,
+    pub capacity: usize,
+    pub derive: Option<Value>,
+    pub subscribers: Vec<Value>,
 }
