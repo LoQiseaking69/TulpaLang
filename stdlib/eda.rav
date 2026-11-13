@@ -1,0 +1,259 @@
+# std/eda — schematic capture as code: parts, pins, nets, electrical rule checks,
+# power budgets in real units, and netlist / BOM / JSON export.
+#
+#   import "std/eda"
+#   let b = eda.Board(name: "demo")
+#   b.part("U1", "MCU", "STM32F4", pins: ["VDD", "GND", "TX", "RX"], cost: 8.5, draw: 0.3[W])
+#   b.power("VCC3V3", 3.3[V]); b.ground("GND")
+#   b.connect("VCC3V3", "U1.VDD"); b.connect("GND", ["U1.GND"])
+#   b.decouple("U1", "VDD", "GND")
+#   print(b.erc()); b.write_netlist("demo.net"); b.write_bom("demo_bom.csv")
+
+struct Pin {
+    part: str
+    name: str
+    kind: str = "io"          # io | power_in | power_out | ground | passive | nc
+    net = nil
+    fn id(self) { self.part + "." + self.name }
+}
+
+struct Part {
+    ref: str
+    kind: str
+    value: str = ""
+    footprint: str = ""
+    pins = {}
+    cost: float = 0.0
+    draw: [W] = 0[W]            # power consumed from its supply rail(s)
+    supplies = {}               # rail name -> max deliverable power [W] (regulators, PSUs)
+    efficiency: float = 1.0
+    supplied_from = nil         # rail the regulator itself draws from
+    mpn: str = ""
+    fn pin(self, name) {
+        let p = self.pins.get(name, nil)
+        if p == nil { error(f"eda: part {self.ref} has no pin '{name}' (pins: {self.pins.keys()})") }
+        p
+    }
+    fn to_str(self) { f"{self.ref} ({self.kind} {self.value})" }
+}
+
+struct Net {
+    name: str
+    kind: str = "signal"       # signal | power | ground
+    voltage = nil
+    pins = []
+    fn to_str(self) { f"net {self.name} ({len(self.pins)} pins)" }
+}
+
+fn _pin_kind(name) {
+    let n = name.upper()
+    if n == "GND" or n.ends_with("_GND") or n.starts_with("GND") or n == "VSS" { return "ground" }
+    if n == "VCC" or n == "VDD" or n.ends_with("_VCC") or n.starts_with("VCC") or n.starts_with("VDD") or n == "VIN" { return "power_in" }
+    if n.starts_with("OUT") or n.starts_with("VOUT") { return "power_out" }
+    if n == "NC" { return "nc" }
+    "io"
+}
+
+struct Board {
+    name: str
+    parts = {}
+    nets = {}
+    order = []
+    _cap_count: int = 0
+    fn part(self, ref, kind, value = "", pins = [], cost = 0.0, draw = 0[W], footprint = "", mpn = "") {
+        if ref in self.parts { error(f"eda: duplicate reference designator {ref}") }
+        let p = Part(ref: ref, kind: kind, value: value, cost: float(cost), draw: draw, footprint: footprint, mpn: mpn)
+        for name in pins { p.pins[name] = Pin(part: ref, name: name, kind: _pin_kind(name)) }
+        self.parts[ref] = p
+        self.order.push(ref)
+        p
+    }
+    fn regulator(self, ref, kind, value, input_rail, outputs, efficiency = 0.9, cost = 0.0, pins = []) {
+        let p = self.part(ref, kind, value, pins: pins, cost: cost)
+        p.supplies = outputs
+        p.efficiency = efficiency
+        p.supplied_from = input_rail
+        p
+    }
+    fn net(self, name, kind = "signal", voltage = nil) {
+        if not (name in self.nets) { self.nets[name] = Net(name: name, kind: kind, voltage: voltage) }
+        self.nets[name]
+    }
+    fn power(self, name, voltage) { self.net(name, "power", voltage) }
+    fn ground(self, name) { self.net(name, "ground", 0[V]) }
+    # connect("NET", "U1.VCC") or connect("NET", ["U1.VCC", "U2.VCC", ...])
+    fn connect(self, net_name, pins) {
+        let n = self.net(net_name)
+        let flat = if type(pins) == "list" { pins } else { [pins] }
+        for spec in flat {
+            let parts = spec.split(".")
+            if len(parts) != 2 { error(f"eda: pin spec '{spec}' must look like REF.PIN") }
+            let pin = self.parts.get(parts[0], nil)
+            if pin == nil { error(f"eda: unknown part '{parts[0]}' in {spec}") }
+            let pn = pin.pin(parts[1])
+            if pn.net != nil and pn.net != net_name {
+                error(f"eda: {spec} is already on net {pn.net}; cannot also join {net_name}")
+            }
+            if pn.net == nil { pn.net = net_name; n.pins.push(spec) }
+        }
+        n
+    }
+    # Adds `count` bypass capacitors between ref.pin's net and ground.
+    fn decouple(self, ref, pin, gnd, count = 2, value = "100nF", footprint = "0603", cost = 0.1) {
+        let p = self.parts[ref].pin(pin)
+        if p.net == nil { error(f"eda: decouple {ref}.{pin}: connect the pin to a rail first") }
+        let made = []
+        for _ in 0..count {
+            self._cap_count += 1
+            let cref = "C" + str(self._cap_count)
+            self.part(cref, "Capacitor", value, pins: ["1", "2"], cost: cost, footprint: footprint)
+            self.parts[cref].pins["1"].kind = "passive"
+            self.parts[cref].pins["2"].kind = "passive"
+            self.connect(p.net, cref + ".1")
+            self.connect(gnd, cref + ".2")
+            made.push(cref)
+        }
+        made
+    }
+
+    # ---------------------------------------------------------- checks
+    fn erc(self) {
+        let issues = []
+        for ref in self.order {
+            let part = self.parts[ref]
+            for name, pin in part.pins {
+                if pin.kind == "nc" { continue }
+                if pin.net == nil {
+                    let sev = if pin.kind == "power_in" or pin.kind == "ground" { "error" } else { "warning" }
+                    issues.push({severity: sev, msg: f"{pin.id()} is unconnected"})
+                    continue
+                }
+                let net = self.nets[pin.net]
+                if pin.kind == "ground" and net.kind != "ground" {
+                    issues.push({severity: "error", msg: f"ground pin {pin.id()} is on non-ground net {net.name}"})
+                }
+                if pin.kind == "power_in" and net.kind == "signal" {
+                    issues.push({severity: "error", msg: f"power pin {pin.id()} is on signal net {net.name}"})
+                }
+            }
+        }
+        for name, net in self.nets {
+            if len(net.pins) == 1 {
+                issues.push({severity: "warning", msg: f"net {name} has a single connection ({net.pins[0]})"})
+            }
+            if len(net.pins) == 0 {
+                issues.push({severity: "warning", msg: f"net {name} has no connections"})
+            }
+        }
+        issues
+    }
+
+    # Power drawn on each rail (devices whose power pins sit on it) vs. what feeds it.
+    fn power_budget(self) {
+        let rails = {}
+        for name, net in self.nets {
+            if net.kind == "power" { rails[name] = {load: 0[W], capacity: 0[W], voltage: net.voltage, loads: []} }
+        }
+        for ref in self.order {
+            let part = self.parts[ref]
+            if part.draw > 0 {
+                # split the part's draw evenly over the distinct rails its power pins touch
+                let touched = []
+                for _, pin in part.pins {
+                    if pin.kind == "power_in" and pin.net != nil and pin.net in rails and not (pin.net in touched) { touched.push(pin.net) }
+                }
+                for r in touched {
+                    rails[r].load += part.draw / len(touched)
+                    rails[r].loads.push(ref)
+                }
+            }
+            for rail, cap in part.supplies {
+                if rail in rails { rails[rail].capacity += cap }
+            }
+        }
+        # regulators draw their (output load / efficiency) from their input rail
+        for ref in self.order {
+            let part = self.parts[ref]
+            if part.supplied_from != nil and part.supplied_from in rails {
+                let out = 0[W]
+                for rail, _ in part.supplies { if rail in rails { out += rails[rail].load } }
+                rails[part.supplied_from].load += out / part.efficiency
+                rails[part.supplied_from].loads.push(ref)
+            }
+        }
+        let report = []
+        for name, r in rails {
+            let current = if r.voltage != nil and r.voltage > 0 { r.load / r.voltage } else { nil }
+            let headroom = if r.capacity > 0 { 1.0 - r.load / r.capacity } else { nil }
+            report.push({rail: name, voltage: r.voltage, load: r.load, current: current,
+                         capacity: r.capacity, headroom: headroom, ok: r.capacity <= 0 or r.load <= r.capacity, unsourced: r.capacity <= 0,
+                         loads: r.loads})
+        }
+        report
+    }
+
+    fn bom(self) {
+        let groups = {}
+        let keys = []
+        for ref in self.order {
+            let p = self.parts[ref]
+            let k = p.kind + "|" + p.value + "|" + p.footprint
+            if not (k in groups) {
+                groups[k] = {kind: p.kind, value: p.value, footprint: p.footprint, mpn: p.mpn, refs: [], unit_cost: p.cost}
+                keys.push(k)
+            }
+            groups[k].refs.push(ref)
+        }
+        let rows = []
+        for k in keys {
+            let g = groups[k]
+            g.qty = len(g.refs)
+            g.total = g.unit_cost * g.qty
+            rows.push(g)
+        }
+        rows
+    }
+    fn total_cost(self) { self.bom().map(|r| r.total).sum() }
+
+    # ---------------------------------------------------------- export
+    fn write_netlist(self, path) {
+        # gEDA/PCB-style netlist: NETNAME REF-PIN REF-PIN ...
+        let lines = []
+        for name, net in self.nets {
+            lines.push(name + "\t" + net.pins.map(|p| p.replace(".", "-")).join(" "))
+        }
+        write_file(path, lines.join("\n") + "\n")
+        tlm::artifact(path, "netlist")
+        path
+    }
+    fn write_bom(self, path) {
+        let lines = ["Qty,Kind,Value,Footprint,MPN,Refs,Unit Cost (USD),Total (USD)"]
+        for r in self.bom() {
+            lines.push(f"{r.qty},{r.kind},\"{r.value}\",{r.footprint},{r.mpn},\"{r.refs.join(' ')}\",{r.unit_cost:.2f},{r.total:.2f}")
+        }
+        lines.push(f",,,,,,TOTAL,{self.total_cost():.2f}")
+        write_file(path, lines.join("\n") + "\n")
+        tlm::artifact(path, "bom")
+        path
+    }
+    fn to_dict(self) {
+        let parts = []
+        for ref in self.order {
+            let p = self.parts[ref]
+            let pins = []
+            for name, pin in p.pins { pins.push({name: name, kind: pin.kind, net: pin.net}) }
+            parts.push({ref: ref, kind: p.kind, value: p.value, footprint: p.footprint, cost: p.cost,
+                        draw_w: p.draw.si, pins: pins})
+        }
+        let nets = []
+        for name, n in self.nets {
+            nets.push({name: name, kind: n.kind, voltage: if n.voltage == nil { nil } else { n.voltage.si }, pins: n.pins})
+        }
+        {board: self.name, parts: parts, nets: nets}
+    }
+    fn write_json(self, path) {
+        json::save(path, self.to_dict())
+        tlm::artifact(path, "board")
+        path
+    }
+}

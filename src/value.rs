@@ -17,6 +17,10 @@ pub trait Native {
     fn describe(&self) -> String {
         format!("<{}>", self.type_name())
     }
+    /// Downcasting hook for natives that take other natives as arguments (e.g. `nn` tensors).
+    fn as_any(&self) -> Option<&dyn std::any::Any> {
+        None
+    }
 }
 
 #[derive(Clone)]

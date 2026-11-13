@@ -762,6 +762,15 @@ pub fn completion(text: &str, line: usize, col: usize) -> Vec<J> {
                 .collect();
         }
     }
+    // `Module::<partial>` → module members
+    let before_word = prefix.trim_end_matches(|c: char| c.is_alphanumeric() || c == '_');
+    if let Some(head) = before_word.strip_suffix("::") {
+        let m: String = head.chars().rev().take_while(|c| c.is_alphanumeric() || *c == '_').collect::<String>().chars().rev().collect();
+        let members = crate::builtins::module_members(&m);
+        if !members.is_empty() {
+            return members.into_iter().map(|n| item(n, 3, &format!("{m}::{n}"))).collect();
+        }
+    }
     // `obj.<partial>` → methods
     let before_word = prefix.trim_end_matches(|c: char| c.is_alphanumeric() || c == '_');
     if before_word.ends_with('.') && !before_word.ends_with("..") {

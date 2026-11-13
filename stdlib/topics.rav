@@ -1,0 +1,68 @@
+# std/topics — a typed publish/subscribe bus (ROS-style topics) built on Tulpa signals.
+#
+#   import "std/topics"
+#   let bus = topics.Bus()
+#   bus.subscribe("/joint_states", |m| print(m.position))
+#   bus.publish("/joint_states", topics.JointState(["hip"], [0.1], [0.0], [0.0]))
+#
+# Every topic also exposes a `signal`, so `when` rules and `always` envelopes can watch it:
+#   when bus.topic("/foot_force").signal.get() != nil { ... }
+
+struct Topic {
+    name: str
+    type: str = "any"
+    depth: int = 10
+    subs = []
+    queue = []
+    count: int = 0
+    signal = nil
+    stamp = 0.0
+    fn init(self) { self.signal = signal(nil) }
+    fn publish(self, msg) {
+        if self.type != "any" and type(msg) == "dict" and msg.get("_type", self.type) != self.type {
+            error(f"topic {self.name}: expected {self.type}, got {msg.get('_type', '?')}")
+        }
+        self.count += 1
+        self.stamp = millis() / 1000.0
+        self.queue.push(msg)
+        if len(self.queue) > self.depth { self.queue.pop(0) }
+        for cb in self.subs { cb(msg) }
+        self.signal.set(msg)
+    }
+    fn subscribe(self, cb) { self.subs.push(cb); len(self.subs) }
+    fn latest(self) { if len(self.queue) == 0 { nil } else { self.queue[-1] } }
+    fn drain(self) { let q = self.queue; self.queue = []; q }
+}
+
+struct Bus {
+    topics = {}
+    fn topic(self, name, type = "any", depth = 10) {
+        if not (name in self.topics) { self.topics[name] = Topic(name: name, type: type, depth: depth) }
+        self.topics[name]
+    }
+    fn publish(self, name, msg) { self.topic(name).publish(msg) }
+    fn subscribe(self, name, cb) { self.topic(name).subscribe(cb) }
+    fn latest(self, name) { self.topic(name).latest() }
+    fn stats(self) {
+        let out = []
+        for name, t in self.topics { out.push({topic: name, type: t.type, messages: t.count, subscribers: len(t.subs)}) }
+        out
+    }
+}
+
+# ---------------------------------------------------------------- message constructors
+
+fn JointState(names, position, velocity = [], effort = []) {
+    {_type: "JointState", stamp: millis() / 1000.0, name: names, position: position, velocity: velocity, effort: effort}
+}
+
+fn Wrench(force, torque = [0.0, 0.0, 0.0]) {
+    {_type: "Wrench", stamp: millis() / 1000.0, force: force, torque: torque}
+}
+
+fn Float64MultiArray(data) { {_type: "Float64MultiArray", stamp: millis() / 1000.0, data: data} }
+
+fn Imu(orientation, angular_velocity, linear_acceleration) {
+    {_type: "Imu", stamp: millis() / 1000.0, orientation: orientation,
+     angular_velocity: angular_velocity, linear_acceleration: linear_acceleration}
+}

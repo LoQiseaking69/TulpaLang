@@ -1049,7 +1049,9 @@ impl Interpreter {
             Value::Dict(d) => {
                 let member = d.borrow().get(&Value::str(name))?;
                 match member {
-                    Some(f @ (Value::Func(_) | Value::Builtin(..))) => self.call(&f, args),
+                    Some(f @ (Value::Func(_) | Value::Builtin(..) | Value::StructType(_) | Value::MachineType(_))) => {
+                        self.call(&f, args)
+                    }
                     _ => builtins::method(self, o, name, args).map_err(Ctrl::from),
                 }
             }

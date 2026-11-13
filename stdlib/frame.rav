@@ -1,0 +1,49 @@
+# std/frame — robust packet framing for byte links (UART, BLE, sockets).
+#
+# Wire format: 0x00, COBS( type:u8 | seq:u8 | len:u16 | payload | crc16 ), 0x00. COBS removes zeros from the body, so the delimiter always resynchronises.
+#
+#   import "std/frame"
+#   let bytes = frame.encode(pack::f32s([1.0, 2.0]), type: 2, seq: 7)
+#   let dec = frame.Decoder()
+#   for f in dec.feed(bytes) { print(f.type, pack::to_f32s(f.payload)) }
+
+fn encode(payload, type = 0, seq = 0) {
+    let body = pack::pack("<BBH", [type & 0xFF, seq & 0xFF, len(payload)]) + payload
+    let crc = pack::crc16(body)
+    let framed = pack::cobs_encode(body + pack::pack("<H", [crc]))
+    [0] + framed + [0]     # leading delimiter flushes any line noise before the frame
+}
+
+struct Decoder {
+    buf = []
+    good: int = 0
+    crc_errors: int = 0
+    framing_errors: int = 0
+    max_len: int = 4096
+    fn feed(self, bytes) {
+        let out = []
+        for b in bytes {
+            if b != 0 {
+                self.buf.push(b)
+                if len(self.buf) > self.max_len { self.buf = []; self.framing_errors += 1 }
+                continue
+            }
+            if len(self.buf) == 0 { continue }
+            let raw = self.buf
+            self.buf = []
+            let body = []
+            try { body = pack::cobs_decode(raw) } catch e { self.framing_errors += 1; continue }
+            if len(body) < 6 { self.framing_errors += 1; continue }
+            let n = len(body)
+            let crc = pack::unpack("<H", body[n - 2..n])[0]
+            let msg = body[0..n - 2]
+            if pack::crc16(msg) != crc { self.crc_errors += 1; continue }
+            let hdr = pack::unpack("<BBH", msg[0..4])
+            if hdr[2] != len(msg) - 4 { self.framing_errors += 1; continue }
+            self.good += 1
+            out.push({type: hdr[0], seq: hdr[1], payload: msg[4..len(msg)]})
+        }
+        out
+    }
+    fn stats(self) { {good: self.good, crc_errors: self.crc_errors, framing_errors: self.framing_errors} }
+}

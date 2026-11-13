@@ -2,7 +2,7 @@
   "name": "tulpa-lang",
   "displayName": "Tulpa",
   "description": "Tulpa language support: syntax highlighting, unit-aware diagnostics, hover, completion and run/verify/build commands via the tulpa language server.",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "publisher": "hermitech",
   "license": "BSD-3-Clause",
   "repository": { "type": "git", "url": "https://github.com/LoQiseaking69/TulpaLang" },
