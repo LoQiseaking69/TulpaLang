@@ -1,0 +1,71 @@
+{
+  "name": "tulpa-lang",
+  "displayName": "Tulpa",
+  "description": "Tulpa language support: syntax highlighting, unit-aware diagnostics, hover, completion and run/verify/build commands via the tulpa language server.",
+  "version": "3.1.0",
+  "publisher": "hermitech",
+  "license": "BSD-3-Clause",
+  "repository": { "type": "git", "url": "https://github.com/LoQiseaking69/TulpaLang" },
+  "icon": "icon.png",
+  "engines": { "vscode": "^1.75.0" },
+  "categories": ["Programming Languages", "Linters"],
+  "keywords": ["tulpa", "robotics", "embedded", "units", "state machines"],
+  "activationEvents": ["onLanguage:tulpa"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "tulpa",
+        "aliases": ["Tulpa", "tulpa"],
+        "extensions": [".rav", ".tlp"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      { "language": "tulpa", "scopeName": "source.tulpa", "path": "./syntaxes/tulpa.tmLanguage.json" }
+    ],
+    "configuration": {
+      "title": "Tulpa",
+      "properties": {
+        "tulpa.serverPath": {
+          "type": "string",
+          "default": "tulpa",
+          "description": "Path to the tulpa executable (used for the language server and commands)."
+        },
+        "tulpa.runArgs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Extra flags for 'Tulpa: Run File', e.g. [\"--virtual-time\"] or [\"--hw\"]."
+        }
+      }
+    },
+    "commands": [
+      { "command": "tulpa.run", "title": "Tulpa: Run File" },
+      { "command": "tulpa.test", "title": "Tulpa: Run Tests in File" },
+      { "command": "tulpa.verify", "title": "Tulpa: Verify Contracts" },
+      { "command": "tulpa.build", "title": "Tulpa: Build Native Object" },
+      { "command": "tulpa.graph", "title": "Tulpa: Show State Machine Diagrams" },
+      { "command": "tulpa.restartServer", "title": "Tulpa: Restart Language Server" }
+    ],
+    "menus": {
+      "editor/title/run": [
+        { "command": "tulpa.run", "when": "editorLangId == tulpa", "group": "navigation" }
+      ]
+    },
+    "keybindings": [
+      { "command": "tulpa.run", "key": "f5", "when": "editorLangId == tulpa && !inDebugMode" }
+    ]
+  },
+  "scripts": {
+    "build": "esbuild src/extension.js --bundle --platform=node --external:vscode --outfile=out/extension.js --minify",
+    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.0"
+  }
+}

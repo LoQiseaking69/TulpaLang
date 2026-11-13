@@ -1021,6 +1021,7 @@ impl Interpreter {
     pub fn call_method(&mut self, o: &Value, name: &str, args: Vec<Value>) -> R<Value> {
         match o {
             Value::Native(n) => {
+                self.sync_tape_clock()?;
                 let r = n.borrow_mut().call_method(name, &args);
                 if self.trace_devices {
                     let desc = n.borrow().describe();
@@ -1033,6 +1034,7 @@ impl Interpreter {
                     }
                 }
                 let v = r.map_err(Ctrl::from)?;
+                self.settle_tape_clock()?;
                 if self.has_reactive() {
                     self.react()?;
                 }

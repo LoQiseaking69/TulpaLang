@@ -1,0 +1,374 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Tulpa",
+  "scopeName": "source.tulpa",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#quantity"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#declarations"
+    },
+    {
+      "include": "#machine"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#primed"
+    },
+    {
+      "include": "#macros"
+    },
+    {
+      "include": "#paths"
+    },
+    {
+      "include": "#calls"
+    },
+    {
+      "include": "#operators"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.tulpa",
+          "match": "#.*$"
+        },
+        {
+          "name": "comment.line.double-slash.tulpa",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.tulpa",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.f.tulpa",
+          "begin": "f\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.tulpa",
+              "match": "\\\\."
+            },
+            {
+              "name": "meta.interpolation.tulpa",
+              "begin": "\\{(?!\\{)",
+              "end": "\\}",
+              "beginCaptures": {
+                "0": {
+                  "name": "punctuation.section.interpolation.begin.tulpa"
+                }
+              },
+              "endCaptures": {
+                "0": {
+                  "name": "punctuation.section.interpolation.end.tulpa"
+                }
+              },
+              "patterns": [
+                {
+                  "include": "$self"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.tulpa",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.tulpa",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.tulpa",
+          "begin": "(?<![A-Za-z0-9_])'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.tulpa",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "quantity": {
+      "match": "\\b(\\d[\\d_]*(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)(\\[)([A-Za-z0-9_*/^.\\- ]+)(\\])",
+      "captures": {
+        "1": {
+          "name": "constant.numeric.tulpa"
+        },
+        "2": {
+          "name": "punctuation.definition.unit.begin.tulpa"
+        },
+        "3": {
+          "name": "support.type.unit.tulpa"
+        },
+        "4": {
+          "name": "punctuation.definition.unit.end.tulpa"
+        }
+      }
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.tulpa",
+          "match": "\\b0[xX][0-9a-fA-F_]+\\b"
+        },
+        {
+          "name": "constant.numeric.binary.tulpa",
+          "match": "\\b0[bB][01_]+\\b"
+        },
+        {
+          "name": "constant.numeric.tulpa",
+          "match": "\\b\\d[\\d_]*(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b"
+        }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(fn|def)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.function.tulpa"
+            },
+            "2": {
+              "name": "entity.name.function.tulpa"
+            }
+          }
+        },
+        {
+          "match": "\\b(struct)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.struct.tulpa"
+            },
+            "2": {
+              "name": "entity.name.type.struct.tulpa"
+            }
+          }
+        },
+        {
+          "match": "\\b(machine)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.machine.tulpa"
+            },
+            "2": {
+              "name": "entity.name.type.machine.tulpa"
+            }
+          }
+        },
+        {
+          "match": "\\b(let|const)\\s+(mut\\s+)?([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.tulpa"
+            },
+            "2": {
+              "name": "storage.modifier.tulpa"
+            },
+            "3": {
+              "name": "variable.other.declaration.tulpa"
+            }
+          }
+        }
+      ]
+    },
+    "machine": {
+      "patterns": [
+        {
+          "match": "^\\s*(state)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.other.state.tulpa"
+            },
+            "2": {
+              "name": "entity.name.tag.state.tulpa"
+            }
+          }
+        },
+        {
+          "match": "^\\s*(on)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.other.on.tulpa"
+            },
+            "2": {
+              "name": "entity.name.function.event.tulpa"
+            }
+          }
+        },
+        {
+          "match": "^\\s*(enter|exit)\\b(?=\\s*\\{)",
+          "name": "keyword.other.hook.tulpa"
+        },
+        {
+          "match": "(=>)\\s*([A-Z][A-Za-z0-9_]*)\\b",
+          "captures": {
+            "1": {
+              "name": "keyword.operator.arrow.tulpa"
+            },
+            "2": {
+              "name": "entity.name.tag.state.tulpa"
+            }
+          }
+        },
+        {
+          "match": "^\\s*(after)\\b(?!\\s*[=.(\\[,])",
+          "name": "keyword.control.temporal.tulpa"
+        },
+        {
+          "match": "\\b(within)\\b",
+          "name": "keyword.control.temporal.tulpa"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.tulpa",
+          "match": "\\b(if|elif|else|while|for|in|loop|break|continue|return|match|try|catch|spawn|await)\\b"
+        },
+        {
+          "name": "keyword.control.contract.tulpa",
+          "match": "\\b(require|ensure|invariant|assert|always|when)\\b"
+        },
+        {
+          "name": "keyword.other.import.tulpa",
+          "match": "\\b(use|import|from|as)\\b"
+        },
+        {
+          "name": "keyword.operator.logical.tulpa",
+          "match": "\\b(and|or|not)\\b"
+        },
+        {
+          "name": "constant.language.tulpa",
+          "match": "\\b(true|false|nil|self|PI|TAU|E|HIGH|LOW|ARGS)\\b"
+        },
+        {
+          "name": "storage.type.tulpa",
+          "match": "\\b(fn|def|let|const|mut|struct|machine)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "match": "(:|->)\\s*(int|float|num|number|str|bool|list|dict|fn|any|quantity|signal|range|task)\\b(\\?)?",
+          "captures": {
+            "2": {
+              "name": "support.type.primitive.tulpa"
+            },
+            "3": {
+              "name": "keyword.operator.optional.tulpa"
+            }
+          }
+        },
+        {
+          "match": "(:|->)\\s*(\\[)([A-Za-z0-9_*/^.\\- ]+)(\\])",
+          "captures": {
+            "2": {
+              "name": "punctuation.definition.unit.begin.tulpa"
+            },
+            "3": {
+              "name": "support.type.unit.tulpa"
+            },
+            "4": {
+              "name": "punctuation.definition.unit.end.tulpa"
+            }
+          }
+        },
+        {
+          "name": "support.class.device.tulpa",
+          "match": "\\b(GPIO|I2C|SPI|UART|PWM|Servo|PID|CAN|BLE)\\b"
+        }
+      ]
+    },
+    "primed": {
+      "name": "variable.other.primed.tulpa",
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*'"
+    },
+    "macros": {
+      "name": "entity.name.function.macro.tulpa",
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*!(?=\\()"
+    },
+    "paths": {
+      "match": "\\b([A-Za-z_][A-Za-z0-9_]*)(::)([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "entity.name.namespace.tulpa"
+        },
+        "2": {
+          "name": "punctuation.separator.namespace.tulpa"
+        },
+        "3": {
+          "name": "entity.name.function.tulpa"
+        }
+      }
+    },
+    "calls": {
+      "match": "\\b([A-Za-z_][A-Za-z0-9_]*)(?=\\()",
+      "captures": {
+        "1": {
+          "name": "entity.name.function.call.tulpa"
+        }
+      }
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.pipe.tulpa",
+          "match": "\\|>"
+        },
+        {
+          "name": "keyword.operator.range.tulpa",
+          "match": "\\.\\.=?"
+        },
+        {
+          "name": "keyword.operator.comparison.tulpa",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.assignment.tulpa",
+          "match": "[+\\-*/%]?="
+        },
+        {
+          "name": "keyword.operator.arithmetic.tulpa",
+          "match": "\\*\\*|[+\\-*/%]"
+        },
+        {
+          "name": "keyword.operator.arrow.tulpa",
+          "match": "=>|->"
+        }
+      ]
+    }
+  }
+}

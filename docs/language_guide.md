@@ -438,6 +438,13 @@ Timing logic then runs deterministically and fast in tests. `sim::gpio_input`, `
      `tulpa_violation(msg)`. That's a weak symbol which prints the message and aborts, so you can
      override it in firmware (for example, to trigger an emergency stop).
 
+   **Unit-typed parameters** (`v: [km/h]`, `-> [m]`) compile too.
+   - Dimensions are checked when you build, so `d + t` with a length and a time is rejected with a unit-mismatch message.
+   - The generated code works in SI doubles.
+   - At the C boundary, values pass in the declared unit: `tulpa_stop_dist(36.0 /* km/h */, ...)`.
+   - Calls between native functions convert automatically.
+   - `.in("unit")` and `.to("unit")` with a literal unit, `.si`, `sqrt`, `abs`, `min`/`max`/`clamp`, and trig on angles are all supported.
+
    Functions outside the subset are listed with the reason they were skipped.
 
 ## Editor support

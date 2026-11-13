@@ -1,2 +1,6 @@
-target/
 *.swp
+dist/
+editors/vscode/*.vsix
+editors/vscode/node_modules/
+editors/vscode/out/
+target/

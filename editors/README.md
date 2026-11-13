@@ -17,16 +17,14 @@ vim.api.nvim_create_autocmd("FileType", {
 
 ## VS Code
 
-Install a generic LSP client extension, for example "Generic LSP Client" or `glspc`, and add this to your settings:
+Install the Tulpa extension. It provides syntax highlighting, the language server, and Run/Test/Verify/Build commands.
 
-```json
-{
-  "files.associations": { "*.rav": "tulpa", "*.tlp": "tulpa" },
-  "glspc.languageId": "tulpa",
-  "glspc.serverCommand": "tulpa",
-  "glspc.serverCommandArguments": ["lsp"]
-}
+```bash
+code --install-extension tulpa-lang-<version>.vsix      # from a release, or:
+cd editors/vscode && npm install && npm run package && code --install-extension tulpa-lang-*.vsix
 ```
+
+If `tulpa` isn't on your `PATH`, set `"tulpa.serverPath"`.
 
 ## Helix (`languages.toml`)
 

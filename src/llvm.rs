@@ -9,6 +9,7 @@
 //! so the result links straight into C, C++ or Rust firmware.
 
 use crate::ast::*;
+use crate::units;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
@@ -17,20 +18,37 @@ pub enum Ty {
     I64,
     F64,
     Bool,
+    /// A physical quantity, held as an SI double; its dimension is checked at compile time.
+    Q(units::Dim),
+}
+
+fn qty(d: units::Dim) -> Ty {
+    if d == units::DIMLESS {
+        Ty::F64
+    } else {
+        Ty::Q(d)
+    }
+}
+
+fn dim_of(t: Ty) -> units::Dim {
+    match t {
+        Ty::Q(d) => d,
+        _ => units::DIMLESS,
+    }
 }
 
 impl Ty {
     fn ll(self) -> &'static str {
         match self {
             Ty::I64 => "i64",
-            Ty::F64 => "double",
+            Ty::F64 | Ty::Q(_) => "double",
             Ty::Bool => "i1",
         }
     }
     pub fn c(self) -> &'static str {
         match self {
             Ty::I64 => "int64_t",
-            Ty::F64 => "double",
+            Ty::F64 | Ty::Q(_) => "double",
             Ty::Bool => "_Bool",
         }
     }
@@ -41,6 +59,9 @@ pub struct Sig {
     pub params: Vec<(String, Ty)>,
     pub ret: Ty,
     ret_annotated: bool,
+    /// Declared unit (scale to SI, name) per parameter; C callers pass values in this unit.
+    pub units: Vec<Option<(f64, String)>>,
+    pub ret_unit: Option<(f64, String)>,
 }
 
 pub struct Report {
@@ -57,31 +78,45 @@ impl Report {
             let ps: Vec<String> = sig
                 .params
                 .iter()
-                .map(|(n, t)| format!("{} {n}", t.c()))
+                .zip(sig.units.iter())
+                .map(|((n, t), u)| match (u, t) {
+                    (Some((_, name)), _) => format!("{} {n} /* [{name}] */", t.c()),
+                    (None, Ty::Q(d)) => format!("{} {n} /* [{}] SI */", t.c(), units::dim_name(d)),
+                    _ => format!("{} {n}", t.c()),
+                })
                 .collect();
             let ps = if ps.is_empty() {
                 "void".to_string()
             } else {
                 ps.join(", ")
             };
-            let _ = writeln!(h, "{} tulpa_{name}({ps});", sig.ret.c());
+            let unit = match (&sig.ret_unit, sig.ret) {
+                (Some((_, u)), _) => format!(" /* returns [{u}] */"),
+                (None, Ty::Q(d)) => format!(" /* returns [{}] SI */", units::dim_name(&d)),
+                _ => String::new(),
+            };
+            let _ = writeln!(h, "{} tulpa_{name}({ps});{unit}", sig.ret.c());
         }
         h.push_str(&format!("\n#endif /* {guard} */\n"));
         h
     }
 }
 
-fn ann_ty(t: &Option<TypeAnn>) -> Result<Option<Ty>, String> {
+type UnitInfo = Option<(f64, String)>;
+
+fn ann_ty(t: &Option<TypeAnn>) -> Result<Option<(Ty, UnitInfo)>, String> {
     match t {
         None => Ok(None),
         Some(TypeAnn::Name(n, false)) => match n.as_str() {
-            "int" => Ok(Some(Ty::I64)),
-            "float" | "num" | "number" => Ok(Some(Ty::F64)),
-            "bool" => Ok(Some(Ty::Bool)),
+            "int" => Ok(Some((Ty::I64, None))),
+            "float" | "num" | "number" => Ok(Some((Ty::F64, None))),
+            "bool" => Ok(Some((Ty::Bool, None))),
             other => Err(format!("type '{other}' has no native representation")),
         },
-        Some(TypeAnn::Name(_, true)) => Err("optional types have no native representation".into()),
-        Some(TypeAnn::Unit(..)) => Err("unit-typed values are not supported natively yet".into()),
+        Some(TypeAnn::Name(_, true)) | Some(TypeAnn::Unit(_, true)) => {
+            Err("optional types have no native representation".into())
+        }
+        Some(TypeAnn::Unit(u, false)) => Ok(Some((qty(u.dim), Some((u.scale, u.name.clone()))))),
     }
 }
 
@@ -114,6 +149,7 @@ pub fn emit_module(prog: &[Stmt], module: &str) -> Report {
     let mut sigs: HashMap<String, Sig> = HashMap::new();
     for f in &fns {
         let mut params = Vec::new();
+        let mut punits = Vec::new();
         let mut bad = None;
         for p in &f.params {
             if p.default.is_some() {
@@ -121,7 +157,11 @@ pub fn emit_module(prog: &[Stmt], module: &str) -> Report {
                 break;
             }
             match ann_ty(&p.ty) {
-                Ok(t) => params.push((p.name.clone(), t.unwrap_or(Ty::F64))),
+                Ok(t) => {
+                    let (ty, u) = t.unwrap_or((Ty::F64, None));
+                    params.push((p.name.clone(), ty));
+                    punits.push(u);
+                }
                 Err(e) => {
                     bad = Some(format!("parameter '{}': {e}", p.name));
                     break;
@@ -142,8 +182,10 @@ pub fn emit_module(prog: &[Stmt], module: &str) -> Report {
                     f.name.clone(),
                     Sig {
                         params,
-                        ret: ret.unwrap_or(Ty::F64),
+                        ret: ret.as_ref().map(|r| r.0).unwrap_or(Ty::F64),
                         ret_annotated: ret.is_some(),
+                        units: punits,
+                        ret_unit: ret.and_then(|r| r.1),
                     },
                 );
             }
@@ -264,6 +306,7 @@ fn literal(e: &Expr) -> Option<(String, Ty)> {
         Expr::Int(n) => Some((n.to_string(), Ty::I64)),
         Expr::Float(f) => Some((flit(*f), Ty::F64)),
         Expr::Bool(b) => Some(((*b as u8).to_string(), Ty::Bool)),
+        Expr::Quantity(v, u) => Some((flit(v * u.scale), qty(u.dim))),
         Expr::Unary(op, x, _) if op == "-" => match &**x {
             Expr::Int(n) => Some(((-n).to_string(), Ty::I64)),
             Expr::Float(f) => Some((flit(-f), Ty::F64)),
@@ -395,6 +438,35 @@ impl<'a> FnGen<'a> {
     fn convert(&mut self, v: (String, Ty), to: Ty) -> G<String> {
         Ok(match (v.1, to) {
             (a, b) if a == b => v.0,
+            (Ty::Q(a), Ty::Q(b)) => {
+                return Err(format!(
+                    "unit mismatch: {} where {} is expected",
+                    units::describe(&a),
+                    units::describe(&b)
+                ))
+            }
+            (Ty::Q(_), Ty::Bool) => {
+                let t = self.t();
+                self.line(format!("{t} = fcmp une double {}, 0.0", v.0));
+                t
+            }
+            (Ty::Q(d), _) => {
+                return Err(format!(
+                    "a {} value is used where a plain number is expected",
+                    units::describe(&d)
+                ))
+            }
+            (_, Ty::Q(d)) if is_zero(&v.0) => {
+                let _ = d;
+                "0.0".to_string()
+            }
+            (_, Ty::Q(d)) => {
+                return Err(format!(
+                "a plain number is used where {} is expected (write it with a unit, e.g. 2[{}])",
+                units::describe(&d),
+                units::dim_name(&d)
+            ))
+            }
             (Ty::I64, Ty::F64) => {
                 let t = self.t();
                 self.line(format!("{t} = sitofp i64 {} to double", v.0));
@@ -437,10 +509,19 @@ impl<'a> FnGen<'a> {
         self.scopes.push(HashMap::new());
         let mut body = std::mem::take(&mut self.out);
         self.start("entry");
-        for (n, t) in &sig.params {
+        for ((n, t), u) in sig.params.iter().zip(sig.units.iter()) {
             let ptr = self.declare(n, *t);
-            self.line(format!("store {} %a.{n}, ptr {ptr}", t.ll()));
-            self.initial.insert(n.clone(), (format!("%a.{n}"), *t));
+            // values arrive in the declared unit; work internally in SI
+            let v = match u {
+                Some((scale, _)) if (*scale - 1.0).abs() > 0.0 => {
+                    let si = self.t();
+                    self.line(format!("{si} = fmul double %a.{n}, {}", flit(*scale)));
+                    si
+                }
+                _ => format!("%a.{n}"),
+            };
+            self.line(format!("store {} {v}, ptr {ptr}", t.ll()));
+            self.initial.insert(n.clone(), (v, *t));
         }
         for r in &def.requires {
             let c = self.cond(&r.expr)?;
@@ -517,6 +598,14 @@ impl<'a> FnGen<'a> {
             self.scopes.pop();
         }
         let ty = self.ret.ll();
+        let rv = match self.sigs[&self.name].ret_unit.clone() {
+            Some((scale, _)) if (scale - 1.0).abs() > 0.0 => {
+                let out = self.t();
+                self.line(format!("{out} = fdiv double {rv}, {}", flit(scale)));
+                out
+            }
+            _ => rv,
+        };
         self.term(format!("ret {ty} {rv}"));
         Ok(())
     }
@@ -740,7 +829,7 @@ impl<'a> FnGen<'a> {
         };
         let t = self.t();
         let ptr = match ty {
-            Ty::F64 => slot.unwrap(),
+            Ty::F64 | Ty::Q(_) => slot.unwrap(),
             Ty::I64 => slot_i.unwrap(),
             Ty::Bool => slot_b.unwrap(),
         };
@@ -761,7 +850,11 @@ impl<'a> FnGen<'a> {
         if v.1 == Ty::I64 {
             self.line(format!("store i64 {}, ptr {}", v.0, i.as_ref().unwrap()));
         }
-        let fv = self.convert(v, Ty::F64)?;
+        let fv = if matches!(v.1, Ty::Q(_)) {
+            v.0
+        } else {
+            self.convert(v, Ty::F64)?
+        };
         self.line(format!("store double {fv}, ptr {}", f.as_ref().unwrap()));
         Ok(())
     }
@@ -869,19 +962,67 @@ impl<'a> FnGen<'a> {
                         ));
                     }
                     let mut argl = Vec::new();
-                    for (v, (_, t)) in vals.into_iter().zip(sig.params.iter()) {
-                        let c = self.convert(v, *t)?;
+                    for ((v, (pn, t)), u) in vals
+                        .into_iter()
+                        .zip(sig.params.iter())
+                        .zip(sig.units.iter())
+                    {
+                        let mut c = self
+                            .convert(v, *t)
+                            .map_err(|e| format!("argument '{pn}' of {name}(): {e}"))?;
+                        if let Some((scale, _)) = u {
+                            if (*scale - 1.0).abs() > 0.0 {
+                                let d = self.t();
+                                self.line(format!("{d} = fdiv double {c}, {}", flit(*scale)));
+                                c = d;
+                            }
+                        }
                         argl.push(format!("{} {c}", t.ll()));
                     }
-                    let t = self.t();
+                    let mut t = self.t();
                     self.line(format!(
                         "{t} = call {} @tulpa_{name}({})",
                         sig.ret.ll(),
                         argl.join(", ")
                     ));
+                    if let Some((scale, _)) = &sig.ret_unit {
+                        if (*scale - 1.0).abs() > 0.0 {
+                            let si = self.t();
+                            self.line(format!("{si} = fmul double {t}, {}", flit(*scale)));
+                            t = si;
+                        }
+                    }
                     return Ok((t, sig.ret));
                 }
                 self.builtin(name, vals)
+            }
+            Expr::Quantity(v, u) => Ok((flit(v * u.scale), qty(u.dim))),
+            Expr::MethodCall(o, m, args, _) if matches!(m.as_str(), "in" | "as" | "to") => {
+                let [Expr::Str(unit)] = args.as_slice() else {
+                    return Err(format!(".{m}() needs a unit string literal natively"));
+                };
+                let v = self.expr(o)?;
+                let u = units::parse(unit)?;
+                if dim_of(v.1) != u.dim {
+                    return Err(format!(
+                        "cannot convert {} to '{unit}' ({})",
+                        units::describe(&dim_of(v.1)),
+                        units::describe(&u.dim)
+                    ));
+                }
+                if m == "to" {
+                    return Ok(v); // same physical value; display units don't exist natively
+                }
+                let t = self.t();
+                self.line(format!("{t} = fdiv double {}, {}", v.0, flit(u.scale)));
+                Ok((t, Ty::F64))
+            }
+            Expr::Field(o, f, _) if f == "si" => {
+                let v = self.expr(o)?;
+                match v.1 {
+                    Ty::Q(_) => Ok((v.0, Ty::F64)),
+                    _ => Err(".si is only defined on quantities".into()),
+                }
             }
             Expr::MacroCall(..) => Err("macros are not supported natively".into()),
             other => Err(format!(
@@ -907,7 +1048,63 @@ impl<'a> FnGen<'a> {
         Ok(v)
     }
 
+    /// Arithmetic on quantities: dimensions are checked here, at compile time; the generated
+    /// code is plain double arithmetic on SI values.
+    fn qbinop(&mut self, op: &str, a: (String, Ty), b: (String, Ty)) -> G<(String, Ty)> {
+        let (da, db) = (dim_of(a.1), dim_of(b.1));
+        let zero = is_zero(&a.0) || is_zero(&b.0);
+        let raw = |g: &mut Self, v: (String, Ty)| -> G<(String, Ty)> {
+            match v.1 {
+                Ty::Q(_) => Ok((v.0, Ty::F64)),
+                Ty::I64 => Ok((g.convert(v, Ty::F64)?, Ty::F64)),
+                Ty::F64 => Ok(v),
+                Ty::Bool => Err("booleans cannot be combined with quantities".into()),
+            }
+        };
+        let mismatch = || {
+            format!(
+                "unit mismatch: cannot apply '{op}' to {} and {}",
+                units::describe(&da),
+                units::describe(&db)
+            )
+        };
+        if op == "**" {
+            let n: i32 = if b.1 == Ty::I64 {
+                b.0.parse()
+                    .map_err(|_| "a quantity's exponent must be an integer literal".to_string())?
+            } else {
+                return Err("a quantity's exponent must be an integer literal".into());
+            };
+            let x = raw(self, a)?;
+            let r = self.binop("**", x, (n.to_string(), Ty::I64))?;
+            return Ok((r.0, qty(units::pow_dim(da, n))));
+        }
+        let x = raw(self, a)?;
+        let y = raw(self, b)?;
+        match op {
+            "+" | "-" | "%" => {
+                if da != db && !zero {
+                    return Err(mismatch());
+                }
+                let r = self.binop(op, x, y)?;
+                Ok((r.0, qty(if da == units::DIMLESS { db } else { da })))
+            }
+            "*" => Ok((self.binop(op, x, y)?.0, qty(units::mul_dim(da, db)))),
+            "/" => Ok((self.binop(op, x, y)?.0, qty(units::div_dim(da, db)))),
+            "==" | "!=" | "<" | "<=" | ">" | ">=" => {
+                if da != db && !zero {
+                    return Err(mismatch());
+                }
+                self.binop(op, x, y)
+            }
+            _ => Err(format!("operator '{op}' is not defined for quantities")),
+        }
+    }
+
     fn binop(&mut self, op: &str, a: (String, Ty), b: (String, Ty)) -> G<(String, Ty)> {
+        if matches!(a.1, Ty::Q(_)) || matches!(b.1, Ty::Q(_)) {
+            return self.qbinop(op, a, b);
+        }
         let both_int = a.1 == Ty::I64 && b.1 == Ty::I64;
         let both_bool = a.1 == Ty::Bool && b.1 == Ty::Bool;
         let t = self.t();
@@ -1067,6 +1264,77 @@ impl<'a> FnGen<'a> {
     }
 
     fn builtin(&mut self, name: &str, args: Vec<(String, Ty)>) -> G<(String, Ty)> {
+        if args.iter().any(|a| matches!(a.1, Ty::Q(_))) {
+            return self.qbuiltin(name, args);
+        }
+        self.plain_builtin(name, args)
+    }
+
+    /// Math builtins on quantities, with dimensions checked at compile time.
+    fn qbuiltin(&mut self, name: &str, args: Vec<(String, Ty)>) -> G<(String, Ty)> {
+        let d0 = dim_of(args[0].1);
+        let strip = |v: &(String, Ty)| {
+            (
+                v.0.clone(),
+                if matches!(v.1, Ty::Q(_)) {
+                    Ty::F64
+                } else {
+                    v.1
+                },
+            )
+        };
+        match (name, args.len()) {
+            ("sqrt", 1) => {
+                if d0.iter().any(|e| e % 2 != 0) {
+                    return Err(format!("sqrt() of {} has no unit", units::describe(&d0)));
+                }
+                let mut half = d0;
+                for e in half.iter_mut() {
+                    *e /= 2;
+                }
+                let r = self.plain_builtin("sqrt", vec![strip(&args[0])])?;
+                Ok((r.0, qty(half)))
+            }
+            ("sin" | "cos" | "tan", 1) => {
+                if d0 != [0, 0, 0, 0, 0, 0, 0, 1] {
+                    return Err(format!(
+                        "{name}() expects an angle, got {}",
+                        units::describe(&d0)
+                    ));
+                }
+                self.plain_builtin(name, vec![strip(&args[0])])
+            }
+            ("abs", 1) => {
+                let r = self.plain_builtin("abs", vec![strip(&args[0])])?;
+                Ok((r.0, args[0].1))
+            }
+            ("min" | "max" | "clamp", _) => {
+                for a in &args {
+                    if dim_of(a.1) != d0 && !is_zero(&a.0) {
+                        return Err(format!("{name}() arguments have different units"));
+                    }
+                }
+                let plain: Vec<(String, Ty)> = args
+                    .iter()
+                    .map(|a| {
+                        (
+                            if is_zero(&a.0) {
+                                "0.0".to_string()
+                            } else {
+                                a.0.clone()
+                            },
+                            Ty::F64,
+                        )
+                    })
+                    .collect();
+                let r = self.plain_builtin(name, plain)?;
+                Ok((r.0, qty(d0)))
+            }
+            _ => Err(format!("{name}() does not accept unit quantities natively")),
+        }
+    }
+
+    fn plain_builtin(&mut self, name: &str, args: Vec<(String, Ty)>) -> G<(String, Ty)> {
         let unary_f = |n: &str| -> Option<(&'static str, &'static str)> {
             Some(match n {
                 "sqrt" => ("llvm.sqrt.f64", "declare double @llvm.sqrt.f64(double)"),
@@ -1201,7 +1469,6 @@ fn expr_kind(e: &Expr) -> &'static str {
         Expr::Dict(_) => "dicts",
         Expr::Lambda(_) => "closures",
         Expr::Match(..) => "match",
-        Expr::Quantity(..) => "unit quantities",
         Expr::MethodCall(..) => "method calls",
         Expr::Field(..) | Expr::Index(..) => "field/index access",
         Expr::Spawn(..) | Expr::Await(..) => "tasks",
@@ -1213,4 +1480,8 @@ fn expr_kind(e: &Expr) -> &'static str {
 /// Exact double literal in LLVM's hex notation.
 fn flit(f: f64) -> String {
     format!("0x{:016X}", f.to_bits())
+}
+
+fn is_zero(v: &str) -> bool {
+    v == "0" || v == "0.0" || v == flit(0.0)
 }

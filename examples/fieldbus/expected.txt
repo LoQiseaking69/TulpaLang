@@ -1,0 +1,7 @@
+gauge services: ["1800", "180f", "181a"]
+motor: 1185 rpm @ 4.2 A
+pack: 64% at 28.5 C
+battery now 40 %
+low battery: motor stopped
+battery now 19 %
+commands sent: 2

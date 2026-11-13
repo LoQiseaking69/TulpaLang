@@ -4,6 +4,9 @@
 //! * `sim`   – an in-memory bus (default). Deterministic, scriptable via `sim::*`, safe to run anywhere.
 //! * `linux` – real hardware through sysfs GPIO, `/dev/i2c-N`, `/dev/spidevB.C` and serial TTYs.
 
+mod ble;
+pub use ble::normalize_uuid as ble_normalize_uuid;
+mod can;
 mod sim;
 pub use sim::SimBus;
 mod tape;
@@ -912,6 +915,36 @@ fn sim_react(i: &mut Interpreter) -> Result<(), String> {
 }
 
 const SIM: &[(&str, NativeFn)] = &[
+    ("can_inject", |i, a| {
+        sim_only(i, "can_inject")?;
+        pad_args("sim::can_inject", &a, 3, 3)?;
+        let id = int("can_inject", &a[1])? as u32;
+        can::sim_inject(&i.sim, &a[0].to_string(), id, a[2].to_bytes()?);
+        sim_react(i)?;
+        Ok(Value::Nil)
+    }),
+    ("can_sent", |i, a| {
+        sim_only(i, "can_sent")?;
+        pad_args("sim::can_sent", &a, 1, 1)?;
+        can::sim_sent(&i.sim, &a[0].to_string())
+    }),
+    ("ble_device", |i, a| {
+        sim_only(i, "ble_device")?;
+        pad_args("sim::ble_device", &a, 1, 4)?;
+        ble::sim_device(i, a)
+    }),
+    ("ble_notify", |i, a| {
+        sim_only(i, "ble_notify")?;
+        pad_args("sim::ble_notify", &a, 3, 3)?;
+        ble::sim_notify(i, a)?;
+        sim_react(i)?;
+        Ok(Value::Nil)
+    }),
+    ("ble_written", |i, a| {
+        sim_only(i, "ble_written")?;
+        pad_args("sim::ble_written", &a, 2, 2)?;
+        ble::sim_written(i, a)
+    }),
     ("virtual_time", |i, a| {
         pad_args("sim::virtual_time", &a, 0, 1)?;
         let on = a.first().map(|v| v.truthy()).unwrap_or(true);
@@ -1060,6 +1093,9 @@ pub fn path(m: &str, name: &str) -> Option<Value> {
         ("I2C" | "i2c", "scan") => b_i2c_scan,
         ("PWM" | "pwm", "new" | "open") => b_pwm_new,
         ("Servo" | "servo", "new" | "open") => b_servo_new,
+        ("CAN" | "can", "new" | "open") => can::b_can_new,
+        ("BLE" | "ble", "connect") => ble::b_ble_connect,
+        ("BLE" | "ble", "scan") => ble::b_ble_scan,
         ("I2C" | "i2c", "new" | "open") => b_i2c_new,
         ("SPI" | "spi", "new" | "open") => b_spi_new,
         ("UART" | "uart", "new" | "open") => b_uart_new,
@@ -1073,6 +1109,9 @@ pub fn path(m: &str, name: &str) -> Option<Value> {
         _ => return None,
     };
     let label: &'static str = match m {
+        "BLE" | "ble" if name == "scan" => "BLE::scan",
+        "BLE" | "ble" => "BLE::connect",
+        "CAN" | "can" => "CAN::new",
         _ if name == "scan" => "I2C::scan",
         "GPIO" | "gpio" => "GPIO::new",
         "I2C" | "i2c" => "I2C::new",

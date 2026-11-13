@@ -109,16 +109,66 @@ tulpa --hw --record bench.tape robot.rav   # capture a real session
 tulpa --replay bench.tape robot.rav        # rerun anywhere, no hardware needed
 ```
 
-**Recording.** Every device operation is logged to a plain-text tape, along with what the device
-returned: GPIO direction, writes and reads; I2C writes, reads and register reads; SPI transfers;
-UART traffic; PWM settings. Each line holds the device, the operation, the input and the output, in hex.
+Tapes are plain text. Each line holds the device, the operation, the input and output in hex, and a timestamp in ms.
 
-**Replaying.** No real or simulated device is opened. Each operation must match the next one on the
-tape, and gets the recorded answer back. The run fails in either of two cases:
-- At the first operation that differs, with a message like `replay diverged at event #2: tape has gpio17 write [01], script did gpio17 write [00]`.
-- If the script ends before using the whole tape.
+**Commands** must match in order: GPIO direction and writes, I2C writes, SPI transfers, UART sends,
+PWM settings, CAN sends and BLE requests. The first difference fails the run:
+`replay diverged at command #1: tape has gpio17 write [01], script did gpio17 write [00]`.
+The run also fails if the script ends with recorded commands unused.
 
-This turns a field session into a regression test for your control logic.
+**Inputs** replay as signals over time: GPIO reads, I2C reads and register reads, and UART `available`.
+A read returns the value the device had at that moment of the recorded run. Rules can therefore
+poll at any rate, and only changes are stored. UART bytes and CAN frames are delivered once they
+have arrived on the recorded timeline.
+
+**Timing.** A timed tape replays on the virtual clock. After each command, the clock advances to
+that command's recorded time. `when … for` debounces and `after … within` deadlines are therefore
+judged against the timing that actually happened on the hardware, and a 10-second field run replays
+in milliseconds.
+
+Tapes without timestamps, written by version 2.0, still replay in order.
+
+## CAN bus
+
+```tulpa
+let bus = CAN::new("can0")                 # SocketCAN interface (vcan0 works for testing)
+bus.send(0x201, [0xB0, 0x04])              # ids above 0x7FF are sent as extended frames
+bus.send(0x18FF50E5, [1, 2, 3], true)      # force the extended (29-bit) format
+let f = bus.receive(100)                   # {id, data, extended}, or nil after 100 ms
+bus.receive_all()                          # drain everything queued
+bus.set_filter(0x180, 0x780)               # kernel-side id/mask filter
+```
+
+Bring an interface up with `sudo ip link set can0 up type can bitrate 500000`, or create a virtual
+one with `sudo ip link add vcan0 type vcan && sudo ip link set vcan0 up`.
+
+In the simulator, sockets on the same interface see each other's frames, but not their own.
+`sim::can_inject(iface, id, data)` plays another node and `sim::can_sent(iface)` lists what was sent.
+
+## Bluetooth LE
+
+```tulpa
+let found = BLE::scan(3[s])                # [{address, name, rssi}], strongest first
+let hrm = BLE::connect("AA:BB:CC:DD:EE:01")   # pass true as the second argument for random addresses
+hrm.services(); hrm.characteristics()      # discovered on connect
+hrm.read("battery_level")                  # names, 16-bit ("2a19") or 128-bit UUIDs
+hrm.read_text("device_name")
+hrm.write("nordic_uart_rx", "GO\n")         # with response; pass false for write-without-response
+hrm.subscribe("heart_rate_measurement")
+for n in hrm.notifications(500) { print(n.uuid, n.data) }   # {uuid, data}
+hrm.disconnect()
+```
+
+Tulpa speaks ATT directly over an L2CAP LE socket on channel 4, so it doesn't need BlueZ's D-Bus API.
+- Long values are read with Read Blob.
+- Indications are confirmed automatically.
+- Scanning uses a raw HCI socket and needs root, or `CAP_NET_RAW` and `CAP_NET_ADMIN`. If `bluetoothd` is scanning at the same time, stop it.
+
+The simulator is a real GATT server: the client runs the same discovery, read, write and notification
+protocol against it.
+- `sim::ble_device(address, name, {service: {characteristic: value}}, rssi)` creates a device.
+- `sim::ble_notify(address, uuid, data)` pushes a notification.
+- `sim::ble_written(address, uuid)` returns the last value the script wrote.
 
 ## The simulator
 

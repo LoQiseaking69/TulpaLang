@@ -1104,6 +1104,32 @@ impl Interpreter {
         Ok(Value::Nil)
     }
 
+    /// Keeps the device tape and the clock in step. Before a device call the tape learns the
+    /// current time (recording stamps events with it; replay answers inputs with the value they
+    /// had at that time). After a replayed command that was recorded later than "now", the
+    /// virtual clock is advanced to the recorded time, so `when ... for` and `after ... within`
+    /// rules are judged against the timing that actually happened.
+    pub(crate) fn sync_tape_clock(&mut self) -> R<()> {
+        if let Some(tape) = &self.tape {
+            tape.borrow_mut().clock = self.now();
+        }
+        Ok(())
+    }
+
+    pub(crate) fn settle_tape_clock(&mut self) -> R<()> {
+        let Some(tape) = self.tape.clone() else {
+            return Ok(());
+        };
+        let lag = tape.borrow_mut().lag_until.take();
+        if let (Some(te), Some(_)) = (lag, self.virtual_time) {
+            let now = self.now();
+            if te > now {
+                self.sleep_secs(te - now)?;
+            }
+        }
+        Ok(())
+    }
+
     /// True when any reactive rule or monitor is registered.
     pub fn has_reactive(&self) -> bool {
         !self.rules.is_empty() || !self.monitors.is_empty() || !self.deadlines.is_empty()
@@ -1135,6 +1161,9 @@ impl Interpreter {
             let steps = (secs * 1000.0 - 1e-9).ceil().max(0.0) as u64;
             for k in 1..=steps {
                 self.virtual_time = Some((t + k as f64 / 1000.0).min(end));
+                if let Some(tape) = &self.tape {
+                    tape.borrow_mut().clock = self.virtual_time.unwrap();
+                }
                 self.react()?;
             }
             self.virtual_time = Some(end);

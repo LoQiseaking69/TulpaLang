@@ -5,7 +5,7 @@ use std::process::ExitCode;
 use tulpa::{parse, Backend, Interpreter, ParseError};
 
 const USAGE: &str = "\
-Tulpa 3.0 — device-integration scripting language
+Tulpa 3.1 — device-integration scripting language
 
 USAGE:
     tulpa [FLAGS] <file.tlp|file.rav> [args...]   run a program
@@ -76,7 +76,13 @@ fn interpreter(o: &Opts, args: &[String]) -> Interpreter {
     }
     if let Some(p) = &o.replay {
         match tulpa::devices::Tape::load(std::path::Path::new(p)) {
-            Ok(t) => i.tape = Some(std::rc::Rc::new(std::cell::RefCell::new(t))),
+            Ok(t) => {
+                // a timed tape replays on a virtual clock driven by its timestamps
+                if t.events.iter().any(|e| e.t.is_some()) {
+                    i.virtual_time = Some(0.0);
+                }
+                i.tape = Some(std::rc::Rc::new(std::cell::RefCell::new(t)))
+            }
             Err(e) => {
                 eprintln!("tulpa: cannot load replay tape: {e}");
                 std::process::exit(2);
@@ -121,14 +127,17 @@ fn run_file(file: &str, args: &[String], o: &Opts) -> ExitCode {
             tulpa::devices::TapeMode::Replay => {
                 if t.remaining() > 0 && code == ExitCode::SUCCESS {
                     eprintln!(
-                        "{file}: replay diverged: script finished with {} recorded device event(s) unused (next: {} {})",
+                        "{file}: replay diverged: script finished with {} recorded device command(s) unused (next: {} {})",
                         t.remaining(),
-                        t.events[t.pos].dev,
-                        t.events[t.pos].op
+                        t.next_command().map(|c| c.0).unwrap_or("?"),
+                        t.next_command().map(|c| c.1).unwrap_or("?")
                     );
                     code = ExitCode::from(70);
                 } else if code == ExitCode::SUCCESS {
-                    eprintln!("tulpa: replay matched all {} device events", t.events.len());
+                    eprintln!(
+                        "tulpa: replay matched all {} device commands",
+                        t.command_count()
+                    );
                 }
             }
         }
@@ -450,7 +459,7 @@ fn balanced(src: &str) -> bool {
 
 fn repl(o: &Opts) -> ExitCode {
     println!(
-        "Tulpa 3.0 REPL — backend: {:?}. Type :quit to exit, :help for help.",
+        "Tulpa 3.1 REPL — backend: {:?}. Type :quit to exit, :help for help.",
         o.backend
     );
     let mut i = interpreter(o, &[]);

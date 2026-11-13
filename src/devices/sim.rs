@@ -14,6 +14,8 @@ pub struct SimBus {
     uart_tx: HashMap<String, Vec<u8>>,
     uart_no_loop: HashMap<String, bool>,
     pwm: HashMap<(u32, u32), (u64, u64, bool)>,
+    pub(crate) can: super::can::SimCan,
+    pub(crate) ble: HashMap<String, super::ble::SimGatt>,
     /// Human-readable transaction log, readable from scripts via `sim::log()`.
     pub log: Vec<String>,
 }
@@ -40,7 +42,7 @@ fn hex(b: &[u8]) -> String {
 }
 
 impl SimBus {
-    fn note(&mut self, s: String) {
+    pub(crate) fn note(&mut self, s: String) {
         if self.log.len() >= 10_000 {
             self.log.remove(0);
         }

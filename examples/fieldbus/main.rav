@@ -1,0 +1,55 @@
+# Rover telemetry: a motor controller on CAN and a battery gauge over Bluetooth LE.
+# On the simulator we stand in for both devices; on hardware run with --hw (can0, hci0).
+
+if sim::backend() == "sim" {
+    sim::ble_device("C0:FF:EE:00:00:01", "PackGauge", {
+        "battery_service": {"battery_level": [64]},
+        "environmental_sensing": {"temperature": int_to_bytes(2850, 2, "little")},
+    }, -55)
+}
+
+const MOTOR_STATUS = 0x181       # motor controller -> us: [rpm lo, rpm hi, current dA lo, hi]
+const MOTOR_CMD = 0x201          # us -> controller: [target rpm lo, hi]
+
+struct MotorStatus {
+    speed: [rpm]
+    current: [A]
+    fn to_str(self) { f"{self.speed.in("rpm"):.0f} rpm @ {self.current.in("A"):.1f} A" }
+}
+
+fn decode_status(data: list) -> MotorStatus {
+    MotorStatus(
+        speed: int_from_bytes(data[0..2], "little") * 1[rpm],
+        current: int_from_bytes(data[2..4], "little") * 0.1[A],
+    )
+}
+
+let bus = CAN::new("can0")
+let gauge = BLE::connect("C0:FF:EE:00:00:01")
+print("gauge services:", gauge.services())
+
+# command 1200 rpm
+bus.send(MOTOR_CMD, int_to_bytes(1200, 2, "little"))
+if sim::backend() == "sim" {
+    sim::can_inject("can0", MOTOR_STATUS, int_to_bytes(1185, 2, "little") + int_to_bytes(42, 2, "little"))
+}
+
+let frame = bus.receive(50)
+let status = decode_status(frame.data)
+let soc = gauge.read("battery_level")[0]
+let temp = int_from_bytes(gauge.read("temperature"), "little") / 100.0
+print(f"motor: {status}")
+print(f"pack: {soc}% at {temp:.1f} C")
+
+always soc > 20 else { bus.send(MOTOR_CMD, [0, 0]); print("low battery: motor stopped") }
+
+# the gauge notifies as the pack drains
+gauge.subscribe("battery_level")
+if sim::backend() == "sim" {
+    for level in [40, 19] { sim::ble_notify("C0:FF:EE:00:00:01", "battery_level", [level]) }
+}
+for n in gauge.notifications(100) {
+    soc = n.data[0]
+    print("battery now", soc, "%")
+}
+print("commands sent:", len(sim::can_sent("can0")))

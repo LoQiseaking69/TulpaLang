@@ -336,6 +336,12 @@ pub fn install(env: &Env) {
 }
 
 const MODULES: &[&str] = &[
+    "CAN",
+    "BLE",
+    "PWM",
+    "Servo",
+    "can",
+    "ble",
     "std",
     "math",
     "kin",

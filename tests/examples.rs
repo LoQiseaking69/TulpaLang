@@ -111,7 +111,10 @@ fn record_then_replay_detects_divergence() {
     // Replay reproduces the sensor value without seeding the simulator.
     let (s, out, err) = tulpa(&["--replay", tape.to_str().unwrap(), script.to_str().unwrap()]);
     assert_eq!((s, out.as_str()), (0, "6416\n"), "{err}");
-    assert!(err.contains("replay matched all 3 device events"), "{err}");
+    assert!(
+        err.contains("replay matched all 2 device commands"),
+        "{err}"
+    );
 
     // Changing the control logic is caught at the first differing device write.
     std::fs::write(&script, body(0x5000)).unwrap();
@@ -119,7 +122,7 @@ fn record_then_replay_detects_divergence() {
     assert_eq!(s, 70);
     assert!(
         err.contains(
-            "replay diverged at event #2: tape has gpio17 write [01], script did gpio17 write [00]"
+            "replay diverged at command #1: tape has gpio17 write [01], script did gpio17 write [00]"
         ),
         "{err}"
     );
