@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" width="512" height="512">
+  <title>HermiSim — Ghost Raven mark</title>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="62%">
+      <stop offset="0" stop-color="#101a2a"/>
+      <stop offset="0.65" stop-color="#070b12"/>
+      <stop offset="1" stop-color="#03050a"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00e5ff"/>
+      <stop offset="0.55" stop-color="#5a6bff"/>
+      <stop offset="1" stop-color="#b14dff"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0.05" y1="0.1" x2="1" y2="0.9">
+      <stop offset="0" stop-color="#16315a" stop-opacity="0.95"/>
+      <stop offset="0.45" stop-color="#0d1838" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#2a1660" stop-opacity="0.55"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="0" y1="1" x2="0.8" y2="0">
+      <stop offset="0" stop-color="#0f3a70"/>
+      <stop offset="0.55" stop-color="#3a2390"/>
+      <stop offset="1" stop-color="#7a3fd0" stop-opacity="0.6"/>
+    </linearGradient>
+    <linearGradient id="wisp" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5cc8ff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#9b5cff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+    <filter id="haze" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3.5"/>
+    </filter>
+    <g id="raven">
+  <!-- raised wing, fingered primaries (behind body) -->
+    <path d="M262 206 L288 132 L340 80 L350 56 L362 104 L394 70 L394 118 L432 96 L422 140 L464 134 L432 172 L470 188 L404 212 L330 216 Z"
+          fill="url(#wing)" fill-opacity="0.82" stroke="#8ff4ff" stroke-width="2" stroke-linejoin="round" filter="url(#glow)"/>
+    <g stroke="#bff8ff" stroke-opacity="0.45" stroke-width="1.3" fill="none">
+      <path d="M288 132 L330 216 M340 80 L352 214 M362 104 L366 212 M394 118 L384 212 M422 140 L398 212 M432 172 L404 212"/>
+    </g>
+  
+    <!-- spectral body + head -->
+    <path d="M190 214 L196 158 L236 146 L268 158 L290 186 L352 204 L420 232 L478 252 L444 270 L484 290 L436 296 L470 322 L400 312 L330 318 L272 304 L244 282 L226 268 L206 258 L214 252 L196 240 L204 236 Z"
+          fill="url(#body)" stroke="#9ff7ff" stroke-width="2.4" stroke-linejoin="round" filter="url(#glow)"/>
+    <g stroke="#7ff3ff" stroke-opacity="0.55" stroke-width="1.3" fill="none" stroke-linejoin="round">
+      <path d="M196 158 L222 214 L190 214 M236 146 L222 214 L268 158 M222 214 L262 230 L290 186 M262 230 L244 282 M262 230 L310 262 L352 204 M310 262 L272 304 M310 262 L330 318 M310 262 L388 270 L420 232 M388 270 L400 312 M388 270 L478 252 M388 270 L436 296"/>
+    </g>
+    <!-- heavy raven beak with hook -->
+    <path d="M94 222 L138 192 L192 172 L194 216 L152 226 L104 230 Z" fill="#081120" stroke="#8ff4ff" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M94 222 L150 210 L193 196" fill="none" stroke="#2fd3ff" stroke-opacity="0.7" stroke-width="1.4"/>
+    <!-- eye -->
+    <circle cx="214" cy="180" r="13" fill="#ff3dbb" opacity="0.5" filter="url(#glow)"/>
+    <circle cx="214" cy="180" r="7" fill="#ffffff"/>
+    <circle cx="215.5" cy="180" r="3.4" fill="#ff3dbb"/>
+  
+      </g>
+    <clipPath id="disc"><circle cx="256" cy="256" r="228"/></clipPath>
+  </defs>
+
+  <!-- emblem -->
+  <circle cx="256" cy="256" r="236" fill="url(#bg)"/>
+  <g clip-path="url(#disc)" opacity="0.22" stroke="#00e5ff" stroke-width="1">
+    <path d="M40 330 H472 M40 372 H472 M40 414 H472 M40 456 H472" />
+    <path d="M256 300 L40 520 M256 300 L150 520 M256 300 L256 520 M256 300 L362 520 M256 300 L472 520"/>
+  </g>
+  <circle cx="256" cy="256" r="236" fill="none" stroke="url(#ring)" stroke-width="7"/>
+  <circle cx="256" cy="256" r="220" fill="none" stroke="#00e5ff" stroke-opacity="0.35" stroke-width="1.5" stroke-dasharray="2 9"/>
+
+  <!-- circuit traces -->
+  <g fill="none" stroke="#00e5ff" stroke-width="3" stroke-linecap="round" opacity="0.85">
+    <path d="M362 74 V52 H408"/>
+    <path d="M444 132 H470 V168"/>
+    <path d="M94 222 H70 V252"/>
+  </g>
+  <g fill="#03050a" stroke="#00e5ff" stroke-width="3">
+    <circle cx="414" cy="52" r="6"/><circle cx="470" cy="174" r="6"/><circle cx="70" cy="258" r="6"/>
+  </g>
+
+  <!-- ghost aura -->
+  <path d="M98 212 L196 158 L268 158 L352 204 L478 252 L400 312 L272 304 L214 252 Z" fill="#1fa8ff" opacity="0.30" filter="url(#soft)"/>
+
+  <!-- spectral afterimages: the ghost trail -->
+  <use xlink:href="#raven" transform="translate(-46 22)" opacity="0.10" filter="url(#haze)"/>
+  <use xlink:href="#raven" transform="translate(-24 11)" opacity="0.20" filter="url(#haze)"/>
+  <!-- wisps streaming off the tail -->
+  <g fill="none" stroke="url(#wisp)" stroke-linecap="round" clip-path="url(#disc)">
+    <path d="M436 296 C 470 320, 452 356, 486 384" stroke-width="3"/>
+    <path d="M400 312 C 420 350, 392 380, 414 420" stroke-width="2.4"/>
+    <path d="M470 322 C 500 340, 494 372, 512 392" stroke-width="2"/>
+    <path d="M330 318 C 334 350, 310 372, 322 404" stroke-width="1.8"/>
+  </g>
+  <use xlink:href="#raven"/>
+
+  <!-- dissolving into data shards -->
+  <g fill="#5fd6ff">
+    <path d="M404 326 L424 334 L410 346 Z" opacity="0.75"/>
+    <path d="M440 330 L458 342 L440 350 Z" opacity="0.6"/>
+    <path d="M426 362 L442 366 L432 380 Z" opacity="0.5"/>
+    <path d="M462 360 L474 372 L460 378 Z" opacity="0.38"/>
+    <path d="M440 396 L452 400 L444 410 Z" opacity="0.28"/>
+    <path d="M330 334 L346 344 L332 352 Z" opacity="0.55" fill="#9b8cff"/>
+    <path d="M300 352 L312 360 L300 368 Z" opacity="0.4" fill="#9b8cff"/>
+    <path d="M338 378 L348 386 L338 392 Z" opacity="0.28" fill="#9b8cff"/>
+    <path d="M370 352 L384 358 L374 368 Z" opacity="0.45"/>
+  </g>
+</svg>

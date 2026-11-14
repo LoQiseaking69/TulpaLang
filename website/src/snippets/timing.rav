@@ -1,0 +1,17 @@
+let button = signal(false)
+let door = signal("closed")
+
+# debounce: only react once the button has been held for 25 ms
+when button.get() for 25[ms] {
+    print(f"t={time::millis()} ms  press accepted")
+    door.set("opening")
+}
+
+# bounded response: the door must report open within 300 ms
+after door.get() == "opening" within 300[ms] ensure door.get() == "open" else {
+    print("deadline missed: door still", door.get())
+}
+
+button.set(true)
+time::sleep(40)
+time::sleep(400)

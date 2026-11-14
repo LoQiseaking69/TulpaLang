@@ -1,0 +1,144 @@
+<!--{"title": "Tulpa", "active": "tulpa", "description": "Tulpa: a Python-flavoured, Rust-powered programming language for robotics, embedded systems and physical computing.", "search": "Tulpa language overview capabilities execution tiers libraries install use cases robotics embedded"}-->
+<section class="page-hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow"><span class="dot"></span>Tulpa {{tulpa.version}} · BSD 3-Clause</span>
+      <h1>A language for software that <span class="grad">touches the world.</span></h1>
+      <p class="sub">Tulpa has the accessibility of Python-style scripting, plus systems-oriented execution, engineering-aware abstractions and native hardware integration. It's written in Rust.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="docs/quickstart.html">Quick start</a>
+        <a class="btn" href="docs/language-guide.html">Language guide</a>
+        <a class="btn" href="{{tulpa.repo}}" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+    <div class="hero-art reveal"><img src="assets/img/tulpa-hero.jpg" alt="Tulpa: Code the Physical World. Robotics and control, safety by design, units and contracts, state machines, reactive programming, high performance." width="1536" height="1024"></div>
+  </div>
+</section>
+
+<section class="section tight">
+  <div class="wrap">
+    <div class="stats">
+      <div class="stat reveal"><b class="grad">3</b><span>execution tiers: interpreter, bytecode VM, LLVM</span></div>
+      <div class="stat reveal"><b class="grad">9</b><span>device families: GPIO to CAN and BLE</span></div>
+      <div class="stat reveal"><b class="grad">11</b><span>library modules: 5 native, 6 in <code>std/</code></span></div>
+      <div class="stat reveal"><b class="grad">84</b><span>Rust tests, each run under both tiers</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">What makes Tulpa different</span>
+      <h2>Established ideas, finally in one language.</h2>
+      <p>Units, contracts, statecharts and reactive programming each have a long history. Tulpa makes them cooperate as native parts of one language, aimed at physical systems.</p>
+    </div>
+    <div class="table-wrap reveal">
+      <table>
+        <thead><tr><th>Capability</th><th>Syntax</th><th>Engineering value</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Units of measure</strong></td><td><code>0.5[m/s]</code>, <code>90[deg]</code>, <code>2200[mAh]</code></td><td>Physical quantities carry dimensions. Conversions are built in.</td></tr>
+          <tr><td><strong>Runtime-checked types</strong></td><td><code>fn f(v: [m/s], n: int?) -&gt; [m]</code></td><td>Gradual typing, including unit dimensions.</td></tr>
+          <tr><td><strong>Hehner-style specifications</strong></td><td><code>require</code>, <code>ensure</code>, <code>x'</code>, <code>invariant</code></td><td>Pre- and postconditions and invariants as executable specifications.</td></tr>
+          <tr><td><strong>Contract fuzzing</strong></td><td><code>tulpa verify</code></td><td>Contracts become test oracles, with failures shrunk to minimal counterexamples.</td></tr>
+          <tr><td><strong>Native state machines</strong></td><td><code>machine</code>, <code>state</code>, <code>on ev if g =&gt; T</code></td><td>Explicit behaviour, history and <code>.can()</code>, with Mermaid diagrams.</td></tr>
+          <tr><td><strong>Reactive signals</strong></td><td><code>signal()</code>, <code>derive()</code>, <code>when</code></td><td>Edge-triggered rules re-evaluated on every change.</td></tr>
+          <tr><td><strong>Timing rules</strong></td><td><code>when c for 25[ms]</code>, <code>after … within … ensure</code></td><td>Debouncing and deadlines, testable on a virtual clock.</td></tr>
+          <tr><td><strong>Safety envelopes</strong></td><td><code>always cond else { … }</code></td><td>Runtime monitors after device calls, writes, transitions and ticks.</td></tr>
+          <tr><td><strong>Record and replay</strong></td><td><code>--record</code> / <code>--replay</code></td><td>Hardware sessions as timestamped regression tests.</td></tr>
+          <tr><td><strong>Hardware integration</strong></td><td>GPIO, I2C, SPI, UART, PWM, Servo, PID, CAN, BLE</td><td>Deterministic simulation by default, Linux hardware with <code>--hw</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">Lineage</span>
+      <h2>Where the ideas come from.</h2>
+    </div>
+    <div class="grid g3">
+      <div class="card reveal"><h3>Dimensional programming</h3><p>From scientific computing, F# and Modelica. Units are embedded in expressions and enforced at runtime.</p></div>
+      <div class="card reveal"><h3>Design by contract</h3><p>From Eiffel, SPARK and Dafny. Executable specifications with contract fuzzing.</p></div>
+      <div class="card reveal"><h3>State-based systems</h3><p>From UML Statecharts and SCXML. Native syntax and runtime.</p></div>
+      <div class="card reveal"><h3>Reactive programming</h3><p>From ReactiveX and Lustre. Signals, derived values and event-triggered rules.</p></div>
+      <div class="card reveal"><h3>Industrial control</h3><p>From IEC 61131-3 and PLC environments. Device abstractions, PID and timing constraints.</p></div>
+      <div class="card reveal"><h3>Systems compilation</h3><p>From Rust and LLVM toolchains. Bytecode execution and native code generation.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">Libraries · 3.2</span>
+      <h2>Enough to write a whole robot stack.</h2>
+      <p>Native modules in Rust, plus a <code>std/</code> library written in Tulpa. HermiSim's Morty humanoid uses all of them.</p>
+    </div>
+    <div class="grid g3">
+      <a class="card reveal" href="docs/libraries.html#nn-tensors-and-autodiff"><code class="syn" style="margin:0 0 12px">nn::</code><h3>Learning</h3><p>Tensors, reverse-mode autodiff, MLPs, Adam/SGD, running scalers and Gaussian policies.</p></a>
+      <a class="card reveal" href="docs/libraries.html#pack-binary-layouts"><code class="syn" style="margin:0 0 12px">pack:: · json::</code><h3>Wire formats</h3><p>Struct-style binary layouts, <code>f32</code> arrays, CRC-16/32 and COBS, plus JSON files.</p></a>
+      <a class="card reveal" href="docs/libraries.html#cosim-co-simulation"><code class="syn" style="margin:0 0 12px">cosim:: · tlm::</code><h3>Simulation &amp; telemetry</h3><p>Lock-step physics over TCP, and live plots, status and artifacts in HermiSim.</p></a>
+      <a class="card reveal" href="docs/libraries.html#std-rtl-rtl-simulation"><code class="syn" style="margin:0 0 12px">std/rtl</code><h3>Hardware design</h3><p>Cycle-accurate RTL simulation with VCD waveform output.</p></a>
+      <a class="card reveal" href="docs/libraries.html#std-eda-boards-as-code"><code class="syn" style="margin:0 0 12px">std/eda</code><h3>Boards as code</h3><p>Electrical rule checks, power budgets in real units, netlists and BOMs.</p></a>
+      <a class="card reveal" href="docs/libraries.html#std-rl-std-lipm-std-topics-std-frame"><code class="syn" style="margin:0 0 12px">std/rl · lipm · topics · frame</code><h3>Control &amp; messaging</h3><p>PPO, linear inverted pendulum, ROS-style pub/sub and packet framing.</p></a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="kicker">Best use cases</span>
+      <h2>Where Tulpa fits.</h2>
+      <ul class="feature-list">
+        <li><div><strong>Robotics and mechatronics</strong><span>Machines for behaviour, reactive rules for sensors, envelopes for limits.</span></div></li>
+        <li><div><strong>Hardware regression testing</strong><span>Record on the rig once, then replay in CI.</span></div></li>
+        <li><div><strong>Safety-oriented control logic</strong><span>Contracts, invariants and monitors catch invalid states early.</span></div></li>
+        <li><div><strong>Sensor and actuator bring-up</strong><span><code>I2C::scan()</code>, registers from the REPL, and <code>--trace</code>.</span></div></li>
+        <li><div><strong>Embedded and control education</strong><span>Readable syntax, simulated hardware, built-in PID and kinematics.</span></div></li>
+        <li><div><strong>Engineering experimentation</strong><span>Learning, simulation, RTL and boards in one language.</span></div></li>
+      </ul>
+    </div>
+    <div class="install-box reveal" id="install">
+      <span class="kicker">Install</span>
+      <div class="tabs" role="tablist" aria-label="Install Tulpa">
+        <button class="tab" role="tab" aria-selected="true" aria-controls="i-src" id="ti-src">Source</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="i-linux" id="ti-linux" tabindex="-1">Linux / Pi</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="i-mac" id="ti-mac" tabindex="-1">macOS</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="i-win" id="ti-win" tabindex="-1">Windows</button>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="i-src" aria-labelledby="ti-src">
+        <p>Rust 1.82+ required. This gets you the 3.2 libraries today.</p>
+        <div class="code"><div class="code-head"><span>Shell</span><button class="copy" type="button">Copy</button></div><pre><code class="hljs">git clone {{tulpa.repo}}.git
+cd TulpaLang &amp;&amp; cargo build --release
+./target/release/tulpa examples/tour/main.rav</code></pre></div>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="i-linux" aria-labelledby="ti-linux" hidden>
+        <p>x86_64, arm64 (Raspberry Pi 3/4/5) and armv7 tarballs, or a <code>.deb</code>, from <a href="{{tulpa.repo}}/releases" target="_blank" rel="noopener">Releases</a>.</p>
+        <div class="code"><div class="code-head"><span>Shell</span><button class="copy" type="button">Copy</button></div><pre><code class="hljs">sudo apt install ./tulpa_&lt;version&gt;_&lt;arch&gt;.deb
+# or
+tar xzf tulpa-&lt;version&gt;-&lt;target&gt;.tar.gz &amp;&amp; sudo ./install.sh /usr/local</code></pre></div>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="i-mac" aria-labelledby="ti-mac" hidden>
+        <p>Intel and Apple-silicon tarballs are attached to each release.</p>
+        <div class="code"><div class="code-head"><span>Shell</span><button class="copy" type="button">Copy</button></div><pre><code class="hljs">tar xzf tulpa-&lt;version&gt;-aarch64-apple-darwin.tar.gz
+sudo mv tulpa /usr/local/bin/</code></pre></div>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="i-win" aria-labelledby="ti-win" hidden>
+        <p>The <a href="hermisim.html#install">HermiSim installer</a> bundles <code>tulpa.exe</code> and <code>std/</code>, and can add Tulpa to your <code>PATH</code>. You can also build from source with Rust.</p>
+      </div>
+      <p class="note">Latest published release: {{tulpa.release}}. <a href="docs/installation.html">Full installation guide →</a></p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="band reveal">
+    <h2>Read the language guide.</h2>
+    <p>Lexical basics through state machines, timing rules, execution tiers and the CLI, on one page.</p>
+    <div class="cta-row"><a class="btn btn-primary" href="docs/language-guide.html">Language guide</a><a class="btn" href="docs/examples.html">Example gallery</a></div>
+  </div>
+</section>

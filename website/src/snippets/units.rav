@@ -1,0 +1,12 @@
+const WHEEL = 6.5[cm]
+
+fn wheel_rpm(v: [m/s]) -> [rpm] {
+    (v / (PI * WHEEL) * 1[rev]).to("rpm")
+}
+
+let v = 0.5[m/s]
+print(f"{v} -> {wheel_rpm(v):.1f}")
+print("runtime:", (2200[mAh] / 450[mA]).to("min").round(1))
+print("energy:", (2200[mAh] * 11.1[V]).to("Wh").round(2))
+
+try { print(v + WHEEL) } catch e { print(e) }

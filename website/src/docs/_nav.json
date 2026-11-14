@@ -1,0 +1,117 @@
+[
+  {
+    "section": "Getting started",
+    "pages": [
+      {
+        "slug": "index",
+        "file": "index.md",
+        "title": "Introduction"
+      },
+      {
+        "slug": "installation",
+        "file": "installation.md",
+        "title": "Installation"
+      },
+      {
+        "slug": "quickstart",
+        "file": "quickstart.md",
+        "title": "Quick start"
+      }
+    ]
+  },
+  {
+    "section": "Tulpa language",
+    "pages": [
+      {
+        "slug": "language-guide",
+        "title": "Language guide",
+        "repo": "docs/language_guide.md"
+      },
+      {
+        "slug": "libraries",
+        "title": "Libraries",
+        "repo": "docs/libraries.md"
+      },
+      {
+        "slug": "device-integration",
+        "title": "Device integration",
+        "repo": "docs/device_integration.md"
+      },
+      {
+        "slug": "cli",
+        "file": "cli.md",
+        "title": "CLI reference"
+      },
+      {
+        "slug": "editors",
+        "title": "Editor setup",
+        "repo": "editors/README.md"
+      },
+      {
+        "slug": "examples",
+        "generated": "examples",
+        "title": "Example gallery"
+      }
+    ]
+  },
+  {
+    "section": "HermiSim IDE",
+    "pages": [
+      {
+        "slug": "hermisim",
+        "file": "hermisim.md",
+        "title": "IDE tour"
+      },
+      {
+        "slug": "projects",
+        "file": "projects.md",
+        "title": "Projects & run configurations"
+      },
+      {
+        "slug": "cosimulation",
+        "file": "cosimulation.md",
+        "title": "Co-simulation"
+      },
+      {
+        "slug": "telemetry",
+        "file": "telemetry.md",
+        "title": "Telemetry & viewers"
+      },
+      {
+        "slug": "terminal",
+        "file": "terminal.md",
+        "title": "Tulpa terminal"
+      },
+      {
+        "slug": "headless",
+        "file": "headless.md",
+        "title": "Headless CLI & CI"
+      },
+      {
+        "slug": "morty",
+        "file": "morty.md",
+        "title": "The Morty project"
+      },
+      {
+        "slug": "windows-installer",
+        "file": "windows-installer.md",
+        "title": "Building the installer"
+      }
+    ]
+  },
+  {
+    "section": "Project",
+    "pages": [
+      {
+        "slug": "roadmap",
+        "file": "roadmap.md",
+        "title": "Roadmap"
+      },
+      {
+        "slug": "contributing",
+        "file": "contributing.md",
+        "title": "Writing docs"
+      }
+    ]
+  }
+]

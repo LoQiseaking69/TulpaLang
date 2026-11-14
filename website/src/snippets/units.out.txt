@@ -1,0 +1,4 @@
+0.5 m/s -> 146.9 rpm
+runtime: 293.3 min
+energy: 24.42 Wh
+unit mismatch: cannot apply '+' to speed [m/s] and length [m]

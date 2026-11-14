@@ -1,0 +1,10 @@
+MORTY online: 18 actuators, 65 sensors, 54.2 kg, governor backend=sim
+t= 2.00s  push [90.0, 0.0, 0.0] N
+t= 4.50s  push [0.0, -130.0, 0.0] N
+
+simulated 5.99 s in 1.41 s wall (4.2× real time)
+falls: 0   brace warnings: 0   worst capture-point margin: 1.2 cm
+PINN: 107 updates, data MSE 0.1105, physics MSE 0.0242
+governor link: {"packets": 600, "bad": 0, "flags": {"slew": 22}, "backend": "sim"}
+topics: /joint_states=600  /disturbance=2
+behaviour history: Standing

@@ -1,0 +1,30 @@
+struct Joint {
+    servo
+    angle: [deg] = 90[deg]
+    invariant 10[deg] <= self.angle and self.angle <= 170[deg]
+    fn move_to(self, a: [deg]) { self.angle = a; self.servo.angle(a) }
+}
+
+let lift = Joint(Servo::new(0, 0))
+let belt = GPIO::new(23)
+
+machine Cell {
+    on estop => Fault { belt.set_low() }
+    state Idle {
+        enter { lift.move_to(150[deg]); belt.set_high() }
+        on part => Picking { belt.set_low() }
+    }
+    state Picking {
+        enter { lift.move_to(30[deg]) }
+        on gripped(m) if m <= 2[kg] => Idle
+        on gripped(m) => Fault
+    }
+    state Fault { on reset => Idle }
+}
+
+let cell = Cell()
+always not (belt.read() == 1 and lift.angle < 60[deg]) else { cell.estop() }
+
+cell.part()
+cell.gripped(1.4[kg])
+print(cell.state, lift.angle)

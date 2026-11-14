@@ -1,0 +1,17 @@
+# Hold a pendulum at 30 degrees with a PD controller, in lock-step with MuJoCo.
+const TARGET = 30[deg].in("rad")
+const KP = 20.0
+const KD = 2.0
+
+let sim = cosim::connect()               # address comes from $TULPA_COSIM
+let info = sim.info()
+print(f"{len(info.actuators)} actuator(s), {info.total_mass:.1f} kg, dt = {info.timestep} s")
+
+let obs = sim.reset()
+while obs.time < 3.0 {
+    let err = TARGET - obs.qpos[0]
+    let u = KP * err - KD * obs.qvel[0]
+    obs = sim.step([u], 5)               # apply torque, advance 5 physics steps, observe
+    tlm::plot("angle_deg", obs.qpos[0] * 180 / PI)
+}
+print(f"t = {obs.time:.2f} s, angle = {obs.qpos[0] * 180 / PI:.1f} deg")

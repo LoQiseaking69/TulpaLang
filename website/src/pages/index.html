@@ -1,0 +1,197 @@
+<!--{"title": "", "active": "home", "description": "Tulpa is a Python-flavoured, Rust-powered language for robots and hardware, with units, contracts, state machines and safety envelopes built in. HermiSim is its IDE and MuJoCo co-simulator.", "search": "Tulpa HermiSim home units contracts state machines reactive timing safety envelopes co-simulation IDE"}-->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow"><span class="dot"></span>Tulpa {{tulpa.version}} · HermiSim {{hermisim.version}}</span>
+      <h1>Code the <span class="grad">physical world.</span></h1>
+      <p class="sub"><strong>Tulpa</strong> is a Python-flavoured, Rust-powered language for robots and hardware. Units, contracts, state machines, timing rules and safety envelopes are part of the language. <strong>HermiSim</strong> is the IDE that runs it against physics.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="docs/quickstart.html">Get started
+          <svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+        <a class="btn" href="docs/index.html">Read the docs</a>
+        <a class="btn" href="hermisim.html">Explore HermiSim</a>
+      </div>
+      <div class="install-line"><span class="prompt">$</span><code>cargo build --release &amp;&amp; ./target/release/tulpa</code><button class="copy" type="button">Copy</button></div>
+    </div>
+    <div class="window reveal">
+      <div class="window-bar"><span class="lights"><i></i><i></i><i></i></span><span class="window-tab">cell.rav</span><span class="window-meta">tulpa {{tulpa.version}}</span></div>
+      {{snippet:hero.rav}}
+      <div class="window-out"><span>$ tulpa cell.rav</span>Idle 150 deg</div>
+    </div>
+  </div>
+</section>
+
+<section class="section tight">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">Built into the language</span>
+      <h2>The rules of the physical world, as syntax.</h2>
+      <p>Other languages can control hardware, but their engineering constraints live in libraries and conventions. In Tulpa they're constructs the interpreter checks for you.</p>
+    </div>
+    <div class="grid g3">
+      <a class="card reveal" href="docs/language-guide.html#units-of-measure">
+        <div class="ico c"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 17 17 3l4 4L7 21zM7 13l2 2m1-5 2 2m1-5 2 2"/></svg></div>
+        <h3>Units of measure</h3><p>Quantities carry dimensions through every expression. Adding speed to distance is an error, not a silent bug.</p>
+        <code class="syn">0.5[m/s].to("km/h")</code></a>
+      <a class="card reveal" href="docs/language-guide.html#hehner-style-specifications">
+        <div class="ico v"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M9 3h6l1 3h3v15H5V6h3zm0 9 2 2 4-4"/></svg></div>
+        <h3>Contracts &amp; fuzzing</h3><p>Hehner-style <code>require</code>, <code>ensure</code> and <code>invariant</code>. <code>tulpa verify</code> fuzzes them and shrinks failures.</p>
+        <code class="syn">ensure result' &gt;= 0[m]</code></a>
+      <a class="card reveal" href="docs/language-guide.html#state-machines">
+        <div class="ico"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v5H4zm10 11h6v5h-6zM7 9v4a2 2 0 0 0 2 2h5m3-6V7a2 2 0 0 0-2-2h-5"/></svg></div>
+        <h3>State machines</h3><p>States, guarded transitions, <code>enter</code>/<code>exit</code> hooks and history, with Mermaid diagrams from <code>tulpa graph</code>.</p>
+        <code class="syn">on gripped(m) if m &lt;= 2[kg] =&gt; Idle</code></a>
+      <a class="card reveal" href="docs/language-guide.html#signals-and-reactive-rules">
+        <div class="ico g"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
+        <h3>Reactive &amp; timing rules</h3><p>Edge-triggered <code>when</code> rules over signals, debouncing, and bounded-response deadlines on a virtual clock.</p>
+        <code class="syn">after t within 300[ms] ensure …</code></a>
+      <a class="card reveal" href="docs/language-guide.html#safety-envelopes">
+        <div class="ico r"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6zm0 6v4m0 3h.01"/></svg></div>
+        <h3>Safety envelopes</h3><p><code>always</code> monitors are checked after every device call, assignment and transition, then stop or run a handler.</p>
+        <code class="syn">always speed &lt;= 2[m/s] else { … }</code></a>
+      <a class="card reveal" href="docs/device-integration.html">
+        <div class="ico a"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 7h10v10H7zM9 1v3m6-3v3M9 20v3m6-3v3M1 9h3m-3 6h3m16-6h3m-3 6h3"/></svg></div>
+        <h3>Hardware, simulated or real</h3><p>GPIO, I2C, SPI, UART, PWM, Servo, PID, CAN and BLE. Deterministic simulation by default, Linux hardware with <code>--hw</code>.</p>
+        <code class="syn">--record run.tape · --replay run.tape</code></a>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">See it run</span>
+      <h2>Short programs. Real output.</h2>
+      <p>Every snippet on this site was run against Tulpa {{tulpa.version}}. What you see under each one is what the toolchain printed.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Code examples">
+      <button class="tab" role="tab" aria-selected="true" aria-controls="p-units" id="t-units">Units</button>
+      <button class="tab" role="tab" aria-selected="false" aria-controls="p-verify" id="t-verify" tabindex="-1">Contract fuzzing</button>
+      <button class="tab" role="tab" aria-selected="false" aria-controls="p-timing" id="t-timing" tabindex="-1">Timing rules</button>
+      <button class="tab" role="tab" aria-selected="false" aria-controls="p-cosim" id="t-cosim" tabindex="-1">Co-simulation</button>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-units" aria-labelledby="t-units">
+      <div class="showcase">
+        <div>{{snippet:units.rav|units.rav}}{{snippet:units.out.txt|$ tulpa units.rav}}</div>
+        <div class="showcase-text"><span class="kicker">Dimensional analysis</span><h3>Units flow through the math</h3>
+          <p>Wheel RPM, battery runtime and energy all come out in the right units, with conversions built in. The last line shows what happens when dimensions don't agree.</p>
+          <ul><li>SI base-vector dimensions with conversions: <code>.to("rpm")</code>, <code>.in("rad")</code></li><li>Typed parameters like <code>v: [m/s]</code> are checked at call time</li><li>Unit dimensions are checked at build time for native code</li></ul>
+          <p><a href="docs/language-guide.html#units-of-measure">Units in the language guide →</a></p></div>
+      </div>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-verify" aria-labelledby="t-verify" hidden>
+      <div class="showcase">
+        <div>{{snippet:contracts.rav|contracts.rav}}{{snippet:contracts.out.txt|$ tulpa verify contracts.rav}}</div>
+        <div class="showcase-text"><span class="kicker">Contracts as test oracles</span><h3>Let the toolchain find the counterexample</h3>
+          <p><code>tulpa verify</code> generates inputs that satisfy each <code>require</code>, checks every <code>ensure</code>, and shrinks a failure to a minimal case. Here it finds the off-by-threshold bug in <code>clamp_speed</code> straight away.</p>
+          <ul><li><code>x'</code> and <code>result'</code> refer to post-state values</li><li>Struct invariants are re-checked after writes and rolled back on violation</li><li>Exit code 1 on failure, so it drops straight into CI</li></ul>
+          <p><a href="docs/language-guide.html#contract-driven-verification">Contract-driven verification →</a></p></div>
+      </div>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-timing" aria-labelledby="t-timing" hidden>
+      <div class="showcase">
+        <div>{{snippet:timing.rav|timing.rav}}{{snippet:timing.out.txt|$ tulpa --virtual-time timing.rav}}</div>
+        <div class="showcase-text"><span class="kicker">Time as a language construct</span><h3>Debounce and deadlines, declared</h3>
+          <p><code>when … for</code> debounces a condition, and <code>after … within … ensure</code> states a bounded-response requirement. With <code>--virtual-time</code> the clock is simulated, so timing behaviour is testable and deterministic.</p>
+          <ul><li>The press is accepted at exactly 25 ms</li><li>The door never reports open, so the 300 ms deadline handler fires</li></ul>
+          <p><a href="docs/language-guide.html#timing-rules">Timing rules →</a></p></div>
+      </div>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-cosim" aria-labelledby="t-cosim" hidden>
+      <div class="showcase">
+        <div>{{snippet:cosim.rav|hold.rav}}{{snippet:cosim.out.txt|$ python -m tulpa_bridge run hold.rav --model pendulum.xml}}</div>
+        <div class="showcase-text"><span class="kicker">HermiSim × MuJoCo</span><h3>Drive physics in lock-step</h3>
+          <p>A PD controller holds a pendulum while MuJoCo integrates the dynamics. Each <code>sim.step</code> applies torque, advances five physics steps and returns an observation, so the loop is deterministic and runs faster than real time.</p>
+          <ul><li><code>tlm::plot</code> streams to the IDE's live plots</li><li>The same file runs headless in CI</li></ul>
+          <p><a href="docs/cosimulation.html">Co-simulation guide →</a></p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">Two projects, one toolchain</span>
+      <h2>A language and the workbench built for it.</h2>
+    </div>
+    <div class="products">
+      <a class="product reveal" href="tulpa.html">
+        <div class="product-img"><img src="assets/img/tulpa-hero.jpg" alt="Tulpa: Code the Physical World" loading="lazy"></div>
+        <div class="product-body"><span class="tag">Programming language · Rust</span><h3>Tulpa</h3>
+          <p>An expression-oriented language with Python-style ergonomics, three execution tiers (interpreter, bytecode VM and LLVM), an LSP, a VS Code extension, and libraries for learning, RTL and boards as code.</p>
+          <div class="pills"><span class="pill">units</span><span class="pill">contracts</span><span class="pill">machines</span><span class="pill">signals</span><span class="pill">LLVM</span><span class="pill">nn::</span><span class="pill">std/rtl</span></div></div>
+      </a>
+      <a class="product reveal" href="hermisim.html">
+        <div class="product-img"><img src="assets/img/screens/02_cosim.webp" alt="HermiSim IDE running the Morty humanoid" loading="lazy"></div>
+        <div class="product-body"><span class="tag">IDE &amp; simulation suite · Python / Qt</span><h3>HermiSim</h3>
+          <p>An engineering workbench for Tulpa: an LSP-aware editor, MuJoCo co-simulation, live telemetry, waveform, state-machine and BOM viewers, an integrated Tulpa terminal, and a Windows installer.</p>
+          <div class="pills"><span class="pill">MuJoCo</span><span class="pill">VCD viewer</span><span class="pill">telemetry</span><span class="pill">headless CLI</span><span class="pill">Morty</span></div></div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">Execution architecture</span>
+      <h2>Prototype in a REPL. Ship native code.</h2>
+      <p>The interpreter and VM run the whole language. Hot functions move to bytecode automatically, and the typed numeric subset compiles through LLVM into an object file and a C header for firmware.</p>
+    </div>
+    <div class="tiers reveal">
+      <div class="tier"><span class="n">TIER 1</span><h3>Tree-walking interpreter</h3><p>Runs the whole language and backs the REPL.</p>
+        <div class="bench">fib(30)<div class="bar"><i style="width:100%"></i></div><b>1.15 s</b></div></div>
+      <div class="tier"><span class="n">TIER 2 · default</span><h3>Bytecode VM</h3><p>Eligible functions compile on first call and fall back to the interpreter transparently.</p>
+        <div class="bench">fib(30)<div class="bar"><i style="width:24.3%"></i></div><b>0.28 s</b> · about 4× faster</div></div>
+      <div class="tier"><span class="n">TIER 3 · tulpa build</span><h3>LLVM native</h3><p>Typed numeric code becomes an object or shared library plus a C header. Contracts stay as runtime checks.</p>
+        <div class="bench">fib(30)<div class="bar"><i style="width:1.2%;min-width:4px"></i></div><b>0.005 s</b></div></div>
+    </div>
+    <p class="note">Release-build benchmarks from the TulpaLang README. Every test runs under both the interpreter and the VM, and native output is differential-tested against the interpreter.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap split">
+    <div class="frame reveal"><img src="assets/img/screens/03_vcd.webp" alt="HermiSim waveform viewer" data-zoom loading="lazy"></div>
+    <div class="reveal">
+      <span class="kicker">Verification, layered</span>
+      <h2>Catch it before it reaches the motor.</h2>
+      <ul class="feature-list">
+        <li><div><strong>Type and dimension checks</strong><span>Gradual typing that includes unit dimensions.</span></div></li>
+        <li><div><strong>Contracts, invariants and fuzzing</strong><span>Executable specifications, plus <code>tulpa verify</code>.</span></div></li>
+        <li><div><strong>Runtime safety envelopes</strong><span>Monitors that fail-stop or run a corrective handler.</span></div></li>
+        <li><div><strong>Record and replay</strong><span>Hardware sessions become regression tests without the rig.</span></div></li>
+        <li><div><strong>Cycle-accurate RTL</strong><span><code>std/rtl</code> testbenches, checked bit-exactly and viewed as waveforms.</span></div></li>
+      </ul>
+      <p class="note">These mechanisms improve software verification. They aren't a formal proof or a safety certification. <a href="docs/roadmap.html#current-scope">Read the scope notes.</a></p>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">Documentation</span>
+      <h2>Start anywhere.</h2>
+    </div>
+    <div class="grid g4">
+      <a class="card reveal" href="docs/installation.html"><h3>Install</h3><p>Release packages, the Windows installer, or build from source.</p><span class="more">Installation →</span></a>
+      <a class="card reveal" href="docs/language-guide.html"><h3>Language guide</h3><p>Syntax, types, units, structs, machines, reactive rules and more.</p><span class="more">Read the guide →</span></a>
+      <a class="card reveal" href="docs/libraries.html"><h3>Libraries</h3><p><code>nn</code>, <code>pack</code>, <code>json</code>, <code>tlm</code>, <code>cosim</code> and <code>std/</code>.</p><span class="more">Browse libraries →</span></a>
+      <a class="card reveal" href="docs/hermisim.html"><h3>HermiSim IDE</h3><p>Projects, co-simulation, telemetry and the Morty humanoid.</p><span class="more">Tour the IDE →</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="band reveal">
+    <h2>Write the controller. <span class="grad">Prove the envelope.</span> Ship.</h2>
+    <p>Install HermiSim on Windows and everything is bundled, or build Tulpa from source on Linux, macOS or a Raspberry Pi.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="docs/installation.html">Install</a>
+      <a class="btn" href="{{tulpa.repo}}" target="_blank" rel="noopener">TulpaLang on GitHub</a>
+      <a class="btn" href="{{hermisim.repo}}" target="_blank" rel="noopener">HermiSim on GitHub</a>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,107 @@
+<!--{"title": "HermiSim", "active": "hermisim", "description": "HermiSim: the simulation suite and IDE for Tulpa, with MuJoCo co-simulation, live telemetry, waveform, state-machine and BOM viewers.", "search": "HermiSim IDE overview MuJoCo co-simulation telemetry waveform viewer BOM Morty Windows installer download"}-->
+<section class="page-hero">
+  <div class="wrap hero-grid">
+    <div>
+      <img src="assets/img/hermisim-mark.svg" alt="" width="64" height="64" style="border-radius:14px">
+      <span class="eyebrow" style="margin-top:18px"><span class="dot"></span>HermiSim {{hermisim.version}} · Windows · Linux · macOS</span>
+      <h1>The workbench for <span class="grad">robot software.</span></h1>
+      <p class="sub">Write Tulpa, then test it against MuJoCo physics, cycle-accurate RTL and boards described as code, with live telemetry, all in one window.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="{{hermisim.repo}}/releases" target="_blank" rel="noopener">Download for Windows</a>
+        <a class="btn" href="docs/hermisim.html">IDE tour</a>
+        <a class="btn" href="{{hermisim.repo}}" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+    <div class="frame reveal"><img src="assets/img/screens/welcome-hero.webp" alt="HermiSim welcome page" data-zoom width="1412" height="840"></div>
+  </div>
+</section>
+
+<section class="section tight">
+  <div class="wrap">
+    <div class="frame reveal"><img src="assets/img/screens/02_cosim.webp" alt="HermiSim running the Morty humanoid: editor, simulator viewport and live telemetry" data-zoom width="1400" height="833"></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">Features</span>
+      <h2>Everything between the editor and the motor.</h2>
+    </div>
+    <div class="grid g3">
+      <a class="card reveal" href="docs/hermisim.html#editor"><div class="ico c"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m8 6-6 6 6 6m8-12 6 6-6 6"/></svg></div><h3>Tulpa editor</h3><p>Highlighting and an LSP client with live diagnostics, hover, completion, go-to-definition, an outline and find/replace.</p></a>
+      <a class="card reveal" href="docs/cosimulation.html"><div class="ico v"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 2 3 7v10l9 5 9-5V7zm0 0v20M3 7l9 5 9-5"/></svg></div><h3>MuJoCo co-simulation</h3><p>One ▶ Run button. Programs that call <code>cosim::connect()</code> drive physics in lock-step, at full speed or real time ×N.</p></a>
+      <a class="card reveal" href="docs/telemetry.html"><div class="ico g"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7 15l4-4 3 3 6-7"/></svg></div><h3>Live telemetry</h3><p><code>tlm::plot</code> streams to live plots. <code>tlm::status</code> drives the status bar, and <code>tlm::artifact</code> links output files.</p></a>
+      <a class="card reveal" href="docs/telemetry.html#waveform-viewer"><div class="ico a"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M2 12h3V6h4v12h4V6h4v12h3v-6h2"/></svg></div><h3>Waveform viewer</h3><p>VCD files from <code>std/rtl</code> or Verilog simulators, with zoom, pan, a cursor and signal filtering.</p></a>
+      <a class="card reveal" href="docs/telemetry.html#machine-diagrams"><div class="ico"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v5H4zm10 11h6v5h-6zM7 9v4a2 2 0 0 0 2 2h5"/></svg></div><h3>Machines &amp; BOMs</h3><p>Diagrams of every <code>machine</code>, plus BOM and netlist tables from <code>std/eda</code>.</p></a>
+      <a class="card reveal" href="docs/terminal.html"><div class="ico r"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m4 17 6-5-6-5m8 12h8"/></svg></div><h3>Tulpa terminal</h3><p>A live REPL. <code>$ check main.rav</code> runs tulpa, <code>! cmd</code> runs the shell, and Ctrl+Enter sends the selection.</p></a>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head reveal"><span class="kicker">Gallery</span><h2>A closer look.</h2></div>
+    <div class="gallery">
+      <figure class="reveal"><img src="assets/img/screens/01_editor.webp" alt="Editor with LSP diagnostics and outline" loading="lazy"><figcaption>Editor, outline and diagnostics</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/screens/03_vcd.webp" alt="Waveform viewer" loading="lazy"><figcaption>RTL waveforms from <code>std/rtl</code></figcaption></figure>
+      <figure class="reveal"><img src="assets/img/screens/04_machines.webp" alt="State machine diagrams" loading="lazy"><figcaption>State-machine diagrams</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/screens/05_bom.webp" alt="BOM viewer" loading="lazy"><figcaption>Morty mainboard BOM from <code>std/eda</code></figcaption></figure>
+      <figure class="reveal"><img src="assets/img/screens/00_welcome.webp" alt="Welcome page" loading="lazy"><figcaption>Welcome page and projects</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/screens/02_cosim.webp" alt="Co-simulation" loading="lazy"><figcaption>Co-simulation with telemetry</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap split rev">
+    <div class="reveal">
+      <span class="kicker">Bundled project</span>
+      <h2>Morty, a humanoid written entirely in Tulpa.</h2>
+      <p style="color:var(--text-2)">The original Morty mixed ROS, PyTorch, Verilog and gEDA. The Tulpa rewrite keeps that architecture, and now every piece runs and can be checked.</p>
+      <div class="pipeline" style="margin:22px 0">
+        <span>sense</span><i>→</i><span>60-feature obs</span><i>→</i><span class="hl">PPO residual</span><i>→</i><span>capture-point PD</span><i>→</i><span>MGP packet</span><i>→</i><span class="hl">FPGA governor</span><i>→</i><span>motors</span>
+      </div>
+      <ul class="feature-list">
+        <li><div><strong>Physics-informed COM model</strong><span><code>nn::</code> plus <code>std/lipm</code>. Forecasts falls 0.3 s ahead.</span></div></li>
+        <li><div><strong>RTL torque governor</strong><span>UART, CRC, clamp, slew and watchdog: 8/8 responses bit-exact.</span></div></li>
+        <li><div><strong>Mainboard as code</strong><span>ERC, a power budget in watts, netlist and BOM.</span></div></li>
+      </ul>
+      <p><a href="docs/morty.html">Explore the Morty project →</a></p>
+    </div>
+    <div>
+      {{snippet:morty.out.txt|$ python -m tulpa_bridge run workspace/morty/main.rav --model models/morty.xml -- 6 hard}}
+    </div>
+  </div>
+</section>
+
+<section class="section alt" id="install">
+  <div class="wrap">
+    <div class="section-head reveal"><span class="kicker">Install</span><h2>Get HermiSim.</h2></div>
+    <div class="grid g2">
+      <div class="card reveal">
+        <h3>Windows installer</h3>
+        <p>Download <code>HermiSim-Setup-&lt;version&gt;-x64.exe</code>. It bundles the IDE, MuJoCo and the Tulpa toolchain, installs per user without admin rights, can add <code>tulpa</code> to <code>PATH</code>, and associates <code>.rav</code>/<code>.tlp</code> files.</p>
+        <p style="margin-top:16px"><a class="btn btn-primary" href="{{hermisim.repo}}/releases" target="_blank" rel="noopener">Releases</a></p>
+      </div>
+      <div class="card reveal">
+        <h3>From source</h3>
+        <p>Linux, macOS or Windows. Clone both repositories side by side.</p>
+        <div class="code"><div class="code-head"><span>Shell</span><button class="copy" type="button">Copy</button></div><pre><code class="hljs">git clone {{hermisim.repo}}.git
+git clone {{tulpa.repo}}.git
+(cd TulpaLang &amp;&amp; cargo build --release)
+cd HermiSim-DynamicsViewer
+pip install -r requirements.txt
+python main.py</code></pre></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="band reveal">
+    <h2>Run it in CI, too.</h2>
+    <p>Everything the IDE runs also runs headless: co-simulation, tests, RTL testbenches and board checks.</p>
+    <div class="cta-row"><a class="btn btn-primary" href="docs/headless.html">Headless CLI &amp; CI</a><a class="btn" href="docs/projects.html">Project configuration</a></div>
+  </div>
+</section>

@@ -1,0 +1,14 @@
+fn stopping_distance(v: [m/s], decel: [m/s^2]) -> [m]
+    require v >= 0[m/s] and decel > 0[m/s^2]
+    ensure result' >= 0[m]
+{
+    v ** 2 / (2 * decel)
+}
+
+# bug: the threshold should be 1.5 m/s
+fn clamp_speed(v: [m/s]) -> [m/s]
+    require v >= 0[m/s]
+    ensure result' <= 1.5[m/s]
+{
+    if v > 2[m/s] { 1.5[m/s] } else { v }
+}

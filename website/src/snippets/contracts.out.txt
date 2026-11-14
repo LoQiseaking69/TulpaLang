@@ -1,0 +1,5 @@
+  FAIL  clamp_speed(1.64333630589 m/s)
+        postcondition violated in clamp_speed(): ensure result' <= 1.5 [m / s] (result' = 1.64333630589 m/s)
+  ok    stopping_distance()  300 cases, 0 discarded
+
+verified 2 function(s): 1 passed, 1 failed

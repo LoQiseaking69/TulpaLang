@@ -372,6 +372,10 @@ validated industrial control platform.
 
 ## Docs
 
+The full documentation, with search, a quick start, a CLI reference, an example gallery and the
+HermiSim IDE guides, is on the **[Tulpa website](https://loqiseaking69.github.io/TulpaLang/)**.
+Its source is in [`website/`](website/README.md). The guides below are rendered there directly.
+
 - [Language guide](docs/language_guide.md): syntax, types, units, structs, machines, reactive
   rules, verification, modules, and the standard library.
 - [Library guide](docs/libraries.md): `nn`, `pack`, `json`, `tlm`, `cosim`, and the `std/`
@@ -400,6 +404,7 @@ examples/          runnable programs with expected.txt (checked by cargo test)
 tests/             84 Rust tests (run under both tiers) + Tulpa-level tests
 editors/           VS Code extension (editors/vscode) + Neovim/Helix setup
 scripts/           release.sh (tarball, .deb, .vsix), deploy.sh, cross_compile.sh
+website/           project website + docs site (GitHub Pages), see website/README.md
 ```
 
 ## Performance
