@@ -35,6 +35,7 @@ adb shell am start -W -n $PKG/.MainActivity
 sleep 6; alive; shot 01-welcome
 has "Welcome to Tulpa Field" && echo "ok: first launch opens the guide" || echo "!! welcome chapter not shown"
 
+adb shell input swipe 540 1700 540 900 400; sleep 1; shot 01b-welcome-scrolled
 tap "Run"; sleep 5; alive; shot 02-run-snippet
 dump | grep -o 'text="[^"]*km/h[^"]*"' | head -3
 has "average speed" && echo "ok: guide snippet ran" || { echo "!! snippet output missing"; FAIL=1; }
