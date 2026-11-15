@@ -242,7 +242,7 @@ microcontroller.
 
 ```
 tulpa new rover --board rp2040 && cd rover
-tulpa app.rav --virtual-time              # try it on the simulator first
+tulpa --virtual-time app.rav              # try it on the simulator first
 cmake -B build && cmake --build build      # → build/rover.uf2
 ```
 

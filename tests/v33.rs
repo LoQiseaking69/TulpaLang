@@ -139,7 +139,7 @@ fn native_matches_interpreter(name: &str, src: &str) {
     ]);
     assert_eq!(code, 0, "native build failed:\n{err}");
     let native = Command::new(&exe).output().unwrap();
-    let (icode, iout, ierr) = tulpa(&[f, "--virtual-time"]);
+    let (icode, iout, ierr) = tulpa(&["--virtual-time", f]);
     assert_eq!(
         String::from_utf8_lossy(&native.stdout),
         iout,

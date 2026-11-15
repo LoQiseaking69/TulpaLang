@@ -103,7 +103,7 @@ as `1 deg`. Native code stores SI values, so it prints `0.0174533 rad` unless yo
 `tulpa new <dir> --board <board>` writes three things:
 
 - `app.rav`: a blinker state machine, with an `always` envelope and an `every!` loop. Try it
-  first with `tulpa app.rav --virtual-time`.
+  first with `tulpa --virtual-time app.rav`.
 - The build files for the board. Their build step calls `tulpa build --target <board>`.
 - A copy of the runtime.
 

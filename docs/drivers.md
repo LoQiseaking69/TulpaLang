@@ -116,7 +116,7 @@ print(f"az {imu.accel_z():.4f}  gx {imu.gyro_x().to("deg/s"):.3f}")
 ```
 
 ```
-tulpa main.rav --virtual-time > want.txt
+tulpa --virtual-time main.rav > want.txt
 tulpa build main.rav --target sim --exe -o drv && ./drv > got.txt
 diff want.txt got.txt
 ```

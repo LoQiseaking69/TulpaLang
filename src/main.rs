@@ -439,7 +439,14 @@ fn native(rest: &[String], build: bool) -> ExitCode {
         cmd.args(["-mllvm", "-opaque-pointers"]);
     }
     if let Some(t) = target {
-        cmd.args(t.cflags);
+        for f in t.cflags {
+            // clang < 16 rejects the explicit Zicsr/Zifencei extensions; in the ISA 2.0
+            // spelling those clangs use, the base `i` already includes them.
+            match f.strip_suffix("_zicsr_zifencei") {
+                Some(base) if major.is_some_and(|m| m < 16) => cmd.arg(base),
+                _ => cmd.arg(f),
+            };
+        }
         if t.embedded {
             cmd.args(["-ffunction-sections", "-fdata-sections"]);
         }
@@ -555,7 +562,7 @@ fn new_project(rest: &[String]) -> ExitCode {
                 Some(tulpa::native::Hal::EspIdf) => format!("cd {dir} && idf.py set-target {board} && idf.py build flash monitor"),
                 _ => format!("cd {dir} && make"),
             };
-            println!("\ntry it on the simulator: tulpa run {dir}/app.rav --virtual-time\nbuild the firmware:      {next}");
+            println!("\ntry it on the simulator: tulpa run --virtual-time {dir}/app.rav\nbuild the firmware:      {next}");
             ExitCode::SUCCESS
         }
         Err(e) => {
