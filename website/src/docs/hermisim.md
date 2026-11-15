@@ -35,8 +35,19 @@ One **▶ Run** button runs whatever is selected in the run-target box:
 - A **project run configuration** from `hermisim.json`. See
   [Projects & run configurations](projects.md).
 
-The toolbar's **Test**, **Verify**, **Build** and **Diagram** buttons map to `tulpa test`,
-`tulpa verify`, `tulpa build` and the machine viewer.
+The toolbar's **Test**, **Verify**, **Build**, **Native** and **Diagram** buttons map to
+`tulpa test`, `tulpa verify`, `tulpa build`, Run Natively and the machine viewer.
+
+With Tulpa 3.3 or newer, the **Run** menu also has these commands:
+
+- **Run Natively** (Ctrl+Shift+F5) compiles the whole program with
+  `tulpa build --target sim --exe` and runs the executable in the console.
+- **Build Firmware for Board…** (Ctrl+Shift+B) lets you pick a target such as RP2040, ESP32,
+  ESP32-S2/S3/C3/C6, Cortex-M or RISC-V, then runs `tulpa build --target`.
+- **New Firmware Project…** scaffolds a Pico SDK or ESP-IDF project with `tulpa new` and opens
+  it.
+
+These commands need clang 14 or newer. See [Native & embedded targets](embedded.md).
 
 ## Viewers
 

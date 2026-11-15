@@ -1,7 +1,7 @@
-# Tulpa 3.2 libraries
+# Tulpa libraries
 
-3.2 adds five native modules (written in Rust, always available) and a `std/` library of
-modules written in Tulpa. Together they make it possible to write a full robot stack in Tulpa:
+Tulpa has five native modules (written in Rust, always available, since 3.2) and a `std/`
+library of modules written in Tulpa (3.2, plus the Driver SDK in 3.3). Together they make it possible to write a full robot stack in Tulpa:
 learning controllers, wire protocols, hardware models and board design. HermiSim's Morty project
 (`workspace/morty`) uses all of them.
 
@@ -18,6 +18,8 @@ learning controllers, wire protocols, hardware models and board design. HermiSim
 | `std/lipm` | Tulpa | Linear inverted pendulum, ZMP, capture point, support polygons |
 | `std/topics` | Tulpa | ROS-style typed publish/subscribe built on signals |
 | `std/frame` | Tulpa | COBS + CRC-16 packet framing for UART/BLE/sockets |
+| `std/driver` | Tulpa | Driver SDK: `Driver`/`Imu`/`Thermometer`/`Rangefinder`/`Adc`/`PwmController` interfaces, bit helpers, `Regmap` (3.3) |
+| `std/drivers/*` | Tulpa | MPU-6050 IMU, PCA9685 PWM/servo, MCP3008 ADC drivers; compile natively for RP2040/ESP32 (3.3) |
 
 ## Library search path
 
@@ -166,3 +168,9 @@ See the header comment of each file in `stdlib/` for a runnable example.
 - **`lipm`:** `omega`, `capture_point`, `zmp`, `residual`, `step`, `support_polygon`, `margin`, `hull`.
 - **`topics`:** `Bus.publish/subscribe/topic`, plus `JointState`, `Wrench`, `Imu` and `Float64MultiArray` constructors.
 - **`frame`:** `encode(payload, type, seq)` and `Decoder.feed(bytes)`, which resynchronises on the next `0x00` after corruption.
+
+## `std/driver` and `std/drivers/*`
+
+Interfaces that hardware drivers implement (`struct X impl Imu`), integer bit and byte helpers
+that compile natively, and reference drivers. The full guide is in the [Driver SDK](drivers.md),
+and building drivers for microcontrollers is in [Native and embedded targets](embedded.md).

@@ -1,12 +1,19 @@
-//! Ahead-of-time native code generation: emits LLVM IR for Tulpa's typed numeric subset.
+//! Ahead-of-time native code generation: emits LLVM IR for whole Tulpa programs.
 //!
-//! Eligible functions use numbers and booleans, locals, arithmetic, comparisons, `if`/`while`/
-//! `for i in a..b`, `return`, `assert`, calls to other eligible functions and math builtins.
-//! Semantics match the interpreter: integer `/` and `%` are Euclidean (remainder never negative), integer overflow and
-//! division by zero are caught, and `require`/`ensure`/loop `invariant`/`assert` become runtime
-//! checks that report the violated clause and abort. Each function is exported as
-//! `tulpa_<name>` with C-compatible types (int → int64_t, float → double, bool → _Bool),
-//! so the result links straight into C, C++ or Rust firmware.
+//! Covered: numbers, booleans, unit quantities (SI doubles, dimensions checked at build time),
+//! strings, fixed-size arrays; structs with invariants, methods and interfaces; GPIO/I2C/SPI/
+//! UART/PWM/Servo devices through the `tulpa_*` runtime ABI (runtime/tulpa_rt.c); state
+//! machines with parameters, guards and global transitions; `always` monitors; `every!`/`repeat!`;
+//! contracts; default/keyword arguments; `print` with f-strings and format specs; and top-level
+//! code as `void tulpa_entry(void)`. Field, global and parameter types are inferred over a
+//! fixpoint. Anything else is skipped with a reason.
+//!
+//! Semantics match the interpreter: integer `/` and `%` are Euclidean, overflow, division by
+//! zero and array bounds are caught, device errors use the interpreter's messages, and
+//! `require`/`ensure`/invariants/`assert`/`always` call `tulpa_violation(msg)`. Functions are
+//! exported as `tulpa_<name>` and methods as `tulpa_<Struct>_<method>`, with struct layouts in the
+//! generated C header, so the result links into C, C++ or Rust firmware (see src/native.rs for
+//! the targets).
 
 use crate::ast::*;
 use crate::units;

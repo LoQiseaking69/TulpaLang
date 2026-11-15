@@ -21,7 +21,7 @@ python -m tulpa_bridge doctor
 
 ```text
 tulpa:   /path/to/TulpaLang/target/release/tulpa
-version: tulpa 3.2.0
+version: tulpa 3.3.0
 stdlib:  /path/to/TulpaLang/stdlib
 mujoco:  4.0.1
 cosim:   ok (tulpa ↔ 127.0.0.1:35881: 100 physics steps, sim t=0.200s)

@@ -43,6 +43,7 @@ This is the file shipped with the Morty project (trimmed):
 | `file` | — | Tulpa file, relative to the project folder. |
 | `args` | `[]` | Extra program arguments, available as `ARGS`. |
 | `realtime` | `1.0` | For `cosim`: `0` runs as fast as possible, `1` is real time, `2` is 2× and so on. Sets the speed slider. |
+| `target` | `rp2040` | For `firmware`: the native target (`tulpa targets` lists them), e.g. `esp32c3`. HermiSim 2.1+. |
 
 The working directory is the project folder.
 
@@ -56,6 +57,8 @@ The working directory is the project folder.
 | `check` | `tulpa check <file>` |
 | `bytecode` | `tulpa bytecode <file>` |
 | `build` | `tulpa build <file> -o <file>.o` |
+| `native` | `tulpa build <file> --target sim --exe -o <file>-native`, then runs it with `[args]` (Tulpa 3.3+) |
+| `firmware` | `tulpa build <file> --target <target> -o <file>-<target>.o`, where `target` is a field of the configuration (default `rp2040`) |
 | `cosim` | Loads `model`, starts a co-simulation server, sets `TULPA_COSIM`, then runs `tulpa <file> [args]`. |
 
 > [!TIP]

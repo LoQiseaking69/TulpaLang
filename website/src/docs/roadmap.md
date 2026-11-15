@@ -10,6 +10,8 @@
 | **Tulpa 3.2** | The `nn`, `pack`, `json`, `tlm` and `cosim` modules; the `std/` library (rtl, eda, rl, lipm, topics, frame); operator overloading for native objects; the library search path. |
 | **Tulpa 3.3** | Interfaces and the Driver SDK (`std/driver`, MPU-6050 / PCA9685 / MCP3008 drivers); native compilation of structs, devices, state machines, `always` monitors and `every!` loops; standalone executables; embedded targets for RP2040, ESP32, ESP32-S2/S3/C3/C6 and generic Cortex-M / RISC-V, with `tulpa new` firmware projects. |
 | **HermiSim 2.0** | The Tulpa IDE: LSP editor, lock-step MuJoCo co-simulation, telemetry, waveform / machine / BOM viewers, Tulpa terminal, headless CLI, Windows installer and the Morty project. |
+| **HermiSim 2.1** | Tulpa 3.3 workflows: Run Natively, Build Firmware for Board…, New Firmware Project…, `native`/`firmware` run kinds, Driver SDK highlighting and docs. |
+| **Tulpa Field 1.2** | The Tulpa 3.3 runtime on Android with the Driver SDK, and *Your phone as an Imu*: `std/driver`'s `Imu` interface implemented on the phone's sensors. |
 
 ## Planned
 

@@ -10,6 +10,12 @@ Every device is a built-in object. The same script runs against one of two backe
 `sim::backend()` returns `"sim"` or `"linux"`, so a script can preload fake sensor data only when
 it's simulated. Add `--trace` to print every device call and its result to stderr.
 
+The same device code also compiles to native code (`tulpa build`). It can run on the simulated
+bus (`--target sim --exe`), on Linux hardware (`--target linux --exe`), or as microcontroller
+firmware (`--target rp2040`, `esp32`, `esp32c3`, ...) through a small C HAL per board. See
+[Native and embedded targets](embedded.md), and the [Driver SDK](drivers.md) for writing
+reusable drivers.
+
 ## GPIO
 
 ```tulpa

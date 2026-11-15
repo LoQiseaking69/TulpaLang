@@ -206,7 +206,7 @@ general-purpose scripting language:
 - Interactive REPL
 - Built-in test runner (`define_test!`, `tulpa test`)
 
-## Libraries (3.2)
+## Libraries
 
 Tulpa ships native modules plus a standard library written in Tulpa.
 
@@ -232,6 +232,7 @@ The `std/` library provides higher-level engineering functionality implemented i
 | `std/lipm` | Linear inverted pendulum: capture point and Zero Moment Point (ZMP) |
 | `std/topics` | ROS-style publish/subscribe messaging |
 | `std/frame` | COBS + CRC packet framing |
+| `std/driver`, `std/drivers/*` | Driver SDK interfaces and helpers; MPU-6050, PCA9685 and MCP3008 drivers (3.3) |
 
 See the [library guide](docs/libraries.md).
 
@@ -266,6 +267,7 @@ The [HermiSim](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer) IDE bun
 - a waveform viewer
 - state-machine diagrams
 - live plots
+- native and firmware builds: **Run Natively**, **Build Firmware for Board…** and **New Firmware Project…** (HermiSim 2.1)
 
 It also has a Windows installer.
 
@@ -296,7 +298,8 @@ on the phone, offline. It turns the handset into a device you can program:
 - live `tlm::plot` charts and `phone::gauge` readouts while a program runs
 - a touch-first editor with diagnostics, completion and a symbol/unit keyboard bar
 - a REPL, a tappable state-machine inspector, and one-tap contract verification and tests
-- 30 runnable examples, including the Morty humanoid, and an in-app guide whose code blocks run with one tap
+- the Driver SDK: `std/driver` interfaces and the bundled drivers, plus an example that implements `Imu` on the phone's own sensors
+- 32 runnable examples, including the Morty humanoid, and an in-app guide whose code blocks run with one tap
 
 The signed APK is built by CI and attached to `android-v*` releases; see the
 [Tulpa Field page](https://loqiseaking69.github.io/TulpaLang/android.html) on the website. Screenshots, features and build
@@ -306,7 +309,7 @@ same way through `tulpa::embed` (run/REPL/analysis API) and `tulpa::host` (host-
 ## Install
 
 Download a release package from [Releases](https://github.com/LoQiseaking69/TulpaLang/releases).
-The `release` workflow builds them on every `v*` tag. The latest release is **v3.3.0**
+The `release` workflow builds them on every `v*` tag. The latest release is **v3.3.1**
 (it includes the 3.2 libraries, the Driver SDK and the embedded backend).
 
 - **Linux** (x86_64, arm64 for Raspberry Pi 3/4/5, armv7): download
@@ -507,6 +510,7 @@ differential-tested against the interpreter.
   native compilation of structs, devices, state machines, `always` monitors and `every!`
   loops; standalone executables (`--exe`); embedded targets for RP2040, ESP32, ESP32-S2/S3/C3/C6
   and generic Cortex-M/RISC-V, with `tulpa new` firmware projects and a portable C HAL.
+- **3.3.1:** documentation brought in line with 3.3 across the README, guides and website.
 - **Tulpa Field:** the Android IDE, the `phone::` host module, and the `tulpa::embed` /
   `tulpa::host` embedding API.
 

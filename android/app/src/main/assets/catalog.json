@@ -329,7 +329,7 @@
   "id": "native",
   "title": "Native subset",
   "category": "Native",
-  "summary": "The typed numeric subset that compiles to native code with `tulpa build`.",
+  "summary": "A control library compiled to native code with `tulpa build`; whole programs, drivers and firmware targets are in docs/embedded.md.",
   "tags": [
    "llvm",
    "native"

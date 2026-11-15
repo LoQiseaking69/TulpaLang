@@ -79,7 +79,9 @@ the torch, speech, tones, toasts and notifications. See [the phone:: module](and
 
 ## Learn
 
-The **Library** has 30 runnable examples: the language's own, 15 written for the phone, and two
+The **Library** has 32 runnable examples: the language's own (including the Driver SDK demo with
+the MPU-6050, PCA9685 and MCP3008 drivers), 16 written for the phone (among them *Your phone as
+an Imu*, which implements `std/driver`'s `Imu` interface on the handset's sensors), and two
 co-simulation projects (a cart-pole and the full Morty humanoid). The **Guide** has chapters on
 every part of the app plus the complete language reference; every Tulpa code block in it has a
 **Run** button.

@@ -29,7 +29,7 @@ Release packages are built by the `release` workflow on every `v*` tag and attac
 | VS Code | `tulpa-lang-<version>.vsix` | `code --install-extension tulpa-lang-<version>.vsix` |
 
 > [!NOTE]
-> The latest release is **v3.3.0**. It includes the 3.2 libraries (`nn::`, `pack::`, `json::`,
+> The latest release is **v3.3.1**. It includes the 3.2 libraries (`nn::`, `pack::`, `json::`,
 > `tlm::`, `cosim::`, `std/`), the Driver SDK and the embedded backend.
 
 ## Build Tulpa from source

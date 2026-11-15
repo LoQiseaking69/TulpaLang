@@ -2,7 +2,7 @@
 
 Language support for [Tulpa](https://github.com/LoQiseaking69/TulpaLang), a language for robots and hardware.
 
-- Syntax highlighting, including unit literals (`0.5[m/s]`), contracts (`require`, `ensure`, `x'`), state machines, `when`/`always`/`after … within`, and macros.
+- Syntax highlighting, including unit literals (`0.5[m/s]`), contracts (`require`, `ensure`, `x'`), state machines, `interface`/`impl`, `when`/`always`/`after … within`, and macros.
 - A language server, run by `tulpa lsp`:
   - Diagnostics: syntax errors, unit mismatches such as `2[m] + 3[s]`, and undefined names with suggestions.
   - Hover: signatures with types and contracts, struct and machine summaries, unit dimensions.

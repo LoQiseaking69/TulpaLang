@@ -1,6 +1,8 @@
-# The typed numeric subset compiles to native code:
-#   tulpa build examples/native/control.rav -o control.o    (writes control.h too)
-# and links into C/C++/Rust firmware. Contracts become runtime checks there as well.
+# Native compilation of a small control library:
+#   tulpa build examples/native/main.rav -o control.o    (writes control.h too)
+# links into C/C++/Rust firmware; contracts become runtime checks there as well.
+# Whole programs with structs, devices and machines compile too: see examples/drivers and
+# `tulpa build --target sim --exe` / `--target rp2040` (docs/embedded.md).
 
 const MAX_DUTY = 255
 
