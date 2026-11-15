@@ -88,5 +88,29 @@
   "title": "Native & embedded targets",
   "section": "Reference",
   "asset": "guide/reference/embedded.md"
+ },
+ {
+  "id": "autonomy",
+  "title": "Autonomy: planning & missions",
+  "section": "Reference",
+  "asset": "guide/reference/autonomy.md"
+ },
+ {
+  "id": "link",
+  "title": "Tulpa Link middleware",
+  "section": "Reference",
+  "asset": "guide/reference/link.md"
+ },
+ {
+  "id": "simulation",
+  "title": "Simulation & verification",
+  "section": "Reference",
+  "asset": "guide/reference/simulation.md"
+ },
+ {
+  "id": "safety",
+  "title": "Proving safety",
+  "section": "Reference",
+  "asset": "guide/reference/safety.md"
  }
 ]

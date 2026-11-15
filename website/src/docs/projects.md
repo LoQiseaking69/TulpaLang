@@ -58,6 +58,9 @@ The working directory is the project folder.
 | `bytecode` | `tulpa bytecode <file>` |
 | `build` | `tulpa build <file> -o <file>.o` |
 | `native` | `tulpa build <file> --target sim --exe -o <file>-native`, then runs it with `[args]` (Tulpa 3.3+) |
+| `prove` | `tulpa prove [args] <file>` |
+| `bundle` | `tulpa bundle <file> -o <file>-app` |
+| `deploy` | `tulpa deploy <folder of file> [args]`, for example `"args": ["--dry-run"]` |
 | `firmware` | `tulpa build <file> --target <target> -o <file>-<target>.o`, where `target` is a field of the configuration (default `rp2040`) |
 | `cosim` | Loads `model`, starts a co-simulation server, sets `TULPA_COSIM`, then runs `tulpa <file> [args]`. |
 

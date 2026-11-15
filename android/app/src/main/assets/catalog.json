@@ -238,6 +238,43 @@
   ]
  },
  {
+  "id": "autonomy",
+  "title": "Autonomy: plan, execute, replan",
+  "category": "Robotics",
+  "summary": "A delivery robot with a behavior tree, a GOAP planner, HTN decomposition and a Mission that replans when the battery sags.",
+  "tags": [
+   "planning",
+   "behavior tree",
+   "mission",
+   "std/plan"
+  ]
+ },
+ {
+  "id": "fleet",
+  "title": "Tulpa Link: a fleet on a lossy network",
+  "category": "Robotics",
+  "summary": "Three nodes with unit-typed topics, reliable delivery under 20 % loss, a remote safety envelope, services and parameters.",
+  "tags": [
+   "middleware",
+   "std/link",
+   "units",
+   "network"
+  ]
+ },
+ {
+  "id": "sim_rover",
+  "title": "Rover: physics, emulated chips, real drivers",
+  "category": "Robotics",
+  "summary": "A rover in a deterministic physics world, sensed and driven through emulated MPU-6050, PCA9685 and MCP3008 chips, with an injected fault.",
+  "tags": [
+   "simulation",
+   "std/world",
+   "std/emu",
+   "drivers",
+   "verify"
+  ]
+ },
+ {
   "id": "timing",
   "title": "Timing rules",
   "category": "Timing & reactive",

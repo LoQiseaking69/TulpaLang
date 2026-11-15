@@ -49,6 +49,23 @@ With Tulpa 3.3 or newer, the **Run** menu also has these commands:
 
 These commands need clang 14 or newer. See [Native & embedded targets](embedded.md).
 
+With Tulpa 3.4 or newer (HermiSim 2.2):
+
+- **Prove Contracts** (Ctrl+Alt+P, or the **Prove** toolbar button) runs `tulpa prove` on the
+  current file. The **Proofs** dock lists every obligation by function, marked proved, refuted
+  (with the counterexample) or unproved. Double-click a row to jump to the code. See
+  [Proving safety](safety.md).
+- **Deploy Project to Board…** runs `tulpa deploy` on the open firmware project. Choose a dry
+  run, build only, or build and flash. See [Simulation & verification](simulation.md).
+- **Bundle Standalone Executable** runs `tulpa bundle`, which makes one executable with the
+  whole language.
+- The **Network** dock lists the [Tulpa Link](link.md) nodes on your LAN with their topics and
+  services. Pick the domain, then press Refresh or tick auto-refresh.
+
+The Welcome page also opens the **Autonomy lab**, a bundled project with a mission planner, a
+Tulpa Link fleet on a simulated network, a rover simulated through emulated chips, and a file
+of contracts to prove.
+
 ## Viewers
 
 | Viewer | Opens |

@@ -93,7 +93,7 @@ dependencies = [
 
 [[package]]
 name = "tulpa"
-version = "3.3.2"
+version = "3.4.0"
 dependencies = [
  "libc",
  "serde_json",

@@ -24,10 +24,12 @@ abstractions, and native hardware integration.
 | Language identity | Python-flavoured, expression-oriented programming language |
 | Implementation | Rust |
 | Primary domain | Robotics, mechatronics, embedded systems, physical computing |
-| Execution | Tree-walking interpreter, bytecode VM, LLVM native compilation (host executables and RP2040 / ESP32 / Cortex-M / RISC-V firmware) |
+| Execution | Tree-walking interpreter, bytecode VM, LLVM native compilation (host executables and RP2040 / ESP32 / Cortex-M / RISC-V firmware), standalone bundles with the whole language |
+| Autonomy | Behavior trees, goal planning (GOAP), task decomposition (HTN), utility decisions, mission orchestration with replanning (`std/plan`) |
+| Middleware | Tulpa Link: broker-less nodes, unit-typed topics, services, parameters, QoS, simulated and UDP transports (`std/link`) |
 | Engineering model | Units, contracts, invariants, state machines, reactive rules, timing constraints |
 | Hardware integration | GPIO, I2C, SPI, UART, PWM, Servo, PID, CAN, Bluetooth LE |
-| Verification | Runtime contracts, contract fuzzing, safety monitors, record/replay |
+| Verification | Static proofs of contracts and invariants (`tulpa prove`), runtime contracts, contract fuzzing, safety monitors, exhaustive exploration, deterministic physics and chip emulation, record/replay |
 | Developer tooling | REPL, test runner, LSP, VS Code extension, Mermaid state diagrams, [HermiSim IDE](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer), [Tulpa Field](android/README.md) for Android |
 | License | BSD 3-Clause |
 
@@ -160,6 +162,7 @@ Tulpa has three execution tiers:
    - GPIO, I2C, SPI, UART, PWM and Servo devices;
    - state machines with parameters, guards and global transitions;
    - `always` monitors, `every!`/`repeat!` loops, `require`/`ensure` contracts;
+   - `match` on numbers, ranges, alternatives, bindings and guards;
    - default and keyword arguments, `print` with f-strings and format specs;
    - top-level program code, and imported modules.
 
@@ -167,9 +170,15 @@ Tulpa has three execution tiers:
    generated code as runtime checks. Native output is tested byte for byte against the
    interpreter on the simulator, and on QEMU Cortex-M0 and RV32IMC.
 
-The interpreter and VM run the whole language. Dicts, closures, `match`, `try`, tasks, signals
-and `when` rules don't compile natively yet. Functions that use them are skipped, and each one
-is reported with the reason. See [Native and embedded targets](docs/embedded.md).
+The interpreter and VM run the whole language. Dicts, closures, `try`, tasks, signals and `when`
+rules don't compile to static native code yet. Functions that use them are skipped, and each
+one is reported with the reason.
+
+**Deploying everything.** `tulpa bundle app.rav -o app` makes a standalone executable that
+carries the runtime, the program and its imports, so the whole language runs on any desktop or
+Linux board with nothing installed. `tulpa build --exe` falls back to a bundle on those targets
+when a program is not fully native. Microcontroller firmware uses the static native compiler.
+See [Native and embedded targets](docs/embedded.md).
 
 ## Verification and safety model
 
@@ -178,14 +187,19 @@ Tulpa layers several mechanisms to catch errors before they reach hardware:
 - Type and dimensional checks
 - Preconditions and postconditions
 - Structure invariants
+- Static proof (`tulpa prove`): `ensure` clauses, assertions, struct and loop invariants, call
+  preconditions and non-zero divisors, for every input the `require` clauses allow
 - Contract fuzzing and counterexample shrinking
+- Exhaustive exploration of event orders (`std/verify`)
 - Runtime safety envelopes
 - Deterministic simulation
 - Recording and replaying hardware sessions
 - Differential testing between execution tiers
 
-These mechanisms improve software verification and regression testing. They are not a formal
-proof of the complete system, nor certification as a safety-rated controller. Applications that
+These mechanisms improve software verification and regression testing. `tulpa prove` gives
+proofs of individual functions and methods over linear arithmetic (floats are treated as real
+numbers). That is not a formal proof of the complete system, nor certification as a
+safety-rated controller. Applications that
 need functional-safety certification still require an appropriate independent safety
 architecture, hardware protections, and a certification process.
 
@@ -232,9 +246,42 @@ The `std/` library provides higher-level engineering functionality implemented i
 | `std/lipm` | Linear inverted pendulum: capture point and Zero Moment Point (ZMP) |
 | `std/topics` | ROS-style publish/subscribe messaging |
 | `std/frame` | COBS + CRC packet framing |
+| `std/plan` | Autonomy: behavior trees, GOAP, HTN, utility decisions, missions (3.4) |
+| `std/link` | Tulpa Link middleware (3.4) |
+| `std/world`, `std/emu`, `std/verify` | Deterministic physics, emulated chips with fault injection, exhaustive exploration (3.4) |
 | `std/driver`, `std/drivers/*` | Driver SDK interfaces and helpers; MPU-6050, PCA9685 and MCP3008 drivers (3.3) |
 
 See the [library guide](docs/libraries.md).
+
+## Autonomy, middleware, simulation and proof (3.4)
+
+Tulpa 3.4 adds the layers above the control loop, and the tools to trust them.
+
+- **Autonomous reasoning and task orchestration.** `std/plan` has behavior trees, a GOAP
+  planner, HTN decomposition, utility decisions, and a `Mission` that pursues prioritised
+  goals, executes steps, monitors the world and replans. See [Autonomy](docs/autonomy.md).
+- **Tulpa-native middleware.** Tulpa Link (`std/link`) connects nodes without a broker. Topics
+  are typed by physical dimension and checked when nodes discover each other, values travel in
+  SI, and QoS covers reliable, latched and deadline-monitored topics. It has services,
+  parameters and liveliness, and runs on a deterministic simulated network or on UDP.
+  See [Tulpa Link](docs/link.md).
+- **Universal deployment.** `match` compiles natively. `tulpa bundle` makes a standalone
+  executable with the whole language for desktops and Linux boards, and `tulpa build --exe`
+  falls back to it. `tulpa deploy` runs prove → check → build → flash for a board project.
+- **Unified simulation and verification.** `std/world` is a deterministic physics world.
+  `std/emu` emulates the MPU-6050, PCA9685 and MCP3008 on the simulated bus, so the real
+  drivers run in the loop, with fault injection. `std/verify` explores every event order.
+  See [Simulation and verification](docs/simulation.md).
+- **Formal safety guarantees.** `tulpa prove` statically proves contracts, invariants, call
+  preconditions and non-zero divisors for all inputs, and reports counterexamples for what
+  fails. See [Proving safety](docs/safety.md).
+
+```
+tulpa prove examples/verify/main.rav       # proved / REFUTED with a counterexample / unproved
+tulpa examples/fleet/main.rav              # three nodes on a simulated lossy network
+tulpa examples/sim_rover/main.rav          # physics → emulated chips → real drivers → controller
+tulpa bundle examples/autonomy/main.rav -o mission && ./mission
+```
 
 ## Standalone robotics software (3.3)
 
@@ -268,6 +315,7 @@ The [HermiSim](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer) IDE bun
 - state-machine diagrams
 - live plots
 - native and firmware builds: **Run Natively**, **Build Firmware for Board…** and **New Firmware Project…** (HermiSim 2.1)
+- a **Proofs** dock for `tulpa prove`, **Deploy Project to Board…**, **Bundle Standalone Executable**, a Tulpa Link **Network** dock, and the bundled Autonomy lab project (HermiSim 2.2)
 
 It also has a Windows installer.
 
@@ -299,7 +347,8 @@ on the phone, offline. It turns the handset into a device you can program:
 - a touch-first editor with diagnostics, completion and a symbol/unit keyboard bar
 - a REPL, a tappable state-machine inspector, and one-tap contract verification and tests
 - the Driver SDK: `std/driver` interfaces and the bundled drivers, plus an example that implements `Imu` on the phone's own sensors
-- 32 runnable examples, including the Morty humanoid, and an in-app guide whose code blocks run with one tap
+- planning (`std/plan`), Tulpa Link on a simulated network, and physics with emulated chips
+- 35 runnable examples, including the Morty humanoid, and an in-app guide whose code blocks run with one tap
 
 The signed APK is built by CI and attached to `android-v*` releases; see the
 [Tulpa Field page](https://loqiseaking69.github.io/TulpaLang/android.html) on the website. Screenshots, features and build
@@ -309,8 +358,7 @@ same way through `tulpa::embed` (run/REPL/analysis API) and `tulpa::host` (host-
 ## Install
 
 Download a release package from [Releases](https://github.com/LoQiseaking69/TulpaLang/releases).
-The `release` workflow builds them on every `v*` tag. The latest release is **v3.3.2**
-(it includes the 3.2 libraries, the Driver SDK and the embedded backend).
+The `release` workflow builds them on every `v*` tag. The latest release is **v3.4.0**.
 
 - **Linux** (x86_64, arm64 for Raspberry Pi 3/4/5, armv7): download
   `tulpa-<version>-<target>.tar.gz`, unpack it, and run `./install.sh`, or
@@ -423,8 +471,16 @@ strengthening system-level guarantees, and improving adoption.
 
 Some important boundaries of its current scope:
 
-- Native compilation covers structs, devices, state machines, monitors and timing loops, but not
-  dicts, closures, `match`, `try`, tasks or signals; those stay on the interpreter.
+- Static native compilation covers structs, devices, state machines, monitors, `match` and
+  timing loops, but not dicts, closures, `try`, tasks or signals. Programs that use those run
+  on the interpreter or ship as bundles, which need a desktop or Linux-class target; they do
+  not run on microcontrollers.
+- `tulpa prove` proves properties of individual functions over linear arithmetic, treating
+  floats as real numbers. Non-linear obligations come back unproved, and it does not cover
+  timing or whole-system behaviour.
+- Tulpa Link has no encryption or authentication, and native firmware cannot host a node yet.
+- `std/world` is a 2-D model for mobile robots. Full rigid-body dynamics come from MuJoCo
+  through HermiSim.
 - Contract fuzzing explores test cases; it is not a mathematical proof of correctness.
 - Runtime safety envelopes detect violations at defined checkpoints. They are not independent
   hardware safety interlocks.
@@ -451,7 +507,12 @@ Its source is in [`website/`](website/README.md). The guides below are rendered 
 - [Driver SDK](docs/drivers.md): interfaces, `std/driver`, and writing drivers in Tulpa that
   compile natively.
 - [Native and embedded targets](docs/embedded.md): `tulpa build --target`, RP2040 and ESP32
-  projects, the runtime layers, and porting to a new board.
+  projects, bundles, the runtime layers, and porting to a new board.
+- [Autonomy](docs/autonomy.md): behavior trees, planning, decomposition and missions.
+- [Tulpa Link](docs/link.md): the middleware, its QoS, tools and wire format.
+- [Simulation and verification](docs/simulation.md): physics, emulated chips, exploration,
+  and `tulpa deploy`.
+- [Proving safety](docs/safety.md): `tulpa prove` and what it guarantees.
 
 ## Project layout
 
@@ -464,6 +525,10 @@ src/ext.rs         units math, kwargs, types, structs, machines, signals, reacti
 src/vm.rs          bytecode compiler + VM (automatic tier for eligible functions)
 src/llvm.rs        LLVM IR generator: structs, devices, machines, monitors (tulpa build / emit-llvm)
 src/native.rs      targets, firmware project scaffolding, import flattening
+src/prove.rs       static prover (tulpa prove)
+src/link.rs        Tulpa Link transport core (tlink::), wrapped by std/link
+src/lower.rs       lowering passes before native codegen (match → if chains)
+src/bundle.rs      standalone executables that carry the runtime and the program
 runtime/           C runtime + HAL ports (sim, linux, pico, esp_idf) and board templates
 src/lsp.rs         language server (tulpa lsp)
 src/units.rs       dimensional analysis (SI base vector, unit parser, conversions)
@@ -472,7 +537,7 @@ src/nn.rs          nn:: tensors, reverse-mode autodiff, layers, optimisers
 src/stdx.rs        pack:: json:: tlm:: cosim::
 src/embed.rs       embedding API for host apps (run, REPL sessions, cancel, editor analysis)
 src/host.rs        registry for host-provided native modules (e.g. phone:: in Tulpa Field)
-stdlib/            std/ library written in Tulpa (rtl, eda, rl, lipm, topics, frame, driver, drivers/)
+stdlib/            std/ library written in Tulpa (rtl, eda, rl, lipm, topics, frame, driver, drivers/, plan, link, world, emu, verify)
 src/devices/       GPIO/I2C/SPI/UART/PWM/Servo/PID/CAN/BLE; sim.rs, linux.rs, tape.rs (record/replay)
 examples/          runnable programs with expected.txt (checked by cargo test)
 tests/             Rust tests (run under both tiers), Tulpa-level tests, firmware/ QEMU scripts
@@ -513,13 +578,19 @@ differential-tested against the interpreter.
 - **3.3.1:** documentation brought in line with 3.3 across the README, guides and website.
 - **3.3.2:** `sim::virtual_time(true)` starts the simulated clock at 0, like `--virtual-time`,
   so simulated runs are reproducible however long start-up takes.
+- **3.4:** autonomy (`std/plan`), Tulpa Link middleware (`std/link`), static proofs
+  (`tulpa prove`), deterministic physics and chip emulation (`std/world`, `std/emu`),
+  exhaustive exploration (`std/verify`), native `match`, standalone bundles (`tulpa bundle`)
+  and `tulpa deploy`.
 - **Tulpa Field:** the Android IDE, the `phone::` host module, and the `tulpa::embed` /
   `tulpa::host` embedding API.
 
 ### Planned
 - CAN-FD and ISO-TP (UDS diagnostics) on top of the CAN layer.
 - BLE peripheral (GATT server) mode, so a Raspberry Pi can act as a sensor.
-- Native dicts, closures and `try` in firmware builds.
+- Native dicts, closures and `try` in firmware builds, and a Tulpa Link node for
+  microcontrollers (UART and UDP).
+- Encryption and authentication for Tulpa Link.
 - More reference drivers (BMP280, VL53L0X, INA219) and a board-support package for STM32.
 - Publishing the VS Code extension to the Marketplace and Open VSX.
 - A package registry for Tulpa modules.

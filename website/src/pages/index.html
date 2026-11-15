@@ -157,10 +157,40 @@
   </div>
 </section>
 
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">New in 3.4 · autonomy, middleware, proof</span>
+      <h2>Plan it, connect it, simulate it, prove it.</h2>
+      <p>The layers above the control loop, and the tools to trust them before anything moves.</p>
+    </div>
+    <div class="grid g3">
+      <a class="card reveal" href="docs/autonomy.html">
+        <h3>Autonomy</h3><p>Behavior trees, goal planning, task decomposition and missions that execute, monitor and replan.</p>
+        <code class="syn">plan.Mission(planner).goal("delivered", ...)</code></a>
+      <a class="card reveal" href="docs/link.html">
+        <h3>Tulpa Link middleware</h3><p>Broker-less nodes with unit-typed topics. A <code>[m]</code> subscriber cannot listen to a <code>[m/s]</code> topic.</p>
+        <code class="syn">node.advertise("/rover/speed", "[m/s]")</code></a>
+      <a class="card reveal" href="docs/safety.html">
+        <h3>Proofs</h3><p><code>tulpa prove</code> shows a contract holds for every input, or prints the counterexample.</p>
+        <code class="syn">proved  ensure abs(result' - current) &lt;= step</code></a>
+      <a class="card reveal" href="docs/simulation.html">
+        <h3>Driver-in-the-loop simulation</h3><p>Deterministic physics feeds emulated chips, and your real drivers read them. Faults can be injected.</p>
+        <code class="syn">emu.Mpu6050(0x68).fault("offline")</code></a>
+      <a class="card reveal" href="docs/embedded.html#the-whole-language-in-one-executable">
+        <h3>Deploy everything</h3><p>One executable with the whole language for desktops and Linux boards; static firmware for microcontrollers.</p>
+        <code class="syn">tulpa bundle app.rav -o app</code></a>
+      <a class="card reveal" href="docs/simulation.html#from-simulation-to-hardware">
+        <h3>Simulation to hardware</h3><p>One command proves, checks on the simulator, builds with the board SDK and flashes.</p>
+        <code class="syn">tulpa deploy --port /dev/ttyUSB0</code></a>
+    </div>
+  </div>
+</section>
+
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal">
-      <span class="kicker">New in 3.3 · standalone robotics software</span>
+      <span class="kicker">3.3 · standalone robotics software</span>
       <h2>From the simulator to the microcontroller.</h2>
       <p>Write a driver once in Tulpa, test it against the simulated bus, and compile the same file for a Pico or an ESP32. CI checks that native output matches the interpreter byte for byte.</p>
     </div>

@@ -1,7 +1,8 @@
 # Tulpa libraries
 
 Tulpa has five native modules (written in Rust, always available, since 3.2) and a `std/`
-library of modules written in Tulpa (3.2, plus the Driver SDK in 3.3). Together they make it possible to write a full robot stack in Tulpa:
+library of modules written in Tulpa (3.2, the Driver SDK in 3.3, and autonomy, middleware and
+simulation in 3.4). Together they make it possible to write a full robot stack in Tulpa:
 learning controllers, wire protocols, hardware models and board design. HermiSim's Morty project
 (`workspace/morty`) uses all of them.
 
@@ -18,6 +19,10 @@ learning controllers, wire protocols, hardware models and board design. HermiSim
 | `std/lipm` | Tulpa | Linear inverted pendulum, ZMP, capture point, support polygons |
 | `std/topics` | Tulpa | ROS-style typed publish/subscribe built on signals |
 | `std/frame` | Tulpa | COBS + CRC-16 packet framing for UART/BLE/sockets |
+| `std/plan` | Tulpa | Autonomy: behavior trees, GOAP planning, HTN decomposition, utility choice, missions (3.4) |
+| `std/link` | Tulpa + native | Tulpa Link middleware: unit-typed topics, services, parameters, discovery, QoS (3.4) |
+| `std/world`, `std/emu` | Tulpa | Deterministic 2-D physics; emulated MPU-6050 / PCA9685 / MCP3008 with fault injection (3.4) |
+| `std/verify` | Tulpa | Bounded exhaustive exploration of event orders; determinism checks (3.4) |
 | `std/driver` | Tulpa | Driver SDK: `Driver`/`Imu`/`Thermometer`/`Rangefinder`/`Adc`/`PwmController` interfaces, bit helpers, `Regmap` (3.3) |
 | `std/drivers/*` | Tulpa | MPU-6050 IMU, PCA9685 PWM/servo, MCP3008 ADC drivers; compile natively for RP2040/ESP32 (3.3) |
 
@@ -174,3 +179,10 @@ See the header comment of each file in `stdlib/` for a runnable example.
 Interfaces that hardware drivers implement (`struct X impl Imu`), integer bit and byte helpers
 that compile natively, and reference drivers. The full guide is in the [Driver SDK](drivers.md),
 and building drivers for microcontrollers is in [Native and embedded targets](embedded.md).
+
+## `std/plan`, `std/link`, `std/world`, `std/emu`, `std/verify`
+
+- [Autonomy](autonomy.md): `std/plan`.
+- [Tulpa Link](link.md): `std/link` (the native transport is `tlink::`; use it through
+  `std/link`).
+- [Simulation and verification](simulation.md): `std/world`, `std/emu`, `std/verify`.

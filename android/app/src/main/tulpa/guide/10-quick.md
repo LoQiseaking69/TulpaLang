@@ -99,6 +99,22 @@ interfaces. `std/drivers/` holds real drivers (MPU-6050, PCA9685, MCP3008) that 
 the simulated bus. On a computer, `tulpa build --target rp2040` compiles the same code into
 firmware. Try **Your phone as an Imu** in the Library.
 
+## Planning, middleware and simulation
+
+```tulpa
+import "std/plan"
+let p = plan.Planner()
+p.action("undock", {docked: true}, {docked: false})
+p.action("drive", {docked: false}, {at: "shelf"})
+print(p.plan({docked: true, at: "dock"}, {at: "shelf"}))      # ["undock", "drive"]
+```
+
+`std/plan` also has behavior trees and missions that replan. `std/link` connects nodes with
+unit-typed topics; on the phone they run on a simulated network. `std/world` and `std/emu` put
+physics and emulated chips behind the real drivers. Try **Autonomy**, **Tulpa Link** and
+**Rover** in the Library. Proving contracts (`tulpa prove`) and building firmware run on a
+computer.
+
 ## Next
 
 Open the **Language guide** for the full reference, or browse the **Library**.

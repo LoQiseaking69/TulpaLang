@@ -37,7 +37,8 @@ What sets it apart from HermiSim (the desktop studio):
 | **Touch-first editor** | syntax colouring, live diagnostics, completion (incl. `module::` members), outline, inspect, go-to-definition, find/replace, undo/redo, auto-indent, bracket pairing and a symbol/unit keyboard bar |
 | **REPL** | persistent session with history, load-file, interrupt and reset |
 | **Driver SDK (Tulpa 3.3)** | `interface`/`impl` with conformance checks, the `std/driver` interfaces and the MPU-6050 / PCA9685 / MCP3008 drivers on the simulated bus; *Your phone as an Imu* implements the same `Imu` interface on the handset's sensors. Firmware builds for RP2040/ESP32 run on a computer (`tulpa build --target`) |
-| **Learn** | 32 runnable examples (16 for the phone, plus cart-pole and Morty co-simulation) and an in-app guide whose code blocks run with one tap, plus the full language reference |
+| **Autonomy, middleware, simulation (Tulpa 3.4)** | `std/plan` (behavior trees, planning, missions), `std/link` on a simulated network, `std/world` physics with `std/emu` emulated chips behind the real drivers. `tulpa prove`, bundles and firmware builds run on a computer |
+| **Learn** | 35 runnable examples (16 for the phone, plus cart-pole and Morty co-simulation) and an in-app guide whose code blocks run with one tap, plus the full language reference |
 
 ## Layout
 

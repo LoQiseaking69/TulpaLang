@@ -5,7 +5,7 @@
       <img src="assets/img/hermisim-mark.svg" alt="" width="64" height="64" style="border-radius:14px">
       <span class="eyebrow" style="margin-top:18px"><span class="dot"></span>HermiSim {{hermisim.version}} · Windows · Linux · macOS</span>
       <h1>The workbench for <span class="grad">robot software.</span></h1>
-      <p class="sub">Write Tulpa, then test it against MuJoCo physics, cycle-accurate RTL and boards described as code, with live telemetry, all in one window. When it works, compile it to a native executable or to RP2040 / ESP32 firmware from the Run menu.</p>
+      <p class="sub">Write Tulpa, then test it against MuJoCo physics, cycle-accurate RTL and boards described as code, with live telemetry, all in one window. Prove its contracts in the Proofs dock, then compile it to a native executable or deploy it to RP2040 / ESP32 firmware from the Run menu.</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="{{hermisim.repo}}/releases" target="_blank" rel="noopener">Download for Windows</a>
         <a class="btn" href="docs/hermisim.html">IDE tour</a>
@@ -34,7 +34,7 @@
       <a class="card reveal" href="docs/telemetry.html"><div class="ico g"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7 15l4-4 3 3 6-7"/></svg></div><h3>Live telemetry</h3><p><code>tlm::plot</code> streams to live plots. <code>tlm::status</code> drives the status bar, and <code>tlm::artifact</code> links output files.</p></a>
       <a class="card reveal" href="docs/telemetry.html#waveform-viewer"><div class="ico a"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M2 12h3V6h4v12h4V6h4v12h3v-6h2"/></svg></div><h3>Waveform viewer</h3><p>VCD files from <code>std/rtl</code> or Verilog simulators, with zoom, pan, a cursor and signal filtering.</p></a>
       <a class="card reveal" href="docs/telemetry.html#machine-diagrams"><div class="ico"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v5H4zm10 11h6v5h-6zM7 9v4a2 2 0 0 0 2 2h5"/></svg></div><h3>Machines &amp; BOMs</h3><p>Diagrams of every <code>machine</code>, plus BOM and netlist tables from <code>std/eda</code>.</p></a>
-      <a class="card reveal" href="docs/terminal.html"><div class="ico r"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m4 17 6-5-6-5m8 12h8"/></svg></div><h3>Terminal &amp; native builds</h3><p>A live Tulpa REPL with <code>$ check main.rav</code> and <code>! cmd</code>, plus <strong>Run Natively</strong>, <strong>Build Firmware for Board…</strong> and <strong>New Firmware Project…</strong> (Tulpa 3.3).</p></a>
+      <a class="card reveal" href="docs/terminal.html"><div class="ico r"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m4 17 6-5-6-5m8 12h8"/></svg></div><h3>Terminal &amp; native builds</h3><p>A live Tulpa REPL with <code>$ check main.rav</code> and <code>! cmd</code>, plus <strong>Run Natively</strong>, <strong>Build Firmware</strong>, <strong>Prove Contracts</strong>, <strong>Deploy to Board</strong> and a Tulpa Link <strong>Network</strong> view.</p></a>
     </div>
   </div>
 </section>

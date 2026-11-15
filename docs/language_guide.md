@@ -392,6 +392,10 @@ results are reproducible.
 `tulpa verify file.rav [--trials=N]` loads only the definitions in a file, runs `check` on every
 function that has an `ensure` or a return annotation, and exits with code 1 if any fail.
 
+`tulpa prove file.rav` goes further: it proves `ensure` clauses, assertions, struct and loop
+invariants, call preconditions and non-zero divisors for **all** inputs where it can, and tests
+the rest. See [Proving safety](safety.md).
+
 ## Modules
 
 ```tulpa
@@ -457,6 +461,7 @@ Timing logic then runs deterministically and fast in tests. `sim::gpio_input`, `
    - state machines, `always` monitors
    - `every!` and `repeat!`
    - contracts, default and keyword arguments
+   - `match` on numbers, ranges, alternatives, bindings and guards
    - `print` with f-strings and format specs
    - top-level program code
 
@@ -479,7 +484,9 @@ Timing logic then runs deterministically and fast in tests. `sim::gpio_input`, `
    - The generated code works in SI doubles. At the C boundary, values pass in the declared unit.
    - Native `print` shows SI units unless the value is printed through `.to("unit")`.
 
-   Dicts, closures, `match`, `try`, tasks, signals and `when` rules stay on the interpreter.
+   Dicts, closures, `try`, tasks, signals and `when` rules stay on the interpreter. To ship a
+   program that uses them, `tulpa bundle` makes a standalone executable that carries the whole
+   language, and `tulpa build --exe` falls back to one on desktop and Linux targets.
    Functions that are skipped are listed with the reason. The full list of targets, the runtime
    layers and the HAL porting guide are in [Native and embedded targets](embedded.md).
 
@@ -532,6 +539,10 @@ tulpa verify file.rav        fuzz contracted functions (--trials=N)
 tulpa build file.rav -o x.o  native object + header (--target T, --exe, --shared, -O0..3)
 tulpa new dir --board B      firmware project (rp2040, esp32, esp32c3, linux, ...)
 tulpa runtime dir --target T C runtime + HAL port; tulpa targets lists targets
+tulpa prove [--strict] file  statically prove contracts, invariants, divisors; counterexamples
+tulpa bundle file -o out     standalone executable with the whole language
+tulpa deploy [dir]           prove, check, build and flash a `tulpa new` project
+tulpa link graph|echo topic  inspect a live Tulpa Link (UDP) network
 tulpa bytecode file.rav      VM bytecode per function
 tulpa lsp                    language server over stdio
 --virtual-time / --no-vm     simulated clock / interpreter only

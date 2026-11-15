@@ -48,6 +48,26 @@
         "repo": "docs/embedded.md"
       },
       {
+        "slug": "autonomy",
+        "title": "Autonomy: planning & missions",
+        "repo": "docs/autonomy.md"
+      },
+      {
+        "slug": "link",
+        "title": "Tulpa Link middleware",
+        "repo": "docs/link.md"
+      },
+      {
+        "slug": "simulation",
+        "title": "Simulation & verification",
+        "repo": "docs/simulation.md"
+      },
+      {
+        "slug": "safety",
+        "title": "Proving safety",
+        "repo": "docs/safety.md"
+      },
+      {
         "slug": "cli",
         "file": "cli.md",
         "title": "CLI reference"

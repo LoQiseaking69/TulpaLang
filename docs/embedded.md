@@ -20,6 +20,8 @@ tulpa build app.rav --target linux --exe -o app # host program on real hardware 
 tulpa build app.rav --target rp2040 -o app.o    # object + app.h for the Pico SDK
 tulpa new blinky --board esp32c3                # ready-to-build firmware project
 tulpa runtime rt/ --target cortex-m4f           # C runtime + HAL template for your own build
+tulpa bundle app.rav -o app                     # standalone executable with the whole language
+tulpa deploy                                    # prove, check, build and flash a project
 ```
 
 ## Targets
@@ -66,6 +68,8 @@ Embedded builds default to `-Os -ffunction-sections`. Pass `-O0` to `-O3` to ove
 
 **Control**
 - `if` / `while` / `for` / `loop`
+- `match` on numbers, ranges, alternatives (`1 | 2`), bindings and guards
+- `error("...")`
 - `every!(period[, count], { ... })` (with `break`), `repeat!`
 - `require` / `ensure`
 - `always cond [else { ... }]`, re-checked after every device call, field write, global write
@@ -84,15 +88,40 @@ Embedded builds default to `-Os -ffunction-sections`. Pass `-O0` to `-O3` to ove
   compilation unit
 
 **Not native (yet)**
-- dicts and `match`
+- dicts
 - closures and lambdas
 - `try` / `catch`
 - tasks and signals
 - `when` rules
+- `match` with list patterns
 - string building beyond printing
 
-Every function that is skipped is listed with the reason. `--exe` and firmware builds need the
-top-level program itself to compile.
+Every function that is skipped is listed with the reason. Firmware builds need the top-level
+program itself to compile. On hosted targets (`sim`, `linux`, or no `--target`), `--exe` falls
+back to a [bundle](#the-whole-language-in-one-executable) when it does not.
+
+## The whole language in one executable
+
+```
+tulpa bundle app.rav -o app                      # this machine
+tulpa bundle app.rav -o app --hw                 # use real hardware (Linux backend) by default
+tulpa bundle app.rav -o app-pi --runtime tulpa-aarch64   # cross: a Tulpa binary built for the target
+```
+
+A bundle is the Tulpa runtime with your program and every module it imports (including `std/`)
+packed inside one file. It needs nothing installed and runs every language feature: dicts,
+closures, tasks, `std/plan`, `std/link`, `nn::`. Arguments after the executable's name go to
+the program as `ARGS`.
+
+Which path to use:
+
+| Target | Program fits the native subset | Program uses dynamic features |
+|---|---|---|
+| Desktop, Raspberry Pi, other Linux | `tulpa build --exe` (static native code) | `tulpa bundle`, or `tulpa build --exe`, which falls back to a bundle |
+| RP2040, ESP32, Cortex-M, RISC-V | `tulpa build --target <board>` | Split the program: the real-time part as firmware, the rest in a bundle on a Linux board |
+
+`tulpa deploy` runs the whole path for a `tulpa new` project: prove, check on the simulator,
+build with the board SDK, flash. See [Simulation and verification](simulation.md).
 
 **Display units.** The interpreter remembers each quantity's display unit, so `1[deg]` prints
 as `1 deg`. Native code stores SI values, so it prints `0.0174533 rad` unless you write

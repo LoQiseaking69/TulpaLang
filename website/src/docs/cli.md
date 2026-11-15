@@ -12,13 +12,17 @@ Everything in Tulpa goes through one binary, `tulpa`. With no arguments it start
 | `tulpa check <file>...` | Parse only and report syntax errors. |
 | `tulpa ast <file>` | Dump the parsed syntax tree. |
 | `tulpa verify [--trials=N] <file>...` | Fuzz every contracted function against its own `require` / `ensure`. |
+| `tulpa prove [--strict] [--json] [--trials=N] <file>...` | Statically prove `ensure` clauses, assertions, struct and loop invariants, call preconditions and non-zero divisors for all inputs; test what stays open and print counterexamples. Exit code 1 if anything is refuted (`--strict`: or not proved). See [Proving safety](safety.html). |
 | `tulpa graph <file>...` | Print Mermaid `stateDiagram-v2` source for every `machine`. |
 | `tulpa bytecode <file>` | Show the VM bytecode generated for each eligible function. |
 | `tulpa emit-llvm <file> [--target T] [-o out.ll]` | Print the LLVM IR for a program. |
-| `tulpa build <file> [--target T] [-o out] [--exe] [--shared] [--sim] [-O0..3]` | Compile natively. Writes an object file plus a C header, a standalone executable (`--exe`, for targets `sim` and `linux`), or a shared library. Needs clang 14+. See [Native & embedded targets](embedded.html). |
+| `tulpa build <file> [--target T] [-o out] [--exe] [--shared] [--sim] [-O0..3]` | Compile natively. Writes an object file plus a C header, a standalone executable (`--exe`, for targets `sim` and `linux`; falls back to a bundle if the program is not fully native), or a shared library. Needs clang 14+. See [Native & embedded targets](embedded.html). |
 | `tulpa targets` | List the native targets: `sim`, `linux`, `rp2040`, `esp32`, `esp32s2`, `esp32s3`, `esp32c3`, `esp32c6`, `cortex-m0`, `cortex-m4f`, `riscv32`. |
 | `tulpa new <dir> --board B` | Scaffold a firmware project for a board (Pico SDK, ESP-IDF, or a Linux Makefile). |
 | `tulpa runtime <dir> [--target T]` | Write the C runtime and HAL port, for use in your own build system. |
+| `tulpa bundle <file> [-o out] [--hw] [--runtime BIN]` | Make a standalone executable that carries the runtime, the program and its imports: the whole language, nothing to install. `--runtime` takes a Tulpa binary built for another machine. |
+| `tulpa deploy [dir] [--port P] [--host user@host] [--dry-run] [--no-flash] [--force]` | For a `tulpa new` project: prove, check on the simulator, build with the board SDK, flash. See [Simulation & verification](simulation.html). |
+| `tulpa link graph [--domain N]` / `tulpa link echo <topic>` | List the nodes, topics and services of a live Tulpa Link network, or print a topic's messages. See [Tulpa Link](link.html). |
 | `tulpa lsp` | Language server over stdio, for editors. |
 
 ## Flags
@@ -56,6 +60,7 @@ Everything in Tulpa goes through one binary, `tulpa`. With no arguments it start
 | `TULPA_COSIM` | `cosim::connect()` | Address of the co-simulation server. HermiSim sets it. |
 | `TULPA_BIN` | HermiSim | Path of the `tulpa` binary to use. |
 | `TULPA_CLANG` | `tulpa build` | The clang binary to use. ESP32, S2 and S3 builds need Espressif's clang, which is found automatically in `~/.espressif`. |
+| `TULPA_LINK` | `std/link` | Default transport for nodes: `sim` or `udp`. |
 | `TULPA_GPIOCHIP` | native `linux` target | The gpiochip device to use (default `/dev/gpiochip0`). |
 
 ## Recipes
