@@ -1,0 +1,128 @@
+# Morty's main board as code — the Tulpa successor of mother/mortymb.py and mother/BOM.csv.
+#
+#   tulpa board/motherboard.rav     → ERC, power budget, BOM, out/morty.net, out/morty_bom.csv
+#
+# Same parts and costs as the original BOM, but every part now carries a power draw in watts
+# and every regulator a real output capacity, so the design gets checked instead of just
+# drawn. The checks surface problems the original files could not:
+#   * the TPS7A4501 is a 1.5 A LDO — it cannot feed a 170 W Ryzen core or DDR4 banks,
+#   * six 250 W GPUs plus the CPU exceed a 1600 W supply.
+
+import "std/eda"
+
+let b = eda.Board(name: "Morty mainboard rev B (Tulpa)")
+
+fn bus(prefix, n) { range(n).map(|i| prefix + str(i)) }
+
+# ---------------------------------------------------------------- rails
+b.power("P12V", 12[V]); b.power("P5V", 5[V]); b.power("P3V3", 3.3[V])
+b.power("VCORE", 1.1[V]); b.power("VDDQ", 1.2[V]); b.power("FPGA_VCC", 1.2[V])
+b.power("PCIE_VCC", 12[V]); b.power("USB_VCC", 5[V]); b.power("ETH_VCC", 3.3[V]); b.power("SATA_VCC", 3.3[V])
+b.ground("GND")
+
+# ---------------------------------------------------------------- power tree
+let psu = b.part("J1", "ATX Power Connector", "24-pin ATX (1600 W PSU)", pins: ["P12V", "P5V", "P3V3", "GND"], cost: 10)
+psu.supplies = {P12V: 1450[W], P5V: 100[W], P3V3: 100[W], PCIE_VCC: 0[W]}
+b.connect("P12V", "J1.P12V"); b.connect("P5V", "J1.P5V"); b.connect("P3V3", "J1.P3V3"); b.connect("GND", "J1.GND")
+
+# Eight TPS7A4501 LDOs as in the original BOM (1.5 A each) → capacity = 1.5 A × Vout.
+let vr_rails = [["VR1", "VCORE", 1.1], ["VR2", "VCORE", 1.1], ["VR3", "VDDQ", 1.2], ["VR4", "FPGA_VCC", 1.2],
+                ["VR5", "USB_VCC", 5.0], ["VR6", "ETH_VCC", 3.3], ["VR7", "SATA_VCC", 3.3], ["VR8", "VDDQ", 1.2]]
+for v in vr_rails {
+    let src = if v[2] >= 3.3 { "P12V" } else { "P5V" }
+    let out = {}
+    out[v[1]] = 1.5[A] * quantity(v[2], "V")
+    b.regulator(v[0], "Voltage Regulator", "TI TPS7A4501", src, out, efficiency: v[2] / (if src == "P12V" { 12.0 } else { 5.0 }),
+                cost: 1, pins: ["VIN", "GND", "VOUT"])
+    b.connect(src, v[0] + ".VIN"); b.connect("GND", v[0] + ".GND"); b.connect(v[1], v[0] + ".VOUT")
+}
+let pmic = b.regulator("U20", "PMIC", "TI TPS65217", "P5V", {P3V3: 4[W]}, efficiency: 0.85, cost: 5, pins: ["VIN", "GND", "OUT1"])
+b.connect("P5V", "U20.VIN"); b.connect("GND", "U20.GND"); b.connect("P3V3", "U20.OUT1")
+
+# ---------------------------------------------------------------- compute
+b.part("U1", "CPU", "AMD Ryzen 9 7950X", cost: 750, draw: 170[W],
+       pins: ["VCC", "GND", "UART_TX", "UART_RX", "CLK", "USB", "ETH", "SATA"] + bus("ADDR", 8) + bus("DATA", 8) + bus("PCIE", 6))
+for r in ["U2", "U3"] {
+    b.part(r, "RAM", "DDR4 DIMM-288", cost: 150, draw: 3[W], pins: ["VCC", "GND"] + bus("ADDR", 8) + bus("DATA", 8))
+}
+b.part("U4", "FPGA", "Xilinx Spartan-6 (torque governor)", cost: 300, draw: 2[W], pins: ["VCC", "GND", "UART_RX", "UART_TX", "CLK"])
+b.part("U5", "UART Communication", "Custom UART Communication Module", cost: 50, draw: 0.1[W], pins: ["VCC", "GND", "A_TX", "A_RX", "B_TX", "B_RX"])
+b.part("U6", "Clock Generator", "IDT 5V9885", cost: 3, draw: 0.3[W], pins: ["VCC", "GND", "CLK0", "CLK1"])
+
+b.connect("VCORE", "U1.VCC"); b.connect("GND", "U1.GND")
+b.connect("VDDQ", ["U2.VCC", "U3.VCC"]); b.connect("GND", ["U2.GND", "U3.GND"])
+for i in 0..8 {
+    b.connect(f"MEM_A{i}", ["U1.ADDR" + str(i), "U2.ADDR" + str(i), "U3.ADDR" + str(i)])
+    b.connect(f"MEM_D{i}", ["U1.DATA" + str(i), "U2.DATA" + str(i), "U3.DATA" + str(i)])
+}
+b.connect("FPGA_VCC", "U4.VCC"); b.connect("GND", "U4.GND")
+b.connect("P3V3", ["U5.VCC", "U6.VCC"]); b.connect("GND", ["U5.GND", "U6.GND"])
+# CPU ⇄ UART module ⇄ FPGA (the original cpu['UART_TX'] += uart_comm['uart_rx'] chain)
+b.connect("CPU_TX", ["U1.UART_TX", "U5.A_RX"]); b.connect("CPU_RX", ["U1.UART_RX", "U5.A_TX"])
+b.connect("GOV_RX", ["U5.B_TX", "U4.UART_RX"]); b.connect("GOV_TX", ["U5.B_RX", "U4.UART_TX"])
+b.connect("CLK_CPU", ["U6.CLK0", "U1.CLK"]); b.connect("CLK_FPGA", ["U6.CLK1", "U4.CLK"])
+
+# ---------------------------------------------------------------- expansion & I/O
+for i in 0..6 {
+    let slot = "J" + str(10 + i)
+    let gpu = "G" + str(1 + i)
+    b.part(slot, "PCIe Slot", "PCIe x16 Slot", cost: 20, pins: ["VCC", "GND", "LANE", "CARD_PWR"])
+    b.part(gpu, "GPU", "AMD Radeon RX", cost: 500, draw: 250[W], pins: ["PCIE_VCC", "GND", "LANE"])
+    b.connect("PCIE_VCC", [slot + ".VCC", gpu + ".PCIE_VCC"])
+    b.connect("GND", [slot + ".GND", gpu + ".GND"])
+    b.connect(f"PCIE{i}", ["U1.PCIE" + str(i), slot + ".LANE", gpu + ".LANE"])
+    b.parts[slot].pins["CARD_PWR"].kind = "nc"
+}
+b.part("U7", "USB Controller", "NEC D720200", cost: 5, draw: 1.5[W], pins: ["VCC", "GND", "HOST"] + bus("PORT", 4))
+b.part("U8", "Ethernet Controller", "Realtek RTL8111", cost: 2, draw: 0.6[W], pins: ["VCC", "GND", "HOST", "MDI"])
+b.part("U9", "SATA Controller", "Marvell 88SE9215", cost: 10, draw: 1.2[W], pins: ["VCC", "GND", "HOST"] + bus("PORT", 4))
+b.part("J20", "Ethernet Port", "RJ45 Ethernet Port", cost: 1, pins: ["MDI"])
+for i in 0..4 {
+    b.part("J" + str(30 + i), "USB Port", "USB Type-A Port", cost: 1, pins: ["VBUS", "GND", "D"])
+    b.part("J" + str(40 + i), "SATA Port", "SATA Connector", cost: 1, pins: ["D"])
+    b.connect("USB_VCC", "J" + str(30 + i) + ".VBUS"); b.connect("GND", "J" + str(30 + i) + ".GND")
+    b.connect(f"USB_P{i}", ["U7.PORT" + str(i), "J" + str(30 + i) + ".D"])
+    b.connect(f"SATA_P{i}", ["U9.PORT" + str(i), "J" + str(40 + i) + ".D"])
+}
+b.connect("USB_VCC", "U7.VCC"); b.connect("ETH_VCC", "U8.VCC"); b.connect("SATA_VCC", "U9.VCC")
+b.connect("GND", ["U7.GND", "U8.GND", "U9.GND"])
+b.connect("USB_HOST", ["U1.USB", "U7.HOST"]); b.connect("ETH_HOST", ["U1.ETH", "U8.HOST"])
+b.connect("SATA_HOST", ["U1.SATA", "U9.HOST"]); b.connect("ETH_MDI", ["U8.MDI", "J20.MDI"])
+
+# PCIE_VCC is the 12 V supply itself — model the copper tie as a 0 Ω jumper.
+b.part("R1", "Jumper", "0R 2512", cost: 0.05, pins: ["1", "2"])
+b.parts["R1"].pins["1"].kind = "passive"; b.parts["R1"].pins["2"].kind = "passive"
+b.connect("P12V", "R1.1"); b.connect("PCIE_VCC", "R1.2")
+b.nets["P12V"].kind = "power"
+psu.supplies.PCIE_VCC = 1450[W]       # same copper: the PSU's 12 V capacity is shared
+
+# Decoupling as in the original script (two 100 nF per device)
+for r in ["U1", "U2", "U3", "U7", "U8", "U9", "U6", "U4"] { b.decouple(r, "VCC", "GND", count: 2) }
+
+# ---------------------------------------------------------------- report
+fn report() {
+    print(f"═══ {b.name} ═══")
+    print(f"{len(b.parts)} parts, {len(b.nets)} nets")
+    let issues = b.erc()
+    let errors = issues.filter(|i| i.severity == "error")
+    print(f"\nERC: {len(errors)} errors, {len(issues) - len(errors)} warnings")
+    for i in issues { print(f"  [{i.severity}] {i.msg}") }
+    print("\nPower budget:")
+    let over = []
+    for r in b.power_budget() {
+        let cap = if r.capacity > 0 { f"{r.capacity.in('W'):8.1f} W" } else { "  (tied)" }
+        let cur = if r.current == nil { "" } else { f"{r.current.in('A'):7.2f} A" }
+        let mark = if r.ok { "ok " } else { "OVER" }
+        print(f"  {mark} {r.rail:<9} load {r.load.in('W'):8.1f} W {cur}  capacity {cap}")
+        if not r.ok { over.push(r.rail) }
+    }
+    print(f"\nBOM: {len(b.bom())} lines, total ${b.total_cost():.2f}")
+    for r in b.bom() { print(f"  {r.qty:>3} × {r.value:<38} ${r.unit_cost:>8.2f}  {r.refs.join(' ')}") }
+    b.write_netlist("out/morty.net")
+    b.write_bom("out/morty_bom.csv")
+    b.write_json("out/morty_board.json")
+    print("\nwrote out/morty.net, out/morty_bom.csv, out/morty_board.json")
+    {errors: len(errors), overloaded: over, cost: b.total_cost()}
+}
+
+let result = report()

@@ -1,0 +1,36 @@
+# Co-simulation: balance a pole on a cart in MuJoCo, running on the phone.
+# Open the Sim tab to watch it in 3D. The controller is full-state feedback (discrete
+# LQR from the linearised model). Halfway through, the pole gets a shove to show recovery.
+
+let sim = cosim::connect()
+let info = sim.info()
+print(f"model {info.model}: {info.nu} actuator, {len(info.joints)} joints, dt = {info.timestep} s")
+
+const K = [8.572, 78.919, 11.691, 20.448]   # LQR gains on x, theta, xdot, thetadot
+let o = sim.reset("tilted")            # start with the pole tipped 0.25 rad
+
+fn control(o) {
+    let s = o.sensors
+    let state = [s.x[0], s.theta[0], s.xdot[0], s.thetadot[0]]
+    let u = 0.0
+    for i in range(4) { u = u + K[i] * state[i] }
+    clamp(u, -30.0, 30.0)
+}
+
+let shoved = false
+while o.time < 12.0 {
+    let u = control(o)
+    o = sim.step([u], 10)              # 10 physics steps (20 ms) per control tick
+    tlm::plot("theta", o.sensors.theta[0])
+    tlm::plot("cart x", o.sensors.x[0])
+    if not shoved and o.time > 6.0 {
+        sim.apply_force("pole", [6.0, 0.0, 0.0], [0.0, 0.0, 0.0])
+        o = sim.step([control(o)], 25)
+        sim.apply_force("pole", [0.0, 0.0, 0.0], [0.0, 0.0, 0.0])
+        print(f"shove at t = {o.time:.2f} s")
+        shoved = true
+    }
+}
+let th = o.sensors.theta[0]
+print(f"t = {o.time:.1f} s  theta = {th:.4f} rad  x = {o.sensors.x[0]:.3f} m")
+print(if abs(th) < 0.05 { "balanced ✓" } else { "fell over" })

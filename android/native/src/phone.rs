@@ -121,7 +121,7 @@ pub fn set_action_handler(h: ActionHandler) {
     *handler().lock().unwrap_or_else(|e| e.into_inner()) = Some(h);
 }
 
-fn action(kind: &str, payload: serde_json::Value) -> Result<String, String> {
+pub(crate) fn action(kind: &str, payload: serde_json::Value) -> Result<String, String> {
     let h = handler().lock().unwrap_or_else(|e| e.into_inner());
     match h.as_ref() {
         Some(f) => Ok(f(kind, &payload.to_string())),

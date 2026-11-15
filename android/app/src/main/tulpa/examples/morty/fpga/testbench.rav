@@ -1,0 +1,91 @@
+# Testbench for Morty's FPGA designs — the Tulpa successor of fpga/sim/testbench.v.
+#
+#   tulpa fpga/testbench.rav              (or Run ▸ Run in HermiSim)
+#
+# Part 1 replays the original testbench against the legacy port (0xAA, 0xCC, 0xF0) and
+# prints the same $monitor fields. Part 2 drives the torque governor with MGP packets at the
+# bit level and checks every response against the behavioural model, including a corrupted
+# packet, over-limit torques and a watchdog trip. Waveforms go to out/*.vcd.
+
+import "std/rtl"
+import "legacy"
+import "governor"
+import "protocol"
+
+const DIV = 16
+
+# Drive one 8N1 byte onto `line`, LSB first (task send_uart_byte in testbench.v).
+fn send_byte(sim, line, b, div) {
+    line.set(0); sim.run(div)
+    for i in 0..8 { line.set((b >> i) & 1); sim.run(div) }
+    line.set(1); sim.run(div)
+}
+
+# Collects bytes decoded from a UART line by a second receiver instance.
+struct Monitor { mon; bytes = []; fn comb(self) {}; fn seq(self) { if self.mon.valid.value == 1 { self.bytes.push(self.mon.data.value) } } }
+
+fn legacy_bench() {
+    print("── legacy design (cpu + fpga + uart_comm + top_level) ─────────────────")
+    let sim = rtl.Sim(period_ns: 10)
+    let h = legacy.build(sim, DIV)
+    sim.trace("out/legacy.vcd")
+    sim.run(4)
+    for b in [0xAA, 0xCC, 0xF0] {
+        send_byte(sim, h.uart_rx, b, DIV)
+        sim.run(4 * DIV)
+        let dbg = h.top.debug.value
+        print(f"Time: {sim.time_ns()} ns | rx byte {b:#04x} -> uart.data_out {h.uart.data_out.value:#04x} | debug_data_out: {dbg:08x} | CPU Error Flag: {(dbg >> 30) & 3:02b} | FPGA Error Flag: {(dbg >> 28) & 3:02b} | UART Error Flags: {(dbg >> 26) & 3:02b}")
+        assert h.uart.data_out.value == b, f"legacy uart received {h.uart.data_out.value:#x}, expected {b:#x}"
+    }
+    sim.close()
+}
+
+fn governor_bench() {
+    print("── torque governor (MGP over 8N1 UART) ────────────────────────────────")
+    let sim = rtl.Sim(period_ns: 10)
+    let g = governor.build(sim, DIV, 30000)
+    let mon_rx = sim.add(governor.UartRx(sim: sim, div: DIV, rx: g.tx.tx, prefix: "mon"))
+    let mon = sim.add(Monitor(mon_rx))
+    sim.trace("out/governor.vcd")
+    let model = protocol.GovernorModel()
+    nn::seed(42)
+    let cases = []
+    for k in 0..4 { cases.push(range(18).map(|i| (nn::uniform() * 2 - 1) * protocol.LIMITS[i] / 100.0 * 0.6)) }
+    cases.push(range(18).map(|i| 400.0))                  # every joint far over its limit
+    let pass = 0
+    let total = 0
+    for k, torques in enumerate(cases + [nil, cases[0]]) {
+        let pkt = if torques == nil {
+            let p = protocol.encode_command(k, cases[1]); p[10] = p[10] ^ 0xFF; p   # corrupt one byte
+        } else { protocol.encode_command(k, torques) }
+        let want = model.process(pkt)
+        mon.bytes = []
+        for b in pkt { send_byte(sim, g.rx_line, b, DIV) }
+        sim.run_until(|| len(mon.bytes) >= protocol.RSP_LEN, 20 * protocol.RSP_LEN * DIV)
+        let got = mon.bytes
+        let ok = got == want
+        let r = protocol.decode_response(got)
+        total += 1
+        if ok { pass += 1 }
+        let fl = if r == nil { "?" } else { protocol.flag_names(r.flags).join(",") }
+        print(f"  packet {k}: {if ok { 'match' } else { 'MISMATCH' }}  flags=[{fl}]  t={sim.time_ns() / 1000.0:.1f} us")
+    }
+    # watchdog: stay silent past wd_limit, then the next response must carry the trip flag
+    sim.run(31000)
+    assert g.core.tripped.value == 1, "watchdog did not trip"
+    model.trip()
+    let pkt = protocol.encode_command(99, cases[0])
+    let want = model.process(pkt)
+    mon.bytes = []
+    for b in pkt { send_byte(sim, g.rx_line, b, DIV) }
+    sim.run_until(|| len(mon.bytes) >= protocol.RSP_LEN, 20 * protocol.RSP_LEN * DIV)
+    total += 1
+    if mon.bytes == want { pass += 1 }
+    print(f"  watchdog: {if mon.bytes == want { 'match' } else { 'MISMATCH' }}  flags=[{protocol.flag_names(protocol.decode_response(mon.bytes).flags).join(',')}]")
+    sim.close()
+    print(f"governor: {pass}/{total} responses bit-exact with the behavioural model, {sim.cycle} cycles")
+    assert pass == total, "RTL and behavioural model disagree"
+}
+
+legacy_bench()
+governor_bench()

@@ -5,14 +5,16 @@ move, sense and must not fail. The whole Tulpa toolchain runs on the phone — i
 VM, units, contracts, state machines, reactive rules and the `std/` libraries. Nothing is sent to a
 server, and everything works offline.
 
-HermiSim is the desktop studio: MuJoCo co-simulation, 3D, the full workshop. Tulpa Field is built
-for the other half of an engineer's day — **in the field, with real sensors in your hand**:
+HermiSim is the desktop studio. Tulpa Field is built for the other half of an engineer's day —
+**in the field, with real sensors in your hand** and a physics model in your pocket:
 
 - **Your phone is a device.** `phone::accel()`, `phone::tilt()`, `phone::pressure()`,
   `phone::location()` read real sensors as unit-checked quantities. `phone::vibrate`,
   `phone::torch`, `phone::say` and `phone::beep` are its actuators.
 - **Live instruments.** `tlm::plot` draws live charts; `phone::gauge` puts a big readout on the
   Run screen.
+- **Physics in your pocket.** MuJoCo runs on the phone: `cosim::` programs drive a simulated
+  robot you watch in 3D, the same protocol and API as HermiSim.
 - **Machine inspector.** Every `machine` in your file is drawn as a state graph you can tap.
 - **Verify on the go.** Fuzz every contract in a file and run its tests with one tap.
 - **A REPL with history** and a symbol keyboard built for Tulpa's syntax.
@@ -38,9 +40,10 @@ print(v.to("m/s"))
 
 | Tab | What it does |
 |-----|--------------|
-| **Projects** | your projects, new from a template, import a file |
+| **Home** | the welcome page: continue where you left off, quick starts, recent projects |
 | **Code** | the editor, with diagnostics, completion, outline and the symbol bar |
 | **Run** | console, live plots, gauges, program input, stop |
+| **Sim** | the 3D MuJoCo view: models, free-run, push, co-simulation |
 | **REPL** | an interactive Tulpa session |
 | **Learn** | the example library and this guide |
 

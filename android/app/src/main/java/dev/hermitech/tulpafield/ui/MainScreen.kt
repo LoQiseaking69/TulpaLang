@@ -18,9 +18,10 @@ import dev.hermitech.tulpafield.Screen
 private data class Tab(val screen: Screen, val label: String, val icon: ImageVector)
 
 private val TABS = listOf(
-    Tab(Screen.Projects, "Projects", Icons.Default.Folder),
+    Tab(Screen.Home, "Home", Icons.Default.Home),
     Tab(Screen.Code, "Code", Icons.Default.Code),
     Tab(Screen.Run, "Run", Icons.Default.PlayCircle),
+    Tab(Screen.Sim, "Sim", Icons.Default.ViewInAr),
     Tab(Screen.Repl, "REPL", Icons.Default.Terminal),
     Tab(Screen.Learn, "Learn", Icons.AutoMirrored.Filled.MenuBook),
 )
@@ -43,10 +44,11 @@ fun MainScreen(vm: AppViewModel, onImport: () -> Unit, onExit: () -> Unit) {
                         selected = screen == t.screen,
                         onClick = { vm.go(t.screen) },
                         icon = {
-                            if (t.screen == Screen.Run && run.running) BadgedBox(badge = { Badge(containerColor = TF.Ok) }) { Icon(t.icon, null) }
-                            else Icon(t.icon, null)
+                            if (t.screen == Screen.Run && run.running) BadgedBox(badge = { Badge(containerColor = TF.Ok) }) { Icon(t.icon, t.label) }
+                            else Icon(t.icon, t.label)
                         },
-                        label = { Text(t.label) },
+                        label = { Text(t.label, maxLines = 1, fontSize = androidx.compose.ui.unit.TextUnit(11f, androidx.compose.ui.unit.TextUnitType.Sp)) },
+                        alwaysShowLabel = true,
                         colors = NavigationBarItemDefaults.colors(indicatorColor = TF.Violet.copy(alpha = 0.25f), selectedIconColor = TF.Cyan, selectedTextColor = TF.Cyan),
                     )
                 }
@@ -56,7 +58,9 @@ fun MainScreen(vm: AppViewModel, onImport: () -> Unit, onExit: () -> Unit) {
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             when (screen) {
+                Screen.Home -> HomeScreen(vm, menu)
                 Screen.Projects -> ProjectsScreen(vm, onImport, menu)
+                Screen.Sim -> SimScreen(vm, menu)
                 Screen.Code -> EditorScreen(vm, menu)
                 Screen.Run -> RunScreen(vm, menu)
                 Screen.Repl -> ReplScreen(vm, menu)

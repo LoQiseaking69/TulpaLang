@@ -1,0 +1,52 @@
+# Live link to the FPGA torque governor over UART, speaking MGP (fpga/protocol.rav).
+#
+# In simulation the UART is Tulpa's simulated port and the FPGA is the bit-exact
+# behavioural model, so the exact bytes that would cross the wire are exercised every tick.
+# Run with `tulpa --hw` and a real FPGA on /dev/ttyUSB0 and nothing else changes.
+
+import "../fpga/protocol"
+
+struct GovernorLink {
+    port: str = "/dev/ttyUSB0"
+    baud: int = 1000000
+    watchdog_ms: float = 50.0
+    uart = nil
+    model = nil
+    simulated: bool = true
+    seq: int = 0
+    last_t = nil
+    sent: int = 0
+    bad: int = 0
+    flags_seen = {}
+    fn init(self) {
+        self.uart = UART::new(self.port, self.baud)
+        try {
+            sim::uart_loopback(self.port, false)
+            self.model = protocol.GovernorModel()
+        } catch e {
+            self.simulated = false        # real hardware backend
+        }
+    }
+    # Send commanded torques (N·m); returns {torques, flags, names} governed by the FPGA.
+    fn exchange(self, torques, t) {
+        self.seq = (self.seq + 1) & 0xFF
+        let pkt = protocol.encode_command(self.seq, torques)
+        self.uart.send(pkt)
+        self.sent += 1
+        if self.simulated {
+            if self.last_t != nil and (t - self.last_t) * 1000 > self.watchdog_ms { self.model.trip() }
+            let rx = sim::uart_sent(self.port)
+            sim::uart_feed(self.port, self.model.process(rx))
+        }
+        self.last_t = t
+        let rsp = protocol.decode_response(self.uart.receive(protocol.RSP_LEN, 20))
+        if rsp == nil or rsp.seq != self.seq {
+            self.bad += 1
+            return {torques: [0.0; protocol.N_JOINTS], flags: protocol.F_CRC, names: ["link"]}
+        }
+        let names = protocol.flag_names(rsp.flags)
+        for n in names { self.flags_seen[n] = self.flags_seen.get(n, 0) + 1 }
+        {torques: rsp.torques, flags: rsp.flags, names: names}
+    }
+    fn stats(self) { {packets: self.sent, bad: self.bad, flags: self.flags_seen, backend: if self.simulated { "sim" } else { "uart" }} }
+}

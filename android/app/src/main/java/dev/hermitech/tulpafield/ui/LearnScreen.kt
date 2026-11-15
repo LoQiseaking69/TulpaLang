@@ -33,15 +33,18 @@ import dev.hermitech.tulpafield.core.Example
 private val CATEGORY_ICON = mapOf(
     "Start here" to Icons.Default.RocketLaunch, "Phone sensors" to Icons.Default.Sensors, "Robotics" to Icons.Default.PrecisionManufacturing,
     "Timing & reactive" to Icons.Default.Timer, "Verification" to Icons.Default.Verified, "Libraries" to Icons.AutoMirrored.Filled.LibraryBooks,
-    "Native" to Icons.Default.Memory, "More" to Icons.Default.MoreHoriz,
+    "Native" to Icons.Default.Memory, "Simulation" to Icons.Default.ViewInAr, "More" to Icons.Default.MoreHoriz,
 )
 
 @Composable
 fun LearnScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
-    var tab by rememberSaveable { mutableIntStateOf(if (vm.settings.seenWelcome) 0 else 1) }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
     var example by remember { mutableStateOf<Example?>(null) }
     val doc by vm.guideDoc.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { if (!vm.settings.seenWelcome) { vm.guideDoc.value = "welcome"; vm.settings.seenWelcome = true } }
+    val wantTab by vm.guideTab.collectAsStateWithLifecycle()
+    val wantExample by vm.openExampleId.collectAsStateWithLifecycle()
+    LaunchedEffect(wantTab) { wantTab?.let { tab = it; vm.guideTab.value = null } }
+    LaunchedEffect(wantExample) { wantExample?.let { id -> example = vm.examples.firstOrNull { it.id == id }; vm.openExampleId.value = null } }
 
     example?.let { e -> BackHandler { example = null }; ExampleDetail(vm, e) { example = null }; return }
     doc?.let { id -> GuideReader(vm, id); return }
@@ -71,7 +74,7 @@ private fun Library(vm: AppViewModel, open: (Example) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
             OutlinedTextField(q, { q = it }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), singleLine = true,
-                placeholder = { Text("Search ${all.size} examples") }, leadingIcon = { Icon(Icons.Default.Search, null) })
+                placeholder = { Text("Search examples") }, leadingIcon = { Icon(Icons.Default.Search, null) })
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(cat == null, { cat = null }, label = { Text("All") })
                 cats.forEach { c -> FilterChip(cat == c, { cat = if (cat == c) null else c }, label = { Text(c) }, leadingIcon = { Icon(CATEGORY_ICON[c] ?: Icons.Default.Folder, null, Modifier.size(16.dp)) }) }
@@ -125,6 +128,7 @@ private fun ExampleDetail(vm: AppViewModel, e: Example, onBack: () -> Unit) {
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
             Text(e.summary, color = TF.Text.copy(alpha = 0.9f))
             if (e.virtualTime) Text("Runs on the virtual clock.", color = TF.Cyan, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+            if (e.cosim) Text("Co-simulation: runs against a MuJoCo model on the phone and opens the 3D Sim view.", color = TF.Cyan, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
             if (files.size > 1) {
                 Row(Modifier.padding(top = 12.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     files.forEach { f -> FilterChip(f == current, { current = f }, label = { Text(f.relativeTo(e.dir).path, fontFamily = TF.Mono, fontSize = 12.sp) }) }

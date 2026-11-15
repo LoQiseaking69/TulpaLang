@@ -1,0 +1,161 @@
+<?xml version='1.0'?>
+<mujoco model="biped_robot">
+  <compiler angle="degree" inertiafromgeom="true"/>
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="Euler"/>
+  <default>
+    <joint limited="true" damping="0.5" armature="0.01"/>
+    <geom condim="3" friction="1.0 0.5 0.5" density="1000"/>
+    <motor ctrlrange="-1 1" ctrllimited="true"/>
+  </default>
+
+  <visual>
+    <headlight ambient="0.4 0.4 0.4"/>
+    <map znear="0.01"/>
+    <global offwidth="1280" offheight="720"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.1 0.12 0.18"
+             rgb2="0.02 0.02 0.04" width="512" height="512"/>
+    <texture name="grid" type="2d" builtin="checker"
+             rgb1="0.25 0.25 0.28" rgb2="0.20 0.20 0.22"
+             width="256" height="256"/>
+    <material name="grid_mat" texture="grid" texrepeat="8 8" reflectance="0.1"/>
+  </asset>
+
+  <worldbody>
+    <light diffuse="0.8 0.8 0.8" pos="0 0 5" dir="0 0 -1"/>
+    <light diffuse="0.4 0.4 0.4" pos="2 2 4" dir="-0.5 -0.5 -1"/>
+    <geom name="ground" type="plane" size="10 10 0.1"
+          rgba="0.3 0.3 0.3 1" material="grid_mat"/>
+
+    <!-- ======================== TORSO ======================== -->
+    <body name="torso" pos="0 0 1.3">
+      <joint name="root" type="free"/>
+      <geom name="torso_geom" type="capsule" fromto="0 0 -0.15 0 0 0.15"
+            size="0.08" rgba="0.35 0.55 0.85 1"/>
+      <!-- Head -->
+      <geom name="head_geom" type="sphere" pos="0 0 0.25" size="0.09"
+            rgba="0.35 0.55 0.85 1"/>
+
+      <!-- ==================== LEFT LEG ==================== -->
+      <!-- Left hip -->
+      <body name="left_thigh" pos="0 0.1 -0.2">
+        <joint name="left_hip_y" type="hinge" axis="0 1 0" range="-120 45"/>
+        <joint name="left_hip_x" type="hinge" axis="1 0 0" range="-30 30"/>
+        <geom name="left_thigh_geom" type="capsule" fromto="0 0 0 0 0 -0.35"
+              size="0.05" rgba="0.6 0.4 0.2 1"/>
+
+        <!-- Left shin -->
+        <body name="left_shin" pos="0 0 -0.35">
+          <joint name="left_knee" type="hinge" axis="0 1 0" range="-5 150"/>
+          <geom name="left_shin_geom" type="capsule" fromto="0 0 0 0 0 -0.35"
+                size="0.04" rgba="0.6 0.4 0.2 1"/>
+
+          <!-- Left foot -->
+          <body name="left_foot" pos="0 0 -0.35">
+            <joint name="left_ankle_y" type="hinge" axis="0 1 0" range="-45 60"/>
+            <geom name="left_foot_geom" type="box" pos="0.03 0 -0.02"
+                  size="0.1 0.04 0.02" rgba="0.3 0.3 0.3 1"/>
+            <!-- Toe sensor site -->
+            <site name="left_toe" pos="0.1 0 -0.04" size="0.01"/>
+            <!-- Heel sensor site -->
+            <site name="left_heel" pos="-0.05 0 -0.04" size="0.01"/>
+          </body>
+        </body>
+      </body>
+
+      <!-- ==================== RIGHT LEG ==================== -->
+      <!-- Right hip -->
+      <body name="right_thigh" pos="0 -0.1 -0.2">
+        <joint name="right_hip_y" type="hinge" axis="0 1 0" range="-120 45"/>
+        <joint name="right_hip_x" type="hinge" axis="1 0 0" range="-30 30"/>
+        <geom name="right_thigh_geom" type="capsule" fromto="0 0 0 0 0 -0.35"
+              size="0.05" rgba="0.6 0.4 0.2 1"/>
+
+        <!-- Right shin -->
+        <body name="right_shin" pos="0 0 -0.35">
+          <joint name="right_knee" type="hinge" axis="0 1 0" range="-5 150"/>
+          <geom name="right_shin_geom" type="capsule" fromto="0 0 0 0 0 -0.35"
+                size="0.04" rgba="0.6 0.4 0.2 1"/>
+
+          <!-- Right foot -->
+          <body name="right_foot" pos="0 0 -0.35">
+            <joint name="right_ankle_y" type="hinge" axis="0 1 0" range="-45 60"/>
+            <geom name="right_foot_geom" type="box" pos="0.03 0 -0.02"
+                  size="0.1 0.04 0.02" rgba="0.3 0.3 0.3 1"/>
+            <!-- Toe sensor site -->
+            <site name="right_toe" pos="0.1 0 -0.04" size="0.01"/>
+            <!-- Heel sensor site -->
+            <site name="right_heel" pos="-0.05 0 -0.04" size="0.01"/>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <!-- ======================== ACTUATORS ======================== -->
+  <actuator>
+    <!-- Left leg -->
+    <motor name="left_hip_y_motor"   joint="left_hip_y"   gear="120"/>
+    <motor name="left_hip_x_motor"   joint="left_hip_x"   gear="60"/>
+    <motor name="left_knee_motor"    joint="left_knee"     gear="90"/>
+    <motor name="left_ankle_motor"   joint="left_ankle_y"  gear="50"/>
+    <!-- Right leg -->
+    <motor name="right_hip_y_motor"  joint="right_hip_y"  gear="120"/>
+    <motor name="right_hip_x_motor"  joint="right_hip_x"  gear="60"/>
+    <motor name="right_knee_motor"   joint="right_knee"    gear="90"/>
+    <motor name="right_ankle_motor"  joint="right_ankle_y" gear="50"/>
+  </actuator>
+
+  <!-- ======================== SENSORS ======================== -->
+  <sensor>
+    <!-- Torso orientation and velocity -->
+    <framequat     name="torso_orient"   objtype="body" objname="torso"/>
+    <framelinvel   name="torso_linvel"   objtype="body" objname="torso"/>
+    <frameangvel   name="torso_angvel"   objtype="body" objname="torso"/>
+    <framepos      name="torso_pos"      objtype="body" objname="torso"/>
+    <accelerometer name="torso_accel"    site="left_toe"/>
+    <gyro          name="torso_gyro"     site="left_toe"/>
+
+    <!-- Left leg joint positions -->
+    <jointpos name="left_hip_y_pos"   joint="left_hip_y"/>
+    <jointpos name="left_hip_x_pos"   joint="left_hip_x"/>
+    <jointpos name="left_knee_pos"    joint="left_knee"/>
+    <jointpos name="left_ankle_y_pos" joint="left_ankle_y"/>
+
+    <!-- Right leg joint positions -->
+    <jointpos name="right_hip_y_pos"   joint="right_hip_y"/>
+    <jointpos name="right_hip_x_pos"   joint="right_hip_x"/>
+    <jointpos name="right_knee_pos"    joint="right_knee"/>
+    <jointpos name="right_ankle_y_pos" joint="right_ankle_y"/>
+
+    <!-- Left leg joint velocities -->
+    <jointvel name="left_hip_y_vel"   joint="left_hip_y"/>
+    <jointvel name="left_hip_x_vel"   joint="left_hip_x"/>
+    <jointvel name="left_knee_vel"    joint="left_knee"/>
+    <jointvel name="left_ankle_y_vel" joint="left_ankle_y"/>
+
+    <!-- Right leg joint velocities -->
+    <jointvel name="right_hip_y_vel"   joint="right_hip_y"/>
+    <jointvel name="right_hip_x_vel"   joint="right_hip_x"/>
+    <jointvel name="right_knee_vel"    joint="right_knee"/>
+    <jointvel name="right_ankle_y_vel" joint="right_ankle_y"/>
+
+    <!-- Actuator forces -->
+    <actuatorfrc name="left_hip_y_frc"   actuator="left_hip_y_motor"/>
+    <actuatorfrc name="left_hip_x_frc"   actuator="left_hip_x_motor"/>
+    <actuatorfrc name="left_knee_frc"    actuator="left_knee_motor"/>
+    <actuatorfrc name="left_ankle_frc"   actuator="left_ankle_motor"/>
+    <actuatorfrc name="right_hip_y_frc"  actuator="right_hip_y_motor"/>
+    <actuatorfrc name="right_hip_x_frc"  actuator="right_hip_x_motor"/>
+    <actuatorfrc name="right_knee_frc"   actuator="right_knee_motor"/>
+    <actuatorfrc name="right_ankle_frc"  actuator="right_ankle_motor"/>
+
+    <!-- Foot contact sensors -->
+    <touch name="left_toe_touch"   site="left_toe"/>
+    <touch name="left_heel_touch"  site="left_heel"/>
+    <touch name="right_toe_touch"  site="right_toe"/>
+    <touch name="right_heel_touch" site="right_heel"/>
+  </sensor>
+</mujoco>

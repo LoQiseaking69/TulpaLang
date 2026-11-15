@@ -81,6 +81,7 @@ val syncTulpaAssets by tasks.registering(Sync::class) {
     from(File(repo, "docs")) { into("guide/reference") }
     from(file("src/main/tulpa/guide")) { into("guide/field") }
     from(File(repo, "stdlib")) { into("stdlib") }
+    from(file("src/main/tulpa/models")) { into("models") }
     into(layout.buildDirectory.dir("generated/tulpaAssets"))
 }
 tasks.named("preBuild") { dependsOn(syncTulpaAssets) }

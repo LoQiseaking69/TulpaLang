@@ -8,3 +8,6 @@ app/src/main/jniLibs/
 native/target/
 .idea/
 *.iml
+mujoco/
+.mujoco-src/
+.mujoco-build/

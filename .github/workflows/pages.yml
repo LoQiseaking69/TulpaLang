@@ -8,6 +8,9 @@ on:
       - "docs/**"
       - "examples/**"
       - "editors/README.md"
+      - "android/docs/**"
+      - "android/README.md"
+      - "android/app/src/main/tulpa/guide/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,15 +34,17 @@ fun ProjectsScreen(vm: AppViewModel, onImport: () -> Unit, menu: @Composable () 
     var menuFor by remember { mutableStateOf<Project?>(null) }
     var renameFor by remember { mutableStateOf<Project?>(null) }
     var deleteFor by remember { mutableStateOf<Project?>(null) }
+    val wantNew by vm.newProjectRequest.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.refreshProjects() }
+    LaunchedEffect(wantNew) { if (wantNew) { newDialog = true; vm.newProjectRequest.value = false } }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = {
+            TopAppBar(navigationIcon = { IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }, title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(painterResourceLogo(), null, tint = androidx.compose.ui.graphics.Color.Unspecified, modifier = Modifier.size(30.dp))
                     Spacer(Modifier.width(10.dp))
-                    Column { Text("Tulpa Field", fontWeight = FontWeight.SemiBold); Text("TulpaLang ${runCatching { dev.hermitech.tulpafield.core.TulpaNative.version() }.getOrDefault("")}", style = MaterialTheme.typography.labelSmall, color = TF.Dim) }
+                    Column { Text("Projects", fontWeight = FontWeight.SemiBold); Text("TulpaLang ${runCatching { dev.hermitech.tulpafield.core.TulpaNative.version() }.getOrDefault("")}", style = MaterialTheme.typography.labelSmall, color = TF.Dim) }
                 }
             }, actions = {
                 IconButton(onClick = onImport) { Icon(Icons.Default.FileOpen, "Import a file") }

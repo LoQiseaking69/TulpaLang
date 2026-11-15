@@ -19,8 +19,27 @@ interface RunListener {
  */
 object TulpaNative {
     init {
+        System.loadLibrary("mujoco")          // physics engine, needed by libtulpa_android
         System.loadLibrary("tulpa_android")
     }
+
+    // ---- physics / co-simulation (android/native/src/sim.rs)
+    /** `{"handle": n}` or `{"error": "..."}`. */
+    @JvmStatic external fun simLoad(path: String): String
+    @JvmStatic external fun simFree(handle: Long)
+    /** Model info JSON (actuators, joints, sensors, bodies, stat=[cx,cy,cz,extent], nmesh, path). */
+    @JvmStatic external fun simInfo(handle: Long): String?
+    /** `[time, steps, clients, playing, then 21 floats per visible geom]`. */
+    @JvmStatic external fun simFrame(handle: Long): FloatArray?
+    /** Mesh `id` as triangles, 6 floats per vertex (position, normal). */
+    @JvmStatic external fun simMesh(handle: Long, id: Int): FloatArray?
+    /** Starts the co-sim server; "host:port" or "error: ...". */
+    @JvmStatic external fun simServe(handle: Long, lan: Boolean): String
+    /** play | pause | reset | realtime(arg) | push(arg = direction in degrees). "" on success. */
+    @JvmStatic external fun simControl(handle: Long, cmd: String, arg: Double): String
+    @JvmStatic external fun simVersion(): String
+    /** Sets (or with null, removes) a process environment variable, e.g. TULPA_COSIM. */
+    @JvmStatic external fun setEnv(name: String, value: String?)
 
     @JvmStatic external fun init(host: Class<*>)
     @JvmStatic external fun version(): String

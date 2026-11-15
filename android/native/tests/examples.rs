@@ -91,6 +91,10 @@ fn all_examples() {
     dirs.sort();
     for d in &dirs {
         let name = d.file_name().unwrap().to_string_lossy().to_string();
+        // co-simulation examples need a MuJoCo server: covered by tests/sim.rs
+        if std::fs::read_to_string(d.join("main.rav")).is_ok_and(|s| s.contains("cosim::")) {
+            continue;
+        }
         let vt = name == "timing";
         let (r, out) = run_dir(d, vt, 1500);
         let ok = match &r {

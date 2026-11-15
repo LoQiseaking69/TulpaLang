@@ -1,0 +1,105 @@
+<!--{"title": "Tulpa Field for Android", "active": "android", "description": "Tulpa Field: the TulpaLang IDE for Android. The whole Tulpa runtime on your phone, phone sensors as a programmable device, MuJoCo physics with 3D co-simulation, a REPL and runnable examples.", "search": "Tulpa Field Android app APK download phone sensors MuJoCo 3D co-simulation REPL mobile IDE"}-->
+<section class="page-hero">
+  <div class="wrap hero-grid">
+    <div>
+      <img src="assets/img/hermisim-mark.svg" alt="" width="64" height="64" style="border-radius:14px">
+      <span class="eyebrow" style="margin-top:18px"><span class="dot"></span>Tulpa Field {{android.version}} · Android 8.0+ · signed APK</span>
+      <h1>Tulpa in your pocket. <span class="grad">Real sensors, real physics.</span></h1>
+      <p class="sub">The whole Tulpa runtime runs on the phone, offline. Program the handset's own sensors and actuators, drive a MuJoCo robot and watch it in 3D, and learn from 30 runnable examples.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="{{android.download}}">Download APK</a>
+        <a class="btn" href="docs/android.html">Install &amp; tour</a>
+        <a class="btn" href="{{android.releases}}" target="_blank" rel="noopener">All releases</a>
+      </div>
+    </div>
+    <div class="phones reveal">
+      <img src="assets/img/android/home.jpg" alt="Tulpa Field welcome page" data-zoom>
+      <img src="assets/img/android/sim.jpg" alt="Morty humanoid in the 3D Sim view" data-zoom>
+      <img src="assets/img/android/run.jpg" alt="Live gauges and plots from the phone's sensors" data-zoom>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">Features</span>
+      <h2>A complete Tulpa workbench, sized for one hand.</h2>
+    </div>
+    <div class="grid g3">
+      <a class="card reveal" href="docs/android-phone.html"><div class="ico c"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm3 17h2"/></svg></div><h3>Your phone is the device</h3><p><code>phone::accel()</code>, <code>tilt()</code>, <code>pressure()</code>, <code>location()</code> return unit-checked quantities. Vibration, torch, speech, tones and notifications are the actuators.</p></a>
+      <a class="card reveal" href="docs/android-sim.html"><div class="ico v"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 2 3 7v10l9 5 9-5V7zm0 0v20M3 7l9 5 9-5"/></svg></div><h3>MuJoCo + 3D co-simulation</h3><p>MuJoCo runs on the device. <code>cosim::connect()</code> programs drive a model in lock-step while an OpenGL ES view shows it live. Orbit, pinch, push, reset.</p></a>
+      <a class="card reveal" href="docs/android.html#the-editor"><div class="ico g"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m8 6-6 6 6 6m8-12 6 6-6 6"/></svg></div><h3>Touch-first editor</h3><p>Highlighting, live diagnostics, completion (including <code>module::</code> members), outline, go-to-definition, find/replace, undo and a symbol/unit key row.</p></a>
+      <a class="card reveal" href="docs/android.html#run-plots-and-gauges"><div class="ico a"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7 15l4-4 3 3 6-7"/></svg></div><h3>Live instruments</h3><p><code>tlm::plot</code> charts, <code>phone::gauge</code> readouts, event markers and shareable artifacts while a program runs.</p></a>
+      <a class="card reveal" href="docs/android.html#machines-verify-and-the-repl"><div class="ico"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v5H4zm10 11h6v5h-6zM7 9v4a2 2 0 0 0 2 2h5"/></svg></div><h3>Machines &amp; verification</h3><p>Every <code>machine</code> drawn as a tappable graph. One tap fuzzes the file's contracts and shrinks failures to a minimal counterexample.</p></a>
+      <a class="card reveal" href="docs/android.html#learn"><div class="ico r"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5zM4 19.5V21h16"/></svg></div><h3>Learn by running</h3><p>30 examples, including the full Morty humanoid stack, and an in-app guide whose code blocks run with one tap.</p></a>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head reveal"><span class="kicker">Gallery</span><h2>Captured on an Android 14 emulator by CI.</h2></div>
+    <div class="phone-gallery">
+      <figure class="reveal"><img src="assets/img/android/home.jpg" alt="Welcome page" loading="lazy" data-zoom><figcaption>Welcome page</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/android/sim.jpg" alt="3D co-simulation" loading="lazy" data-zoom><figcaption>MuJoCo co-simulation in 3D</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/android/editor.jpg" alt="Editor" loading="lazy" data-zoom><figcaption>Editor and symbol bar</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/android/run.jpg" alt="Gauges and plots" loading="lazy" data-zoom><figcaption>Gauges and live plots</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/android/machines.jpg" alt="Machine inspector" loading="lazy" data-zoom><figcaption>Machine inspector</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/android/verify.jpg" alt="Contract verification" loading="lazy" data-zoom><figcaption>Contract fuzzing</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/android/guide.jpg" alt="In-app guide" loading="lazy" data-zoom><figcaption>Guide with runnable code</figcaption></figure>
+      <figure class="reveal"><img src="assets/img/android/sensors.jpg" alt="Sensors" loading="lazy" data-zoom><figcaption>Live sensor readings</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="kicker">Co-simulation</span>
+      <h2>The same program on the desk and in the field.</h2>
+      <p style="color:var(--text-2)">Tulpa Field speaks HermiSim's co-simulation protocol. A program written against <code>cosim::</code> runs unchanged on the phone's own MuJoCo model, or drives a desktop HermiSim over Wi-Fi.</p>
+      <ul class="feature-list">
+        <li><div><strong>HermiSim workspaces work as-is</strong><span>The model comes from <code>hermisim.json</code>, then any MJCF <code>.xml</code> beside the program.</span></div></li>
+        <li><div><strong>Morty on a phone</strong><span>Capture-point balance, PINN, FPGA governor link and the behaviour machine, driving an 18-actuator humanoid.</span></div></li>
+        <li><div><strong>Bring your own robot</strong><span>Import any MJCF model, then make a co-sim project for it from the model sheet.</span></div></li>
+      </ul>
+      <p><a href="docs/android-sim.html">Read the co-simulation guide →</a></p>
+    </div>
+    <div>
+      {{snippet:cartpole.rav|cartpole: LQR balance, on the phone}}
+    </div>
+  </div>
+</section>
+
+<section class="section alt" id="install">
+  <div class="wrap">
+    <div class="section-head reveal"><span class="kicker">Install</span><h2>Get Tulpa Field.</h2></div>
+    <div class="grid g2">
+      <div class="card reveal">
+        <h3>Signed APK</h3>
+        <ol class="steps">
+          <li><strong>Download</strong> <code>{{android.apk}}</code> on your phone.</li>
+          <li><strong>Open it.</strong> Android asks once to allow installs from your browser or file manager.</li>
+          <li><strong>Install</strong> and open <em>Tulpa Field</em>. Updates install over the top.</li>
+        </ol>
+        <p style="margin-top:6px"><a class="btn btn-primary" href="{{android.download}}">Download {{android.version}}</a></p>
+        <p class="fingerprint" style="margin-top:14px">Signed by HermiTech LLC. Certificate SHA-256:<br>{{android.cert}}</p>
+      </div>
+      <div class="card reveal">
+        <h3>Requirements &amp; building</h3>
+        <p>Android 8.0 (API 26) or newer on arm64, armv7 or x86_64, with OpenGL ES 3.0. No network access is needed, except for an optional remote co-simulator.</p>
+        <p style="margin-top:10px">CI builds the Rust runtime and MuJoCo with the NDK, assembles the app, runs an emulator smoke test, and publishes a signed release whenever <code>android/VERSION</code> changes.</p>
+        <p style="margin-top:16px"><a class="btn" href="docs/android-build.html">Build from source</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="band reveal">
+    <h2>Write it on the train. Run it on the robot.</h2>
+    <p>Tulpa Field, HermiSim and the <code>tulpa</code> CLI share one language, one co-simulation protocol and one set of libraries.</p>
+    <div class="cta-row"><a class="btn btn-primary" href="{{android.download}}">Download APK</a><a class="btn" href="hermisim.html">HermiSim for desktop</a></div>
+  </div>
+</section>

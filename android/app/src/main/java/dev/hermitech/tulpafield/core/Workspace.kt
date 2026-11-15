@@ -16,7 +16,9 @@ data class Example(
     val tags: List<String>,
     val virtualTime: Boolean,
     val dir: File,
+    val args: List<String> = emptyList(),
 ) {
+    val cosim: Boolean get() = runCatching { main.readText().contains("cosim::") }.getOrDefault(false)
     val main: File get() = File(dir, "main.rav")
     val expected: File get() = File(dir, "expected.txt")
 }
@@ -33,14 +35,17 @@ class Workspace(private val context: Context) {
     val root = File(context.filesDir, "projects").apply { mkdirs() }
     val library = File(context.filesDir, "library")
     val stdlib = File(context.filesDir, "stdlib")
+    /** Bundled MJCF models for co-simulation (examples reference them as ../../models/…). */
+    val models = File(context.filesDir, "models")
 
     /** Copies bundled assets when the app version changes (or on first launch). */
     fun installAssets(version: String) {
         val marker = File(context.filesDir, ".assets-version")
-        if (marker.exists() && marker.readText() == version && library.exists() && stdlib.exists()) return
-        library.deleteRecursively(); stdlib.deleteRecursively()
+        if (marker.exists() && marker.readText() == version && library.exists() && stdlib.exists() && models.exists()) return
+        library.deleteRecursively(); stdlib.deleteRecursively(); models.deleteRecursively()
         copyAssetDir("examples", library)
         copyAssetDir("stdlib", stdlib)
+        copyAssetDir("models", models)
         marker.writeText(version)
     }
 
@@ -141,7 +146,8 @@ class Workspace(private val context: Context) {
             if (!File(dir, "main.rav").exists()) continue
             known += id
             val tags = o.optJSONArray("tags")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
-            out += Example(id, o.getString("title"), o.getString("category"), o.optString("summary"), tags, o.optBoolean("virtualTime"), dir)
+            val args = o.optJSONArray("args")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
+            out += Example(id, o.getString("title"), o.getString("category"), o.optString("summary"), tags, o.optBoolean("virtualTime"), dir, args)
         }
         // anything bundled but not catalogued still shows up
         library.listFiles()?.filter { it.isDirectory && it.name !in known && File(it, "main.rav").exists() }?.forEach { d ->

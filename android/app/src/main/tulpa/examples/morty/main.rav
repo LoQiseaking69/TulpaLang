@@ -1,0 +1,151 @@
+# MORTY — bipedal humanoid control, reimagined in TulpaLang.
+#
+# Run from HermiSim (Run ▸ Run in Simulator, model models/morty.xml) or headless:
+#     python -m tulpa_bridge run workspace/morty/main.rav --model models/morty.xml -- 12 [hard] [policy] [nogov]
+#   12      seconds of simulated time        hard    add shoves beyond the baseline's limits
+#   policy  add the trained PPO residual     nogov   bypass the FPGA torque governor
+#
+# Pipeline per 10 ms control tick (100 Hz; physics at 500 Hz):
+#   sense → 60-feature observation → [PPO residual] → capture-point balance PD
+#         → MGP packet → FPGA torque governor (clamp, slew, watchdog) → motors
+# alongside an online physics-informed COM model that forecasts falls 0.3 s ahead,
+# a ROS-style topic bus, safety envelopes and a behaviour state machine.
+
+import "std/topics"
+import "lib/robot"
+import "lib/balance"
+import "lib/pinn"
+import "lib/link"
+import "lib/policy"
+
+const DT = 0.01                  # control period (s)
+const SUBSTEPS = 5               # physics steps per control tick
+let duration = if len(ARGS) > 0 { float(ARGS[0]) } else { 10.0 }
+let use_policy = "policy" in ARGS
+let bypass_governor = "nogov" in ARGS
+
+let sim = cosim::connect()
+let info = sim.info()
+let body = robot.Body(info: info)
+let ctl = balance.Balance()
+let model = pinn.Pinn()
+let gov = link.GovernorLink()
+let bus = topics.Bus()
+let pol = nil
+if use_policy {
+    pol = policy.ResidualPolicy()
+    try { pol.load("weights/morty"); print("loaded learned residual policy") }
+    catch e { print("no trained policy yet (run train.rav) — using the model-based controller"); pol = nil }
+}
+
+let o = sim.reset("stand")
+body.capture_reference(o)
+let s = robot.sense(body, o)
+print(f"MORTY online: {body.n()} actuators, {len(info.sensors)} sensors, {info.total_mass:.1f} kg, governor backend={gov.stats().backend}")
+
+# ---------------------------------------------------------------- behaviour
+let falls = 0
+let sim_time_fallen = 0.0
+let sim_elapsed = 0.0
+let warnings = 0
+machine Brain {
+    on estop => Fallen { print("E-STOP") }
+    state Standing {
+        enter { ctl.stiffness = 1.0 }
+        on wobble(m) if m < 0.0 => Bracing { warnings += 1 }
+        on fall => Fallen
+    }
+    state Bracing {
+        enter { ctl.brace() }
+        exit { ctl.relax() }
+        on steady => Standing
+        on fall => Fallen
+    }
+    state Fallen {
+        enter { falls += 1; ctl.stiffness = 0.0; sim_time_fallen = s.t; print(f"t={sim_elapsed + s.t:5.2f}s  FALL (margin {s.margin * 100:.1f} cm)"); tlm::event("fall", {t: s.t}) }
+        on get_up => Standing
+    }
+}
+let brain = Brain()
+
+# Safety envelopes, checked after every assignment / device call / transition.
+always not s.fallen or brain.is("Fallen") else { brain.fall() }
+always s.com[2] < 1.2 else { brain.estop() }          # launched into the air = sensor fault
+
+# ROS-style topics (the original subscribed /joint_states, /foot_force, /hand_joint_states, /object_force)
+let js_count = 0
+bus.subscribe("/joint_states", |m| { js_count += 1 })
+let push_log = []
+bus.subscribe("/disturbance", |m| push_log.push(m))
+
+# Scripted shoves on the pelvis: [time s, force N (x, y, z), duration s]
+let pushes = [[2.0, [90.0, 0.0, 0.0], 0.2], [4.5, [0.0, -130.0, 0.0], 0.2], [7.0, [-80.0, 60.0, 0.0], 0.2]]
+if "hard" in ARGS { pushes.push([10.0, [150.0, 0.0, 0.0], 0.2]); pushes.push([13.0, [0.0, 220.0, 0.0], 0.2]) }
+let active_push = nil
+
+# ---------------------------------------------------------------- control loop
+let ticks = int(duration / DT)
+let fallen_since = nil
+let min_margin = 1.0
+let t_wall = millis()
+for k in 0..ticks {
+    s = robot.sense(body, o)
+    let tt = sim_elapsed + s.t        # mission time (sim time restarts after a fall reset)
+    model.observe(s)
+    if k % 5 == 0 { model.train(1, 64) }
+
+    # disturbances
+    for p in pushes {
+        if abs(tt - p[0]) < DT / 2 {
+            sim.apply_force("pelvis", p[1]); active_push = s.t + p[2]
+            bus.publish("/disturbance", {t: tt, force: p[1]})
+            print(f"t={tt:5.2f}s  push {p[1]} N")
+        }
+    }
+    if active_push != nil and s.t >= active_push { sim.apply_force("pelvis", [0.0, 0.0, 0.0]); active_push = nil }
+
+    # behaviour + prediction
+    let forecast = if model.steps > 200 { model.forecast(s) } else { s.margin }
+    if not brain.is("Fallen") {
+        if forecast < -0.01 and brain.is("Standing") { brain.wobble(forecast) }
+        if forecast > 0.03 and s.margin > 0.03 and brain.is("Bracing") { brain.steady() }
+    } elif fallen_since == nil { fallen_since = s.t }
+    if fallen_since != nil and s.t - fallen_since > 1.0 {
+        sim_elapsed += s.t
+        o = sim.reset("stand"); s = robot.sense(body, o); fallen_since = nil
+        brain.get_up(); continue
+    }
+
+    # control
+    let residual = nil
+    if pol != nil and not brain.is("Fallen") {
+        residual = pol.act(pol.normalize(robot.observation(body, s), false), true).residual
+    }
+    let cmd = if brain.is("Fallen") { ctl.limp(body, s) } else { ctl.torques(body, s, residual, 0.0) }
+    let governed = if bypass_governor { {torques: cmd} } else { gov.exchange(cmd, s.t) }
+    o = sim.step(governed.torques, SUBSTEPS)
+
+    min_margin = min(min_margin, s.margin)
+    bus.publish("/joint_states", topics.JointState(body.names, s.q, s.dq, s.tau))
+    if k % 4 == 0 {
+        tlm::plot("com_z", s.com[2], tt)
+        tlm::plot("cp_margin", s.margin, tt)
+        tlm::plot("cp_forecast", forecast, tt)
+        tlm::plot("pitch_deg", degrees(s.pitch), tt)
+        tlm::plot("roll_deg", degrees(s.roll), tt)
+        tlm::plot("pinn_loss", model.last_loss[0], tt)
+    }
+    if k % 100 == 0 {
+        tlm::status(f"t={tt:.1f}s  {brain.state}  margin={s.margin * 100:.1f} cm  forecast={forecast * 100:.1f} cm")
+    }
+}
+
+let wall = (millis() - t_wall) / 1000.0
+sim_elapsed += s.t
+print(f"\nsimulated {sim_elapsed:.2f} s in {wall:.2f} s wall ({sim_elapsed / wall:.1f}× real time)")
+print(f"falls: {falls}   brace warnings: {warnings}   worst capture-point margin: {min_margin * 100:.1f} cm")
+print(f"PINN: {model.steps} updates, data MSE {model.last_loss[0]:.4f}, physics MSE {model.last_loss[1]:.4f}")
+print(f"governor link: {gov.stats()}")
+print(f"topics: {bus.stats().map(|t| t.topic + '=' + str(t.messages)).join('  ')}")
+print("behaviour history:", brain.history.join(" → "))
+sim.close()

@@ -1,0 +1,151 @@
+# Faithful std/rtl ports of the original Morty Verilog (fpga/cpu.v, fpga.v, uart_comm.v,
+# top_L.v), kept so the old design can be inspected and compared in the waveform viewer.
+#
+# One deliberate fix: the original `uart_comm` used a 10-bit `baud_rate_counter` compared
+# against BAUD_RATE_DIV = 10416, which can never match — the UART never advanced. Here the
+# counter is wide enough and `div` is a parameter (10416 = 9600 baud at 100 MHz).
+
+import "std/rtl"
+
+# cpu.v — free-running counter with overflow flag (data_out lags internal_data by one clock).
+struct CpuModule {
+    sim
+    data_out = nil
+    error_flag = nil
+    internal = nil
+    counter = nil
+    fn init(self) {
+        self.data_out = self.sim.reg("cpu.data_out", 32)
+        self.error_flag = self.sim.reg("cpu.error_flag")
+        self.internal = self.sim.reg("cpu.internal_data", 32)
+        self.counter = self.sim.reg("cpu.counter", 32)
+    }
+    fn comb(self) {}
+    fn seq(self) {
+        self.counter.d(self.counter.value + 1)
+        if self.counter.value == 0xFFFFFFFF { self.error_flag.d(1) }
+        else {
+            self.internal.d(self.counter.value)
+            self.data_out.d(self.internal.value)
+            self.error_flag.d(0)
+        }
+    }
+}
+
+# fpga.v — adds 0xA5A5A5A5 through a two-stage pipeline; flags overflow and even results.
+struct FpgaModule {
+    sim
+    data_in
+    processed = nil
+    error_flag = nil
+    internal = nil
+    fn init(self) {
+        self.processed = self.sim.reg("fpga.processed_data", 32)
+        self.error_flag = self.sim.reg("fpga.error_flag", 2)
+        self.internal = self.sim.reg("fpga.internal_data", 32)
+    }
+    fn comb(self) {}
+    fn seq(self) {
+        self.internal.d(self.data_in.value + 0xA5A5A5A5)
+        self.processed.d(self.internal.value)
+        let f0 = if self.processed.value > 0xFFFFFF00 { 1 } else { 0 }
+        let f1 = if self.processed.bit(0) == 0 { 1 } else { 0 }
+        self.error_flag.d((f1 << 1) | f0)
+    }
+}
+
+# uart_comm.v — RX of 8N1 bytes into data_out; TX of data_in[7:0] (corrected counters).
+struct UartComm {
+    sim
+    div: int
+    data_in
+    uart_rx
+    data_out = nil
+    uart_tx = nil
+    error_flags = nil
+    rx_state = nil
+    rx_count = nil
+    rx_bit = nil
+    rx_buf = nil
+    tx_state = nil
+    tx_count = nil
+    tx_bit = nil
+    tx_buf = nil
+    fn init(self) {
+        let s = self.sim
+        self.data_out = s.reg("uart.data_out", 32)
+        self.uart_tx = s.reg("uart.uart_tx", 1, 1)
+        self.error_flags = s.reg("uart.error_flags", 2)
+        self.rx_state = s.reg("uart.rx_state", 2)
+        self.rx_count = s.reg("uart.rx_count", 16)
+        self.rx_bit = s.reg("uart.rx_bit", 4)
+        self.rx_buf = s.reg("uart.rx_buffer", 8)
+        self.tx_state = s.reg("uart.tx_state", 2)
+        self.tx_count = s.reg("uart.tx_count", 16)
+        self.tx_bit = s.reg("uart.tx_bit", 4)
+        self.tx_buf = s.reg("uart.tx_buffer", 8)
+    }
+    fn comb(self) {}
+    fn seq(self) {
+        # receiver: wait for start, sample at mid-bit
+        let rs = self.rx_state.value
+        let rc = self.rx_count.value
+        if rs == 0 {
+            if self.uart_rx.value == 0 { self.rx_state.d(1); self.rx_count.d(0) }
+        } elif rs == 1 {
+            if rc == self.div / 2 { self.rx_state.d(2); self.rx_count.d(0); self.rx_bit.d(0) } else { self.rx_count.d(rc + 1) }
+        } elif rs == 2 {
+            if rc == self.div - 1 {
+                self.rx_count.d(0)
+                self.rx_buf.d(self.rx_buf.value | (self.uart_rx.value << self.rx_bit.value))
+                if self.rx_bit.value == 7 { self.rx_state.d(3) } else { self.rx_bit.d(self.rx_bit.value + 1) }
+            } else { self.rx_count.d(rc + 1) }
+        } else {
+            if rc == self.div - 1 {
+                self.rx_state.d(0); self.rx_count.d(0)
+                if self.uart_rx.value == 1 { self.data_out.d(self.rx_buf.value) }
+                else { self.error_flags.d(self.error_flags.value | 1) }
+                self.rx_buf.d(0)
+            } else { self.rx_count.d(rc + 1) }
+        }
+        # transmitter: continuously sends data_in[7:0]
+        let ts = self.tx_state.value
+        let tc = self.tx_count.value
+        if tc < self.div - 1 and ts != 0 { self.tx_count.d(tc + 1); return nil }
+        self.tx_count.d(0)
+        if ts == 0 { self.tx_buf.d(self.data_in.value & 0xFF); self.uart_tx.d(0); self.tx_state.d(1); self.tx_bit.d(0) }
+        elif ts == 1 {
+            self.uart_tx.d((self.tx_buf.value >> self.tx_bit.value) & 1)
+            if self.tx_bit.value == 7 { self.tx_state.d(2) } else { self.tx_bit.d(self.tx_bit.value + 1) }
+        } else { self.uart_tx.d(1); self.tx_state.d(0) }
+    }
+}
+
+# A continuous assignment between two signals (Verilog `assign dst = src`).
+struct Assign { src; dst; fn comb(self) { self.dst.set(self.src.value) }; fn seq(self) {} }
+
+# top_L.v — integration plus the packed debug bus.
+struct TopLevel {
+    sim
+    cpu
+    fpga
+    uart
+    debug = nil
+    fn init(self) { self.debug = self.sim.sig("top.debug_data_out", 32) }
+    fn comb(self) {
+        self.debug.set((self.cpu.error_flag.value << 30) | (self.fpga.error_flag.value << 28)
+            | (self.uart.error_flags.value << 26) | (self.fpga.processed.value & 0x3FFFFFF))
+    }
+    fn seq(self) {}
+}
+
+fn build(sim, div = 16) {
+    let uart_rx = sim.sig("uart_rx", 1, 1)
+    let cpu = sim.add(CpuModule(sim: sim))
+    let fpga_in = sim.sig("fpga_data_in", 32)
+    let uart = sim.add(UartComm(sim: sim, div: div, data_in: cpu.data_out, uart_rx: uart_rx))
+    sim.add(Assign(uart.data_out, fpga_in))
+    let fpga = sim.add(FpgaModule(sim: sim, data_in: fpga_in))
+    let top = sim.add(TopLevel(sim: sim, cpu: cpu, fpga: fpga, uart: uart))
+    {uart_rx: uart_rx, cpu: cpu, fpga: fpga, uart: uart, top: top}
+}

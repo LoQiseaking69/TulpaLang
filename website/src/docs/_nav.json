@@ -100,6 +100,31 @@
     ]
   },
   {
+    "section": "Tulpa Field (Android)",
+    "pages": [
+      {
+        "slug": "android",
+        "file": "android.md",
+        "title": "Install & tour"
+      },
+      {
+        "slug": "android-sim",
+        "title": "3D simulation & co-sim",
+        "repo": "android/app/src/main/tulpa/guide/09-sim.md"
+      },
+      {
+        "slug": "android-phone",
+        "title": "The phone:: module",
+        "repo": "android/app/src/main/tulpa/guide/04-phone.md"
+      },
+      {
+        "slug": "android-build",
+        "title": "Building & releases",
+        "file": "android-build.md"
+      }
+    ]
+  },
+  {
     "section": "Project",
     "pages": [
       {

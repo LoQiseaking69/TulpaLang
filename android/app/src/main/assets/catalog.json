@@ -1,36 +1,314 @@
 [
- {"id":"hello_world","title":"Hello, World","category":"Start here","summary":"The smallest Tulpa program.","tags":["basics"]},
- {"id":"tour","title":"A tour of Tulpa","category":"Start here","summary":"Values, units, functions, structs, machines and signals in one file.","tags":["basics","units","machines"]},
- {"id":"units","title":"Units of measure","category":"Start here","summary":"Dimensional analysis done by the interpreter: mixing m and s is checked, not guessed.","tags":["units"]},
- {"id":"contracts_intro","title":"Contracts + check()","category":"Start here","summary":"require / ensure on physical functions, then fuzz them for counterexamples.","tags":["contracts","verify"]},
-
- {"id":"bubble_level","title":"Bubble level","category":"Phone sensors","summary":"The accelerometer as an inclinometer, with a buzz when level.","tags":["phone","accel","gauge"]},
- {"id":"compass","title":"Talking compass","category":"Phone sensors","summary":"Heading from the rotation vector, cardinal points spoken aloud.","tags":["phone","heading","speech"]},
- {"id":"altimeter","title":"Barometric altimeter","category":"Phone sensors","summary":"Altitude change from the pressure sensor — walk up the stairs.","tags":["phone","pressure","plot"]},
- {"id":"light_meter","title":"Light meter + auto torch","category":"Phone sensors","summary":"A timing rule turns the torch on after 2 s of darkness.","tags":["phone","light","torch","timing"]},
- {"id":"drop_detector","title":"Drop detector","category":"Phone sensors","summary":"Free-fall then impact, detected from |a| with a reactive rule.","tags":["phone","accel","signals"]},
- {"id":"shake_machine","title":"Shake alarm machine","category":"Phone sensors","summary":"A state machine driven by motion: Idle → Alarm → Cooldown.","tags":["phone","machines"]},
- {"id":"tilt_guard","title":"Tilt guard (always)","category":"Phone sensors","summary":"A safety envelope on a real sensor: tip past 60° and the monitor fires.","tags":["phone","always","safety"]},
- {"id":"gps_logger","title":"GPS track logger","category":"Phone sensors","summary":"Haversine distance with real units; writes track.csv.","tags":["phone","location","files"]},
-
- {"id":"robot_arm","title":"Two-link robot arm","category":"Robotics","summary":"Inverse kinematics plus a PID loop on the shoulder joint.","tags":["robotics","control"]},
- {"id":"warehouse_robot","title":"Warehouse pick-and-place","category":"Robotics","summary":"State machine, reactive signals, safety envelope and typed structs.","tags":["robotics","machines","signals"]},
- {"id":"lipm_balance","title":"LIPM balance","category":"Robotics","summary":"The linear inverted pendulum and its capture point (std/lipm).","tags":["robotics","std"]},
- {"id":"device_control","title":"Device control","category":"Robotics","summary":"GPIO, I2C and SPI on the simulator backend.","tags":["devices"]},
- {"id":"sensor_i2c","title":"I2C temperature sensor","category":"Robotics","summary":"A TMP102-style sensor with preloaded registers.","tags":["devices","i2c"]},
- {"id":"fieldbus","title":"CAN + BLE rover telemetry","category":"Robotics","summary":"A motor controller on CAN and a battery gauge over BLE.","tags":["devices","can","ble"]},
-
- {"id":"timing","title":"Timing rules","category":"Timing & reactive","summary":"Debouncing and response deadlines on a simulated clock.","tags":["timing","virtual time"],"virtualTime":true},
- {"id":"tasks","title":"Tasks","category":"Timing & reactive","summary":"spawn defers work; await runs it and returns the result.","tags":["tasks"]},
- {"id":"topics_bus","title":"Topics bus","category":"Timing & reactive","summary":"ROS-style publish/subscribe on Tulpa signals (std/topics).","tags":["signals","std"]},
-
- {"id":"verify","title":"Contracts as oracles","category":"Verification","summary":"check() fuzzes with inputs that satisfy require, and shrinks failures.","tags":["contracts","verify"]},
-
- {"id":"rtl_counter","title":"RTL counter + VCD","category":"Libraries","summary":"Cycle-accurate hardware with an ASCII waveform and a .vcd file (std/rtl).","tags":["hardware","std"]},
- {"id":"eda_board","title":"Board design as code","category":"Libraries","summary":"A sensor node checked electrically and costed (std/eda).","tags":["eda","std"]},
- {"id":"frame_link","title":"Resilient byte link","category":"Libraries","summary":"pack:: + COBS + CRC-16 framing that survives corruption (std/frame).","tags":["pack","std"]},
- {"id":"nn_xor","title":"Neural net learns XOR","category":"Libraries","summary":"Reverse-mode autodiff with nn:: — trained on the phone.","tags":["nn"]},
- {"id":"modules","title":"Modules & imports","category":"Libraries","summary":"import and from … import across project files.","tags":["modules"]},
-
- {"id":"native","title":"Native subset","category":"Native","summary":"The typed numeric subset that compiles to native code with `tulpa build`.","tags":["llvm","native"]}
+ {
+  "id": "hello_world",
+  "title": "Hello, World",
+  "category": "Start here",
+  "summary": "The smallest Tulpa program.",
+  "tags": [
+   "basics"
+  ]
+ },
+ {
+  "id": "tour",
+  "title": "A tour of Tulpa",
+  "category": "Start here",
+  "summary": "Values, units, functions, structs, machines and signals in one file.",
+  "tags": [
+   "basics",
+   "units",
+   "machines"
+  ]
+ },
+ {
+  "id": "units",
+  "title": "Units of measure",
+  "category": "Start here",
+  "summary": "Dimensional analysis done by the interpreter: mixing m and s is checked, not guessed.",
+  "tags": [
+   "units"
+  ]
+ },
+ {
+  "id": "contracts_intro",
+  "title": "Contracts + check()",
+  "category": "Start here",
+  "summary": "require / ensure on physical functions, then fuzz them for counterexamples.",
+  "tags": [
+   "contracts",
+   "verify"
+  ]
+ },
+ {
+  "id": "cosim_cartpole",
+  "title": "Cart-pole balance (3D co-sim)",
+  "category": "Simulation",
+  "summary": "MuJoCo on the phone: an LQR controller in Tulpa balances a pole, recovers from a shove, and you watch it in 3D.",
+  "tags": [
+   "cosim",
+   "3d",
+   "control"
+  ]
+ },
+ {
+  "id": "morty",
+  "title": "Morty — humanoid balance (3D co-sim)",
+  "category": "Simulation",
+  "summary": "The full Morty stack from HermiSim: capture-point balance, PINN, FPGA governor link and a behaviour machine, driving an 18-actuator humanoid.",
+  "tags": [
+   "cosim",
+   "3d",
+   "robotics",
+   "nn"
+  ],
+  "args": [
+   "20"
+  ]
+ },
+ {
+  "id": "bubble_level",
+  "title": "Bubble level",
+  "category": "Phone sensors",
+  "summary": "The accelerometer as an inclinometer, with a buzz when level.",
+  "tags": [
+   "phone",
+   "accel",
+   "gauge"
+  ]
+ },
+ {
+  "id": "compass",
+  "title": "Talking compass",
+  "category": "Phone sensors",
+  "summary": "Heading from the rotation vector, cardinal points spoken aloud.",
+  "tags": [
+   "phone",
+   "heading",
+   "speech"
+  ]
+ },
+ {
+  "id": "altimeter",
+  "title": "Barometric altimeter",
+  "category": "Phone sensors",
+  "summary": "Altitude change from the pressure sensor — walk up the stairs.",
+  "tags": [
+   "phone",
+   "pressure",
+   "plot"
+  ]
+ },
+ {
+  "id": "light_meter",
+  "title": "Light meter + auto torch",
+  "category": "Phone sensors",
+  "summary": "A timing rule turns the torch on after 2 s of darkness.",
+  "tags": [
+   "phone",
+   "light",
+   "torch",
+   "timing"
+  ]
+ },
+ {
+  "id": "drop_detector",
+  "title": "Drop detector",
+  "category": "Phone sensors",
+  "summary": "Free-fall then impact, detected from |a| with a reactive rule.",
+  "tags": [
+   "phone",
+   "accel",
+   "signals"
+  ]
+ },
+ {
+  "id": "shake_machine",
+  "title": "Shake alarm machine",
+  "category": "Phone sensors",
+  "summary": "A state machine driven by motion: Idle → Alarm → Cooldown.",
+  "tags": [
+   "phone",
+   "machines"
+  ]
+ },
+ {
+  "id": "tilt_guard",
+  "title": "Tilt guard (always)",
+  "category": "Phone sensors",
+  "summary": "A safety envelope on a real sensor: tip past 60° and the monitor fires.",
+  "tags": [
+   "phone",
+   "always",
+   "safety"
+  ]
+ },
+ {
+  "id": "gps_logger",
+  "title": "GPS track logger",
+  "category": "Phone sensors",
+  "summary": "Haversine distance with real units; writes track.csv.",
+  "tags": [
+   "phone",
+   "location",
+   "files"
+  ]
+ },
+ {
+  "id": "robot_arm",
+  "title": "Two-link robot arm",
+  "category": "Robotics",
+  "summary": "Inverse kinematics plus a PID loop on the shoulder joint.",
+  "tags": [
+   "robotics",
+   "control"
+  ]
+ },
+ {
+  "id": "warehouse_robot",
+  "title": "Warehouse pick-and-place",
+  "category": "Robotics",
+  "summary": "State machine, reactive signals, safety envelope and typed structs.",
+  "tags": [
+   "robotics",
+   "machines",
+   "signals"
+  ]
+ },
+ {
+  "id": "lipm_balance",
+  "title": "LIPM balance",
+  "category": "Robotics",
+  "summary": "The linear inverted pendulum and its capture point (std/lipm).",
+  "tags": [
+   "robotics",
+   "std"
+  ]
+ },
+ {
+  "id": "device_control",
+  "title": "Device control",
+  "category": "Robotics",
+  "summary": "GPIO, I2C and SPI on the simulator backend.",
+  "tags": [
+   "devices"
+  ]
+ },
+ {
+  "id": "sensor_i2c",
+  "title": "I2C temperature sensor",
+  "category": "Robotics",
+  "summary": "A TMP102-style sensor with preloaded registers.",
+  "tags": [
+   "devices",
+   "i2c"
+  ]
+ },
+ {
+  "id": "fieldbus",
+  "title": "CAN + BLE rover telemetry",
+  "category": "Robotics",
+  "summary": "A motor controller on CAN and a battery gauge over BLE.",
+  "tags": [
+   "devices",
+   "can",
+   "ble"
+  ]
+ },
+ {
+  "id": "timing",
+  "title": "Timing rules",
+  "category": "Timing & reactive",
+  "summary": "Debouncing and response deadlines on a simulated clock.",
+  "tags": [
+   "timing",
+   "virtual time"
+  ],
+  "virtualTime": true
+ },
+ {
+  "id": "tasks",
+  "title": "Tasks",
+  "category": "Timing & reactive",
+  "summary": "spawn defers work; await runs it and returns the result.",
+  "tags": [
+   "tasks"
+  ]
+ },
+ {
+  "id": "topics_bus",
+  "title": "Topics bus",
+  "category": "Timing & reactive",
+  "summary": "ROS-style publish/subscribe on Tulpa signals (std/topics).",
+  "tags": [
+   "signals",
+   "std"
+  ]
+ },
+ {
+  "id": "verify",
+  "title": "Contracts as oracles",
+  "category": "Verification",
+  "summary": "check() fuzzes with inputs that satisfy require, and shrinks failures.",
+  "tags": [
+   "contracts",
+   "verify"
+  ]
+ },
+ {
+  "id": "rtl_counter",
+  "title": "RTL counter + VCD",
+  "category": "Libraries",
+  "summary": "Cycle-accurate hardware with an ASCII waveform and a .vcd file (std/rtl).",
+  "tags": [
+   "hardware",
+   "std"
+  ]
+ },
+ {
+  "id": "eda_board",
+  "title": "Board design as code",
+  "category": "Libraries",
+  "summary": "A sensor node checked electrically and costed (std/eda).",
+  "tags": [
+   "eda",
+   "std"
+  ]
+ },
+ {
+  "id": "frame_link",
+  "title": "Resilient byte link",
+  "category": "Libraries",
+  "summary": "pack:: + COBS + CRC-16 framing that survives corruption (std/frame).",
+  "tags": [
+   "pack",
+   "std"
+  ]
+ },
+ {
+  "id": "nn_xor",
+  "title": "Neural net learns XOR",
+  "category": "Libraries",
+  "summary": "Reverse-mode autodiff with nn:: — trained on the phone.",
+  "tags": [
+   "nn"
+  ]
+ },
+ {
+  "id": "modules",
+  "title": "Modules & imports",
+  "category": "Libraries",
+  "summary": "import and from … import across project files.",
+  "tags": [
+   "modules"
+  ]
+ },
+ {
+  "id": "native",
+  "title": "Native subset",
+  "category": "Native",
+  "summary": "The typed numeric subset that compiles to native code with `tulpa build`.",
+  "tags": [
+   "llvm",
+   "native"
+  ]
+ }
 ]

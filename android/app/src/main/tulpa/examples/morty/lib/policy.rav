@@ -1,0 +1,41 @@
+# Learned residual balance policy: PPO (std/rl) over Morty's 60-feature observation,
+# producing small joint-angle offsets added on top of the model-based controller.
+
+import "std/rl"
+import "robot"
+
+const ACT_DIM = 16
+const ACTION_SCALE = 0.08           # rad per unit action
+
+struct ResidualPolicy {
+    horizon: int = 1024
+    lr: float = 3e-4
+    agent = nil
+    scaler = nil
+    fn init(self) {
+        self.agent = rl.PPO(obs_dim: robot.OBS_DIM, act_dim: ACT_DIM, hidden: [64, 64],
+                            horizon: self.horizon, lr: self.lr, epochs: 5, batch: 128)
+        self.scaler = nn::Scaler(robot.OBS_DIM, 5.0)
+    }
+    fn normalize(self, obs, learn = true) {
+        if learn { self.scaler.update([obs]) }
+        if not self.scaler.ready(32) { return obs.map(|x| clamp(x, -5.0, 5.0)) }
+        self.scaler.transform([obs]).flat()
+    }
+    # Returns {action (raw), residual (rad, clipped), logp, value}.
+    fn act(self, nobs, deterministic = false) {
+        let st = self.agent.act(nobs, deterministic)
+        st.residual = st.action.map(|a| clamp(a, -2.5, 2.5) * ACTION_SCALE)
+        st
+    }
+    fn save(self, prefix) { self.agent.save(prefix); self.scaler.save(prefix + ".scaler") }
+    fn load(self, prefix) { self.agent.load(prefix); self.scaler.load(prefix + ".scaler") }
+}
+
+# Reward: stay up, keep the capture point well inside the feet, stay upright, be gentle.
+fn reward(s, torques, residual) {
+    if s.fallen { return -10.0 }
+    let effort = torques.map(|t| t * t).sum() * 2e-6
+    let lazy = residual.map(|r| r * r).sum() * 0.5
+    1.0 + 4.0 * clamp(s.margin, -0.1, 0.1) - 0.5 * (abs(s.roll) + abs(s.pitch)) - effort - lazy
+}

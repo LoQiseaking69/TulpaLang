@@ -1,0 +1,110 @@
+# Morty's body model: actuator table, joint gains, state estimation and the 60-wide
+# observation vector (the same width the original Morty PINN consumed: 60 inputs).
+
+import "std/lipm"
+
+const OBS_DIM = 60
+const BODY_JOINTS = 16            # 5 per leg + 3 per arm; actuators 16, 17 are the grippers
+const FOOT_HALF_LEN = 0.11
+const FOOT_HALF_WID = 0.06
+const FOOT_X_OFFSET = 0.03        # sole centre is 3 cm ahead of the ankle
+const CONTACT_N = 5.0             # newtons before a foot counts as loaded
+
+# Joint-space gains [kp N·m/rad, kd N·m·s/rad] by joint family.
+fn gains(name) {
+    if name.contains("grip") { return [20.0, 1.0] }
+    if name.contains("shoulder") or name.contains("elbow") { return [150.0, 8.0] }
+    if name.contains("knee") { return [450.0, 22.0] }
+    if name.contains("ankle") { return [380.0, 18.0] }
+    [400.0, 20.0]
+}
+
+# The PD law with physical units at the boundary — used by tests and docs; the 100 Hz loop
+# below runs the same arithmetic on plain SI floats.
+fn joint_torque(kp: [N*m/rad], kd: [N*m*s/rad], q_ref: [rad], q: [rad], dq: [rad/s]) -> [N*m]
+    ensure not (q_ref == q and dq == 0) or result' == 0
+{ kp * (q_ref - q) - kd * dq }
+
+# Roll/pitch/yaw from a (w, x, y, z) quaternion.
+fn rpy(qt) {
+    let w = qt[0]; let x = qt[1]; let y = qt[2]; let z = qt[3]
+    let roll = atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y))
+    let sp = clamp(2 * (w * y - z * x), -1.0, 1.0)
+    let yaw = atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
+    [roll, asin(sp), yaw]
+}
+
+struct Body {
+    info
+    names = []
+    qadr = []
+    vadr = []
+    limits = []
+    kp = []
+    kd = []
+    q_ref = []
+    weight: float = 0.0
+    fn init(self) {
+        for a in self.info.actuators {
+            self.names.push(a.name.replace("_motor", ""))
+            self.qadr.push(a.qposadr)
+            self.vadr.push(a.dofadr)
+            self.limits.push(a.ctrlrange[1])
+            let g = gains(a.name)
+            self.kp.push(g[0]); self.kd.push(g[1])
+        }
+        self.weight = self.info.total_mass * 9.81
+    }
+    fn n(self) { len(self.names) }
+    fn index(self, name) {
+        for i, n in enumerate(self.names) { if n == name { return i } }
+        error(f"Morty has no joint '{name}'")
+    }
+    fn capture_reference(self, o) { self.q_ref = self.qadr.map(|a| o.qpos[a]) }
+}
+
+# Everything the controllers need, derived from one co-sim observation.
+fn sense(body, o) {
+    let q = body.qadr.map(|a| o.qpos[a])
+    let dq = body.vadr.map(|a| o.qvel[a])
+    let tau = o.act_force
+    let att = rpy(o.root_quat)
+    let lf = o.bodies.left_foot
+    let rf = o.bodies.right_foot
+    let fl = o.contacts.get("left_foot", {force: 0.0, cop: lf}).force
+    let fr = o.contacts.get("right_foot", {force: 0.0, cop: rf}).force
+    let feet = []
+    if fl > CONTACT_N { feet.push([lf[0] + FOOT_X_OFFSET, lf[1]]) }
+    if fr > CONTACT_N { feet.push([rf[0] + FOOT_X_OFFSET, rf[1]]) }
+    if len(feet) == 0 { feet = [[lf[0] + FOOT_X_OFFSET, lf[1]], [rf[0] + FOOT_X_OFFSET, rf[1]]] }
+    let poly = lipm.support_polygon(feet, FOOT_HALF_LEN, FOOT_HALF_WID)
+    let centre = lipm.centroid(poly)
+    let z = max(0.3, o.com[2])
+    let xi = lipm.capture_xy(o.com, o.com_vel, z)
+    # measured ZMP: force-weighted centre of pressure of all ground contacts
+    let ftot = 0.0; let zx = 0.0; let zy = 0.0
+    for name, c in o.contacts { ftot += c.force; zx += c.force * c.cop[0]; zy += c.force * c.cop[1] }
+    let zmp = if ftot > 1.0 { [zx / ftot, zy / ftot] } else { centre }
+    {t: o.time, q: q, dq: dq, tau: tau, roll: att[0], pitch: att[1], yaw: att[2],
+     gyro: o.sensors.imu_gyro, com: o.com, com_vel: o.com_vel, z: z,
+     centre: centre, poly: poly, xi: xi, zmp: zmp, margin: lipm.margin(xi, poly),
+     err: [xi[0] - centre[0], xi[1] - centre[1]], f_left: fl, f_right: fr,
+     grip: [o.qpos[body.qadr[16]], o.qpos[body.qadr[17]]], hand_force: o.sensors.right_hand_force,
+     fallen: o.com[2] < 0.55 or abs(att[0]) > 0.9 or abs(att[1]) > 0.9}
+}
+
+# 60 features, roughly unit scale: 16 q-offsets, 16 dq, 16 τ/limit, 2 foot loads,
+# 2 grippers, 3 wrist forces, roll, pitch, 2 gyro rates, capture-point margin.
+fn observation(body, s) {
+    let v = []
+    for i in 0..BODY_JOINTS { v.push(s.q[i] - body.q_ref[i]) }
+    for i in 0..BODY_JOINTS { v.push(s.dq[i] * 0.1) }
+    for i in 0..BODY_JOINTS { v.push(s.tau[i] / body.limits[i]) }
+    v.push(s.f_left / body.weight); v.push(s.f_right / body.weight)
+    v.push(s.grip[0] * 40); v.push(s.grip[1] * 40)
+    for k in 0..3 { v.push(s.hand_force[k] / 50.0) }
+    v.push(s.roll); v.push(s.pitch); v.push(s.gyro[0] * 0.1); v.push(s.gyro[1] * 0.1)
+    v.push(s.margin * 10)
+    assert len(v) == OBS_DIM, f"observation has {len(v)} features"
+    v
+}

@@ -60,7 +60,7 @@ class RunManager(private val sensors: SensorBridge) {
 
     fun start(
         source: String, file: File, baseDir: File, args: List<String>, virtualTime: Boolean,
-        title: String = file.name, useSensors: Boolean = source.contains("phone::"),
+        title: String = file.name, useSensors: Boolean = source.contains("phone::"), note: String? = null,
     ) {
         if (_state.value.running) return
         val gen = ++generation
@@ -72,7 +72,7 @@ class RunManager(private val sensors: SensorBridge) {
         TulpaHost.resetForRun()
         _state.value = RunState(running = true, title = title, startedAt = System.currentTimeMillis(),
             console = listOf(ConsoleLine(ids++, LineKind.Info, "━━ Run: $title" + (if (args.isNotEmpty()) " " + args.joinToString(" ") else "") +
-                (if (virtualTime) "  (virtual time)" else ""))))
+                (if (virtualTime) "  (virtual time)" else ""))) + listOfNotNull(note?.let { ConsoleLine(ids++, LineKind.Info, it) }))
         TulpaHost.onEvent = { emit(LineKind.Event, it) }
         if (useSensors) sensors.acquire()
         TulpaThreads.start("tulpa-run") {
@@ -108,6 +108,18 @@ class RunManager(private val sensors: SensorBridge) {
             flushNow()
             _state.update { it.copy(running = false, prompt = null, finishedAt = now, exit = err, ok = err == null) }
             if (cancel == handle) cancel = 0
+        }
+    }
+
+    /** `cosim` notifications from the program: `sim.plot(name, v)` and `sim.log(text)`. */
+    fun simNotify(method: String, params: JSONObject) {
+        when (method) {
+            "log" -> emit(LineKind.Event, "▣ " + params.optString("text"))
+            "plot" -> {
+                val v = params.opt("v")
+                val x = when (v) { is Number -> v.toDouble(); is org.json.JSONArray -> v.optDouble(0); else -> Double.NaN }
+                telemetry(JSONObject().put("k", "plot").put("name", params.optString("name")).put("v", x).put("t", System.currentTimeMillis() / 1000.0))
+            }
         }
     }
 

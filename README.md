@@ -245,10 +245,10 @@ larger robotics and simulation environment:
 ## Tulpa Field (Android)
 
 <p align="center">
+  <a href="android/README.md"><img src="android/docs/screenshots/home.jpg" width="23%" alt="Tulpa Field welcome page"></a>
+  <a href="android/README.md"><img src="android/docs/screenshots/sim.jpg" width="23%" alt="Morty humanoid in 3D co-simulation on the phone"></a>
   <a href="android/README.md"><img src="android/docs/screenshots/editor.jpg" width="23%" alt="Tulpa Field editor"></a>
   <a href="android/README.md"><img src="android/docs/screenshots/run.jpg" width="23%" alt="Live gauges and plots from the phone's sensors"></a>
-  <a href="android/README.md"><img src="android/docs/screenshots/machines.jpg" width="23%" alt="State-machine inspector"></a>
-  <a href="android/README.md"><img src="android/docs/screenshots/guide.jpg" width="23%" alt="In-app guide with runnable code"></a>
 </p>
 
 [`android/`](android/README.md) is **Tulpa Field**, a pocket IDE that runs the whole Tulpa runtime
@@ -257,12 +257,14 @@ on the phone, offline. It turns the handset into a device you can program:
 - the `phone::` module reads the accelerometer, gyro, magnetometer, orientation, light, barometer,
   proximity, battery, steps and GPS as unit-checked quantities, and drives vibration, the torch,
   speech, tones and notifications
+- MuJoCo on the device with a 3D view: `cosim::` programs (and HermiSim workspaces) run unchanged
 - live `tlm::plot` charts and `phone::gauge` readouts while a program runs
 - a touch-first editor with diagnostics, completion and a symbol/unit keyboard bar
 - a REPL, a tappable state-machine inspector, and one-tap contract verification and tests
-- 28 runnable examples and an in-app guide whose code blocks run with one tap
+- 30 runnable examples, including the Morty humanoid, and an in-app guide whose code blocks run with one tap
 
-The APK is built by CI and attached to `android-v*` releases. Screenshots, features and build
+The signed APK is built by CI and attached to `android-v*` releases; see the
+[Tulpa Field page](https://loqiseaking69.github.io/TulpaLang/android.html) on the website. Screenshots, features and build
 instructions are in the [Tulpa Field README](android/README.md). Other hosts can embed the runtime the
 same way through `tulpa::embed` (run/REPL/analysis API) and `tulpa::host` (host-provided modules).
 

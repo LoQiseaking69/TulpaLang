@@ -1,0 +1,46 @@
+# Model-based standing balance: joint PD around a posture, steered by the capture point.
+#
+#   ankle strategy  — tilt the ankles against the capture-point error (both axes)
+#   hip strategy    — counter-rotate the hips in the frontal plane
+#   residual        — optional learned joint offsets (rad) from the PPO policy
+#
+# Gains were found by sweeping push recovery in HermiSim (see README). Higher frontal-plane
+# gains (|roll| ≥ 4) make the 100 Hz loop chatter — the FPGA governor's slew flags show it.
+
+struct Balance {
+    ankle_pitch: float = 4.0       # rad per metre of sagittal capture-point error
+    ankle_roll: float = -5.0
+    hip_roll: float = 2.0
+    max_offset: float = 0.35       # rad, clamp on any balance correction
+    stiffness: float = 1.0         # global gain scale (0 = limp)
+    fn brace(self) { self.ankle_pitch = 5.5; self.ankle_roll = -5.5; self.hip_roll = 2.5 }
+    fn relax(self) { self.ankle_pitch = 4.0; self.ankle_roll = -5.0; self.hip_roll = 2.0 }
+    fn offsets(self, body, s) {
+        let off = [0.0; body.n()]
+        let ex = s.err[0]
+        let ey = s.err[1]
+        for i, n in enumerate(body.names) {
+            let o = 0.0
+            if n.ends_with("ankle_y") { o = self.ankle_pitch * ex }
+            elif n.ends_with("ankle_x") { o = self.ankle_roll * ey }
+            elif n.ends_with("hip_x") { o = self.hip_roll * ey }
+            off[i] = clamp(o, -self.max_offset, self.max_offset)
+        }
+        off
+    }
+    # Torques in N·m for every actuator (plain floats, model order).
+    fn torques(self, body, s, residual = nil, grip_target = nil) {
+        let off = self.offsets(body, s)
+        let out = []
+        for i in 0..body.n() {
+            let target = body.q_ref[i] + off[i]
+            if residual != nil and i < len(residual) { target += residual[i] }
+            if grip_target != nil and i >= 16 { target = grip_target }
+            let t = self.stiffness * (body.kp[i] * (target - s.q[i]) - body.kd[i] * s.dq[i])
+            out.push(clamp(t, -body.limits[i], body.limits[i]))
+        }
+        out
+    }
+    # Damping-only mode for a fallen robot: no stored energy, no flailing.
+    fn limp(self, body, s) { range(body.n()).map(|i| -0.5 * body.kd[i] * s.dq[i]) }
+}

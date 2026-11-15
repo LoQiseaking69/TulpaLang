@@ -5,6 +5,13 @@ set -uo pipefail
 APK="$1"; OUT="${2:-smoke}"
 PKG=dev.hermitech.tulpafield
 mkdir -p "$OUT"
+# CI emulators often report the (background) launcher as not responding; its dialog covers the
+# app. Hide background ANR dialogs and park the launcher: the test never goes home.
+adb shell settings put secure anr_show_background 0 >/dev/null 2>&1 || true
+for l in com.google.android.apps.nexuslauncher com.android.launcher3; do
+  adb shell pm disable-user --user 0 "$l" >/dev/null 2>&1 || true
+done
+adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
 adb install -r "$APK"
 adb logcat -c
 
@@ -24,7 +31,12 @@ if best: print((best[0]+best[2])//2,(best[1]+best[3])//2)
 PY
 # tap the centre of the top-most node whose text or content-desc is exactly $1
 tap() {
-  local b; b=$(dump | python3 /tmp/find_node.py "$1")
+  local x b; x=$(dump)
+  # emulator system dialogs ("Pixel Launcher isn't responding") cover the app: dismiss them
+  if printf '%s' "$x" | grep -q "isn&apos;t responding\|isn't responding"; then
+    b=$(printf '%s' "$x" | python3 /tmp/find_node.py "Wait"); [ -n "$b" ] && adb shell input tap $b && echo "dismissed a system ANR dialog" && sleep 1
+  fi
+  b=$(dump | python3 /tmp/find_node.py "$1")
   if [ -z "$b" ]; then echo "!! no node '$1'"; return 1; fi
   adb shell input tap $b; echo "tapped '$1' at $b"
 }
@@ -33,8 +45,11 @@ has() { dump | grep -q "$1"; }
 texts() { dump | grep -o ' text="[^"]\+"' | sed 's/ text=//' | tr '\n' ' ' | cut -c1-1500; echo; }
 
 adb shell am start -W -n $PKG/.MainActivity
-sleep 6; alive; shot 01-welcome
-has "Welcome to Tulpa Field" && echo "ok: first launch opens the guide" || echo "!! welcome chapter not shown"
+sleep 6; alive
+tap "Home" >/dev/null || true; sleep 1; shot 00-home
+has "Welcome to Tulpa Field" && echo "ok: welcome page" || { echo "!! welcome page not shown"; FAIL=1; }
+tap "Start the tour"; sleep 3; shot 01-welcome
+{ ! has "Start the tour" && has "Welcome to Tulpa Field"; } && echo "ok: guide opens" || echo "!! guide welcome chapter not shown"
 
 # scroll the welcome chapter until the first code block's Run button is on screen
 for k in 1 2 3 4 5 6 7 8; do
@@ -62,12 +77,13 @@ has "6.2808" && echo "ok: REPL evaluated" || { echo "!! REPL output missing"; FA
 
 tap "Instruments"; sleep 1; tap "Sensors"; sleep 4; alive; shot 08-sensors
 adb shell input keyevent 4; sleep 1
-tap "Projects"; sleep 2; shot 09-projects
+tap "Home"; sleep 2; tap "All projects"; sleep 2; shot 09-projects
+adb shell input keyevent 4; sleep 1
 alive
 
 # ---- showcase screenshots for the README (never fail the run) ----
 hidekb() { adb shell dumpsys input_method | grep -q "mInputShown=true" && adb shell input keyevent 111; sleep 1; }
-search() { tap "Learn"; sleep 2; tap "Library"; sleep 1; tap "Search 28 examples" || tap "Search"; sleep 1; adb shell input text "$1"; sleep 1; hidekb; }
+search() { tap "Learn"; sleep 2; tap "Library"; sleep 1; tap "Search examples"; sleep 1; adb shell input text "$1"; sleep 1; hidekb; }
 search bubble; tap "Bubble level"; sleep 2
 # rock the emulated phone so the gauges and plots move
 ( for k in $(seq 0 40); do
@@ -82,6 +98,19 @@ search contracts; tap "Contracts + check()"; sleep 2; tap "Open as project"; sle
 tap "More"; sleep 1; tap "Verify & tests"; sleep 2; tap "Check contracts"; sleep 6; shot 13-verify
 adb shell input keyevent 4; sleep 1
 tap "REPL"; sleep 2; hidekb; shot 14-repl
+alive
+
+# ---- 3D co-simulation: MuJoCo on the device, driven by Tulpa programs ----
+search cart; tap "Cart-pole balance (3D co-sim)"; sleep 2; tap "Run"; sleep 5; alive; shot 15-sim-cartpole
+texts
+has "co-sim" && echo "ok: Sim view shows the co-sim run" || echo "!! Sim HUD not showing co-sim"
+sleep 11; tap "Run"; sleep 2; shot 16-run-cartpole
+has "balanced" && echo "ok: cart-pole balanced in co-sim" || { echo "!! cart-pole did not balance"; texts; FAIL=1; }
+search morty; tap "Morty — humanoid balance (3D co-sim)"; sleep 2; tap "Run"; sleep 9; alive; shot 17-sim-morty
+tap "Run"; sleep 2; has "MORTY online" && echo "ok: Morty online" || { echo "!! Morty did not start"; texts; FAIL=1; }
+tap "Sim"; sleep 6; shot 18-sim-morty-later
+tap "Stop" || true; sleep 2
+tap "Home"; sleep 2; shot 19-home-continue
 alive
 adb logcat -d | grep -A30 "FATAL EXCEPTION" && { echo "!! crash in log"; FAIL=1; }
 # small JPEG previews in the log (artifact downloads are not always reachable)
