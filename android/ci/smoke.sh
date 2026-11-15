@@ -11,21 +11,20 @@ adb logcat -c
 shot() { adb exec-out screencap -p > "$OUT/$1.png"; }
 dump() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb shell cat /sdcard/ui.xml; }
 # tap the centre of the first node whose text (or content-desc) matches exactly
-tap() {
-  local xml b; xml="$(dump)"
-  b=$(python3 - "$1" <<'PY' <<<"$xml"
+cat > /tmp/find_node.py <<'PY'
 import re,sys
-want=sys.argv[1]; x=sys.stdin.read()
-best=None
+want=sys.argv[1]; x=sys.stdin.read(); best=None
 for m in re.finditer(r'<node [^>]*>', x):
     n=m.group(0)
-    t=re.search(r' text="([^"]*)"',n).group(1); d=re.search(r'content-desc="([^"]*)"',n).group(1)
-    if want in (t,d):
+    t=re.search(r' text="([^"]*)"',n); d=re.search(r'content-desc="([^"]*)"',n)
+    if want in ((t.group(1) if t else None),(d.group(1) if d else None)):
         a=list(map(int,re.findall(r'\d+',re.search(r'bounds="([^"]*)"',n).group(1))))
         if best is None or a[1] < best[1]: best=a
 if best: print((best[0]+best[2])//2,(best[1]+best[3])//2)
 PY
-)
+# tap the centre of the top-most node whose text or content-desc is exactly $1
+tap() {
+  local b; b=$(dump | python3 /tmp/find_node.py "$1")
   if [ -z "$b" ]; then echo "!! no node '$1'"; return 1; fi
   adb shell input tap $b; echo "tapped '$1' at $b"
 }
