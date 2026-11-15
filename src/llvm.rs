@@ -524,6 +524,8 @@ fn executable(s: &Stmt) -> bool {
 /// machines, `always` monitors and (when there are top-level statements) a program entry
 /// `void tulpa_entry(void)`. Whatever cannot be compiled is reported in `skipped`.
 pub fn emit_program(prog: &[Stmt], module: &str, opts: &Options) -> Report {
+    let lowered = crate::lower::desugar_matches(prog);
+    let prog = &lowered[..];
     let mut consts: HashMap<String, (String, Ty)> = HashMap::new();
     consts.insert("PI".into(), (flit(std::f64::consts::PI), Ty::F64));
     consts.insert("TAU".into(), (flit(std::f64::consts::TAU), Ty::F64));
@@ -3060,6 +3062,19 @@ impl<'a> FnGen<'a> {
                 }
                 return self.call_unit(name, name, None, args);
             }
+        }
+        if name == "error" && self.var(name).is_none() {
+            // error("...") stops the program through tulpa_violation, like a failed contract
+            let text = match args {
+                [Expr::Str(s)] => s.clone(),
+                _ => "error raised".to_string(),
+            };
+            let m = self.msg(text);
+            self.line(format!("call void @tulpa_violation(ptr {m})"));
+            self.term("unreachable".into());
+            let dead = self.label("dead");
+            self.start(&dead);
+            return Ok(("0".into(), Ty::I64));
         }
         match name.as_str() {
             "print" | "println" => return self.print_call(args),

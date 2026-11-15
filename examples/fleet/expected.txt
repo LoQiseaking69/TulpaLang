@@ -1,0 +1,14 @@
+[253 ms] base: peer_joined rover
+[443 ms] envelope: 5.4 km/h too fast -> stopped: over limit
+[593 ms] envelope: 5.4 km/h too fast -> stopped: over limit
+[833 ms] base: deadline /rover/speed
+events received in order: true 10 of 10
+envelope stops: 2  speed samples: 36 of 40 (best effort)
+[953 ms] base: peer_joined bad
+bad: incompatible /rover/speed - schema mismatch: this node uses [m]
+[1553 ms] base: peer_joined logger
+latched map for late joiner: {"x": 1250 cm, "y": -300 cm}
+limit: 1.5 m/s -> 1 m/s
+rejected: link: service /rover/param/set failed: unit mismatch: cannot apply '+' to speed [m/s] and length [m]
+[2777 ms] base: peer_lost rover
+nodes: bad, base, logger

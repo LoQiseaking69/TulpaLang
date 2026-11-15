@@ -1,0 +1,112 @@
+# std/emu — emulated chips on the simulated bus, for driver-in-the-loop simulation.
+#
+# Your program talks to its real drivers (std/drivers/*); the drivers talk I2C/SPI; these
+# models answer on the simulated bus with the same register maps as the hardware. Feed them
+# from physics (std/world) and read the actuator registers back to close the loop:
+#
+#   let chip = emu.Mpu6050(0x68)                        # the emulated part
+#   let imu = Mpu6050(I2C::new(1, 0x68)); imu.init()     # the real driver
+#   chip.set(ax: 0[m/s^2], ay: 0[m/s^2], az: 9.81[m/s^2], gz: 0.2[rad/s])
+#   imu.update(); imu.gyro_z()                           # ≈ 0.2 rad/s, quantised like the chip
+#
+# Every model has fault injection: chip.fault("stuck") freezes its outputs, "offline" makes it
+# vanish from the bus (reads 0xFF), "noise" adds seeded noise, and chip.heal() clears faults.
+
+fn _i16(x) {
+    let v = clamp(int(round(x)), -32768, 32767)
+    if v < 0 { v = v + 65536 }
+    [(v >> 8) & 0xFF, v & 0xFF]
+}
+
+struct Mpu6050 {
+    addr: int = 0x68
+    bus: int = 1
+    faults = {}
+    seed: int = 12345
+    raw = nil
+
+    fn init(self) {
+        sim::i2c_set(self.addr, 0x75, [0x68], self.bus)            # WHO_AM_I
+        sim::i2c_set(self.addr, 0x3B, [0; 14], self.bus)
+    }
+
+    fn fault(self, kind, amount = 1.0) { self.faults[kind] = amount; self._apply() }
+    fn heal(self) { self.faults = {}; self._apply() }
+
+    fn _noise(self) {
+        self.seed = (self.seed * 1103515245 + 12345) % 2147483648
+        self.seed / 2147483648.0 - 0.5
+    }
+
+    # Physical values in; raw big-endian counts out, scaled by the ranges the driver configured.
+    fn set(self, ax = 0[m/s^2], ay = 0[m/s^2], az = 9.80665[m/s^2], gx = 0[rad/s], gy = 0[rad/s], gz = 0[rad/s], temp = 298.15[K]) {
+        if "stuck" in self.faults { return }
+        let ar = (sim::i2c_get(self.addr, 0x1C, 1, self.bus)[0] >> 3) & 3
+        let gr = (sim::i2c_get(self.addr, 0x1B, 1, self.bus)[0] >> 3) & 3
+        let a = float(16384 >> ar) / 9.80665                       # counts per m/s^2
+        let g = 131.0 / float(1 << gr) * 180.0 / PI                 # counts per rad/s
+        let n = if "noise" in self.faults { self.faults.noise } else { 0.0 }
+        let out = []
+        for v in [ax.in("m/s^2") * a, ay.in("m/s^2") * a, az.in("m/s^2") * a] { out.extend(_i16(v + n * 200.0 * self._noise())) }
+        out.extend(_i16((temp.in("K") - 273.15 - 36.53) * 340.0))
+        for v in [gx.in("rad/s") * g, gy.in("rad/s") * g, gz.in("rad/s") * g] { out.extend(_i16(v + n * 200.0 * self._noise())) }
+        self.raw = out
+        self._apply()
+    }
+
+    fn _apply(self) {
+        if "offline" in self.faults {
+            sim::i2c_set(self.addr, 0x75, [0xFF], self.bus)
+            sim::i2c_set(self.addr, 0x3B, [0xFF; 14], self.bus)
+            return
+        }
+        sim::i2c_set(self.addr, 0x75, [0x68], self.bus)
+        if self.raw != nil { sim::i2c_set(self.addr, 0x3B, self.raw, self.bus) }
+    }
+}
+
+struct Pca9685 {
+    addr: int = 0x40
+    bus: int = 1
+    faults = {}
+
+    fn init(self) { sim::i2c_set(self.addr, 0x00, [0x01], self.bus); sim::i2c_set(self.addr, 0xFE, [0x1E], self.bus) }
+    fn fault(self, kind, amount = 1.0) {
+        self.faults[kind] = amount
+        if kind == "offline" { sim::i2c_set(self.addr, 0x00, [0xFF], self.bus) }
+    }
+    fn heal(self) { self.faults = {}; sim::i2c_set(self.addr, 0x00, [0x01], self.bus) }
+
+    # PWM frequency the driver programmed (25 MHz oscillator).
+    fn frequency(self) -> [Hz] {
+        let p = sim::i2c_get(self.addr, 0xFE, 1, self.bus)[0]
+        25000000.0 / (4096.0 * (p + 1)) * 1[Hz]
+    }
+    # Fraction of the period channel `ch` is high, 0..1.
+    fn duty(self, ch: int) -> float {
+        if "offline" in self.faults or "stuck" in self.faults { return 0.0 }
+        let r = sim::i2c_get(self.addr, 0x06 + 4 * ch, 4, self.bus)
+        let on = r[0] | (r[1] << 8)
+        let off = r[2] | (r[3] << 8)
+        if off & 0x1000 != 0 { return 0.0 }          # full-off bit
+        if on & 0x1000 != 0 { return 1.0 }           # full-on bit
+        ((off - on) % 4096) / 4096.0
+    }
+    fn pulse(self, ch: int) -> [s] { self.duty(ch) / self.frequency() }
+}
+
+struct Mcp3008 {
+    bus: int = 0
+    cs: int = 0
+    vref = 3.3[V]
+    faults = {}
+    # Queues the answer to the driver's next conversion.
+    fn feed(self, volts) {
+        let raw = clamp(int(round(volts / self.vref * 1023.0)), 0, 1023)
+        if "offline" in self.faults { raw = 1023 }
+        if "stuck" in self.faults { raw = int(self.faults.stuck) }
+        sim::spi_respond(self.bus, self.cs, [0, (raw >> 8) & 3, raw & 0xFF])
+    }
+    fn fault(self, kind, amount = 0) { self.faults[kind] = amount }
+    fn heal(self) { self.faults = {} }
+}

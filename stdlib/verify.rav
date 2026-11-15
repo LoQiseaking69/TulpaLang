@@ -1,0 +1,74 @@
+# std/verify — system-level verification by exhaustive, bounded exploration.
+#
+#   import "std/verify"
+#   let r = verify.explore(|| Door(), ["open", "close", "lock"], depth: 6,
+#                          property: |d| not (d.state == "Open" and d.locked))
+#   r.ok, r.states, r.counterexample          # shortest event sequence that breaks it
+#
+# explore() builds a fresh system with `make()` for every run and replays event sequences
+# breadth-first, so it uses the real semantics: guards, actions, `always` envelopes, struct
+# invariants and contracts all run. A violated property, a failed envelope or any runtime
+# error is reported with the shortest sequence of events that causes it.
+
+# events: names sent with .send(), or [name, |sys| ...] pairs for anything else.
+# key: |sys| -> value that identifies a state (default: the machine's state name); sequences
+# reaching an already-seen state are not extended, which keeps the search finite.
+fn explore(make, events, depth = 8, property = nil, key = nil, max_runs = 20000) {
+    let seen = {}
+    let frontier = [[]]
+    let runs = 0
+    let transitions = 0
+    let fire = |sys, ev| { if type(ev) == "list" { ev[1](sys) } else { sys.send(ev) } }
+    let name = |ev| if type(ev) == "list" { ev[0] } else { ev }
+    let ident = |sys| if key != nil { repr(key(sys)) } else { str(sys.state) }
+    let start = make()
+    seen[ident(start)] = true
+    if property != nil and not property(start) {
+        return {ok: false, counterexample: [], reason: "property false in the initial state", states: 1, runs: 1, complete: false}
+    }
+    for d in 0..depth {
+        let next = []
+        for path in frontier {
+            for ev in events {
+                runs += 1
+                if runs > max_runs {
+                    return {ok: true, counterexample: nil, reason: nil, states: len(seen), runs: runs, complete: false}
+                }
+                let sys = nil
+                let failure = nil
+                try {
+                    sys = make()
+                    for p in path { fire(sys, p) }
+                    fire(sys, ev)
+                    if property != nil and not property(sys) { failure = "property violated" }
+                } catch err { failure = err }
+                let trail = path.map(name) + [name(ev)]
+                if failure != nil {
+                    return {ok: false, counterexample: trail, reason: failure, states: len(seen), runs: runs, complete: false}
+                }
+                transitions += 1
+                let id = ident(sys)
+                if not (id in seen) {
+                    seen[id] = true
+                    next.push(path + [ev])
+                }
+            }
+        }
+        frontier = next
+        if len(frontier) == 0 {
+            return {ok: true, counterexample: nil, reason: nil, states: len(seen), runs: runs, complete: true}
+        }
+    }
+    {ok: true, counterexample: nil, reason: nil, states: len(seen), runs: runs, complete: false}
+}
+
+# Runs `scenario(seed)` for every seed and checks the outputs are identical on a second pass:
+# a quick guard against hidden nondeterminism. Returns {ok, runs, first_difference}.
+fn deterministic(scenario, seeds = [1, 2, 3]) {
+    for s in seeds {
+        let a = repr(scenario(s))
+        let b = repr(scenario(s))
+        if a != b { return {ok: false, runs: len(seeds) * 2, first_difference: s} }
+    }
+    {ok: true, runs: len(seeds) * 2, first_difference: nil}
+}

@@ -1,0 +1,64 @@
+# Tulpa Link: three nodes on a simulated lossy network, no broker.
+#   rover   publishes its speed and a reliable event stream, serves "stop", owns a parameter
+#   base    watches the rover: a safety envelope on *remote* data, a deadline on telemetry
+#   logger  joins late and still gets the latched map; uses [cm] where the rover uses [m]
+import "std/link"
+
+sim::virtual_time(true)
+link.network(latency: 2[ms], jitter: 1[ms], loss: 0.2, seed: 42)
+
+let rover = link.node("rover")
+let base = link.node("base")
+
+let speed = rover.advertise("/rover/speed", "[m/s]")
+let events = rover.advertise("/rover/events", {code: "int", note: "str"}, reliable: true)
+let map = rover.advertise("/map/origin", {x: "[m]", y: "[m]"}, latched: true)
+let limit = rover.param("speed_limit", 1.5[m/s])
+let v = 0[m/s]
+rover.serve("/rover/stop", |why| { v = 0[m/s]; f"stopped: {why}" })
+
+# base: react to remote data with the language's own safety constructs
+let seen = base.subscribe("/rover/speed", "[km/h]", deadline: 100[ms])
+let log = []
+base.subscribe("/rover/events", {code: "int", note: "str"}, |e, m| log.push(e.code), reliable: true)
+base.on_event(|e| print(f"[{millis()} ms] base: {e.kind} {e.get('peer', e.get('topic', ''))}"))
+let stops = 0
+always seen.signal.get() == nil or seen.signal.get() <= 1.5[m/s] else {
+    stops += 1
+    print(f"[{millis()} ms] envelope: {seen.signal.get()} too fast ->", base.call("/rover/stop", "over limit"))
+}
+
+link.spin_for(300[ms])                       # discovery
+map.publish({x: 12.5[m], y: -3[m]})
+
+# drive: speed ramps past the limit; events go out reliably despite 20 % loss
+for step in 0..40 {
+    v = v + 0.1[m/s]
+    speed.publish(v)
+    if step % 4 == 0 { events.publish({code: step, note: "tick"}) }
+    link.spin_for(10[ms])
+}
+link.spin_for(200[ms])
+print("events received in order:", log == sorted(log), len(log), "of 10")
+print("envelope stops:", stops, " speed samples:", seen.count, "of 40 (best effort)")
+
+# a schema with the wrong dimension is rejected at discovery, not at 3 a.m.
+let bad = link.node("bad")
+bad.on_event(|e| { if e.kind == "incompatible" { print("bad:", e.kind, e.topic, "-", e.reason) } })
+bad.subscribe("/rover/speed", "[m]")
+link.spin_for(600[ms])
+
+# late joiner + unit conversion + parameters
+let logger = link.node("logger")
+let origin = logger.subscribe("/map/origin", {x: "[cm]", y: "[cm]"})
+link.spin_for(600[ms])
+print("latched map for late joiner:", origin.latest)
+print("limit:", logger.get_param("rover", "speed_limit"), "->", logger.set_param("rover", "speed_limit", 1[m/s]))
+try { logger.set_param("rover", "speed_limit", 3[m]) } catch e { print("rejected:", e) }
+
+# telemetry stops: the deadline fires; then the rover leaves
+link.spin_for(300[ms])
+rover.close()
+link.spin_for(100[ms])
+let g = base.graph()
+print("nodes:", g.nodes.map(|n| n.name).sorted().join(", "))

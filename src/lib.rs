@@ -9,17 +9,21 @@
 
 pub mod ast;
 pub mod builtins;
+pub mod bundle;
 pub mod devices;
 pub mod embed;
 pub mod ext;
 pub mod host;
 pub mod interp;
 pub mod lexer;
+pub mod link;
 pub mod llvm;
+pub mod lower;
 pub mod lsp;
 pub mod native;
 pub mod nn;
 pub mod parser;
+pub mod prove;
 pub mod stdx;
 pub mod stdx_path;
 pub mod units;

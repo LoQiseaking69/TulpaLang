@@ -1,0 +1,220 @@
+# std/link — Tulpa Link: middleware for distributed robots, devices, sensors and controllers.
+#
+#   import "std/link"
+#   let arm = link.node("arm")                              # joins the network, no broker
+#   let pose = arm.advertise("/arm/tip", "[m]")             # unit-typed topic
+#   let cam = link.node("camera")
+#   cam.subscribe("/arm/tip", "[cm]", |x, m| print(x))      # same dimension: interoperates
+#   pose.publish(0.42[m])
+#   link.spin_all()
+#
+# Topics   unit-typed publish/subscribe; QoS: reliable, latched, keep, deadline
+# Services request/reply between nodes:  node.serve(name, f) / node.call(name, request)
+# Params   node.param(name, default), readable and settable from any node
+# Graph    node.graph() lists every node, topic and service on the network
+# Safety   each topic has a signal, so `when` rules and `always` envelopes can watch remote data;
+#          missed deadlines and lost peers arrive as events
+#
+# Transports: "sim" (default): a deterministic in-process network on the virtual clock, with
+# link.network(latency:, jitter:, loss:, seed:) and link.partition(a, b). "udp": real sockets
+# with broker-less discovery on the LAN. Choose per node, or set TULPA_LINK=udp.
+
+let _nodes = []
+
+struct Topic {
+    node
+    name: str
+    schema = "any"
+    handlers = []
+    latest = nil
+    stamp = nil
+    from = nil
+    count: int = 0
+    signal = nil
+    advertised: bool = false
+
+    fn init(self) { self.signal = signal(nil) }
+
+    fn publish(self, value) {
+        if not self.advertised { error(f"link: node '{self.node.name}' subscribes to {self.name}; call advertise() to publish") }
+        tlink::publish(self.node.h, self.name, value)
+    }
+
+    # f(value, meta); meta = {topic, from, seq, stamp, latency}
+    fn on(self, f) { self.handlers.push(f); self }
+
+    fn _receive(self, m) {
+        self.latest = m.value
+        self.stamp = m.stamp
+        self.from = m.from
+        self.count += 1
+        for f in self.handlers { f(m.value, m) }
+        self.signal.set(m.value)
+    }
+}
+
+struct Node {
+    h
+    name: str
+    topics = {}
+    services = {}
+    params = {}
+    replies = {}
+    listeners = []
+    peers_seen = []
+    closed: bool = false
+
+    fn _topic(self, name, schema) {
+        if not (name in self.topics) { self.topics[name] = Topic(node: self, name: name, schema: schema) }
+        self.topics[name]
+    }
+
+    # Options: reliable (in-order, retransmitted), latched (late joiners get the last value),
+    # keep (history kept for retransmission, default 32).
+    fn advertise(self, name, schema = "any", reliable = false, latched = false, keep = 32) {
+        tlink::advertise(self.h, name, schema, {reliable: reliable, latched: latched, keep: keep})
+        let t = self._topic(name, schema)
+        t.advertised = true
+        t
+    }
+
+    # handler(value, meta) is optional: the Topic also keeps `latest` and a `signal`.
+    # deadline: a `deadline` event fires if no message arrives for that long.
+    fn subscribe(self, name, schema = "any", handler = nil, reliable = false, deadline = nil) {
+        let opts = {reliable: reliable}
+        if deadline != nil { opts.deadline = deadline }
+        tlink::subscribe(self.h, name, schema, opts)
+        let t = self._topic(name, schema)
+        if handler != nil { t.on(handler) }
+        t
+    }
+
+    fn publish(self, name, value) { tlink::publish(self.h, name, value) }
+
+    # f(request) -> reply. An error raised by f is returned to the caller as an error.
+    fn serve(self, name, f) {
+        self.services[name] = f
+        tlink::serve(self.h, name)
+        self
+    }
+
+    # Calls a service on whichever node provides it and waits for the reply.
+    fn call(self, name, request = nil, timeout = 1[s]) {
+        let limit = millis() + int(timeout.in("ms"))
+        let id = nil
+        loop {
+            if id == nil { id = tlink::request(self.h, name, request) }
+            spin_all()
+            if id != nil and id in self.replies {
+                let r = self.replies[id]
+                self.replies.remove(id)
+                if not r.ok { error(f"link: service {name} failed: {r.value}") }
+                return r.value
+            }
+            if millis() >= limit {
+                if id == nil { error(f"link: no node serves {name}") }
+                error(f"link: service {name} timed out after {timeout}")
+            }
+            sleep_ms(1)
+        }
+    }
+
+    # A named value other nodes can read and change: get_param / set_param.
+    fn param(self, name, default) {
+        if not (name in self.params) { self.params[name] = default }
+        if len(self.params) == 1 {
+            self.serve(f"/{self.name}/param/get", |q| self.params[q])
+            self.serve(f"/{self.name}/param/set", |q| {
+                let old = self.params[q.name]
+                if type(old) != type(q.value) { error(f"param {q.name} is a {type(old)}, not a {type(q.value)}") }
+                if type(old) == "quantity" { let _ = old + q.value }      # same dimension, or an error
+                self.params[q.name] = q.value
+                q.value
+            })
+            self.serve(f"/{self.name}/param/list", |q| self.params.keys())
+        }
+        self.params[name]
+    }
+    fn get(self, name) { self.params[name] }
+    fn get_param(self, node_name, name, timeout = 1[s]) { self.call(f"/{node_name}/param/get", name, timeout) }
+    fn set_param(self, node_name, name, value, timeout = 1[s]) {
+        self.call(f"/{node_name}/param/set", {name: name, value: value}, timeout)
+    }
+
+    # f(event) for peer_joined, peer_lost, deadline and incompatible events.
+    fn on_event(self, f) { self.listeners.push(f); self }
+
+    # Processes everything that has arrived. Returns the number of events handled.
+    fn spin(self) {
+        if self.closed { return 0 }
+        let events = tlink::poll(self.h)
+        for e in events {
+            let k = e.kind
+            if k == "msg" {
+                if e.topic in self.topics { self.topics[e.topic]._receive(e) }
+            } elif k == "request" {
+                let ok = true
+                let out = nil
+                try { out = self.services[e.service](e.value) } catch err { ok = false; out = err }
+                tlink::reply(self.h, e.from, e.id, ok, out)
+            } elif k == "reply" {
+                self.replies[e.id] = e
+            } else {
+                if k == "peer_joined" { self.peers_seen.push(e.peer) }
+                if k == "peer_lost" and e.peer in self.peers_seen { self.peers_seen.remove(e.peer) }
+                for f in self.listeners { f(e) }
+            }
+        }
+        len(events)
+    }
+
+    fn peers(self) { self.peers_seen.copy() }
+    fn graph(self) { tlink::info(self.h) }
+    fn close(self) { tlink::close(self.h); self.closed = true }
+}
+
+# Joins the network. transport: "sim" or "udp" (default: $TULPA_LINK, else "sim").
+# peers: extra IP addresses to announce to, for networks without broadcast.
+fn node(name, domain = 0, transport = nil, peers = []) {
+    let opts = {domain: domain, peers: peers}
+    if transport != nil { opts.transport = transport }
+    let n = Node(h: tlink::node(name, opts), name: name)
+    _nodes.push(n)
+    n
+}
+
+# Spins every node created in this program until no more events are pending.
+fn spin_all() {
+    let total = 0
+    loop {
+        let n = 0
+        for node in _nodes { n += node.spin() }
+        total += n
+        if n == 0 { break }
+    }
+    total
+}
+
+# Runs the network for `duration`, spinning every `period`.
+fn spin_for(duration, period = 1[ms]) {
+    let limit = millis() + int(duration.in("ms"))
+    while millis() < limit {
+        spin_all()
+        sleep_ms(max(1, int(period.in("ms"))))
+    }
+    spin_all()
+}
+
+# Shapes the simulated network: link.network(latency: 2[ms], jitter: 1[ms], loss: 0.1, seed: 7).
+# Returns {sent, dropped, in_flight}.
+fn network(latency = nil, jitter = nil, loss = nil, seed = nil) {
+    let o = {}
+    if latency != nil { o.latency = latency }
+    if jitter != nil { o.jitter = jitter }
+    if loss != nil { o.loss = loss }
+    if seed != nil { o.seed = seed }
+    tlink::sim(o)
+}
+
+# Cuts (or heals) the simulated connection between two nodes.
+fn partition(a, b, cut = true) { tlink::partition(a.h, b.h, cut) }

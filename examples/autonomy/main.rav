@@ -1,0 +1,82 @@
+# Autonomous delivery robot: a utility decision picks the mode, a GOAP planner turns goals into
+# steps, an HTN domain expands a compound task, a behavior tree runs one step robustly, and a
+# Mission orchestrates it all — replanning when the battery sags mid-delivery.
+import "std/plan"
+
+sim::virtual_time(true)
+
+# ---- 1. behavior tree: grasp with retry, guarded by a live safety condition
+let tries = 0
+let grasp = plan.ReactiveSequence([
+    plan.Condition("estop clear", |bb| not bb.estop),
+    plan.Retry(plan.Sequence([
+        plan.Action("open gripper", |bb| true),
+        plan.Action("close gripper", |bb| { tries += 1; tries >= 3 }),   # slips twice
+    ]), 5),
+], "grasp")
+let bb = {estop: false}
+print("grasp:", plan.run_tree(grasp, bb), "after", tries, "attempts")
+print(grasp.render())
+
+# ---- 2. HTN: decompose "deliver" differently depending on the world
+let d = plan.Domain()
+d.primitive("undock", {docked: true}, {docked: false})
+d.primitive("drive_to_shelf", {docked: false}, {at: "shelf"})
+d.primitive("pick", {at: "shelf", holding: false}, {holding: true})
+d.primitive("drive_to_bay", {holding: true}, {at: "bay"})
+d.primitive("place", {at: "bay", holding: true}, {holding: false, delivered: true})
+d.method("fetch", "from dock", {docked: true}, ["undock", "drive_to_shelf", "pick"])
+d.method("fetch", "already out", {docked: false}, ["drive_to_shelf", "pick"])
+d.method("deliver", "carry", {}, ["fetch", "drive_to_bay", "place"])
+let r = d.explain({docked: true, at: "dock", holding: false}, ["deliver"])
+print("htn:", r.steps.join(" > "))
+print("     ", r.trace.join("; "))
+
+# ---- 3. GOAP + Mission: goals with priorities, execution, monitoring, replanning
+let p = plan.Planner()
+p.action("undock", {docked: true}, {docked: false})
+p.action("drive_to_shelf", {docked: false, battery: |b| b >= 20}, {at: "shelf", battery: |b| b - 20}, cost: 2)
+p.action("pick", {at: "shelf", holding: false}, {holding: true})
+p.action("drive_to_bay", {docked: false, holding: true, battery: |b| b >= 20}, {at: "bay", battery: |b| b - 20}, cost: 2)
+p.action("place", {at: "bay", holding: true}, {holding: false, delivered: true})
+p.action("drive_to_dock", {docked: false, battery: |b| b >= 5}, {at: "dock", battery: |b| b - 5})
+p.action("dock", {at: "dock"}, {docked: true})
+p.action("charge", {docked: true}, {battery: 100}, cost: 5)
+
+let world = {docked: true, at: "dock", holding: false, delivered: false, battery: 45}
+print("plan:", p.plan(world, {delivered: true}).join(" > "))
+
+let m = plan.Mission(p)
+m.goal("delivered", {delivered: true}, priority: 1)
+m.goal("charged", {battery: |b| b >= 90}, priority: 10, active: |w| w.battery < 15)
+
+# Handlers act on the real world. Driving to the bay costs more than the planner assumed.
+fn effect_of(name) { for a in p.actions { if a.name == name { return a.effect } } }
+fn simple(name) { |w| { for k, e in effect_of(name) { w[k] = if type(e) == "fn" { e(w[k]) } else { e } }; true } }
+for name in ["undock", "drive_to_shelf", "pick", "place", "drive_to_dock", "dock", "charge"] { m.on(name, simple(name)) }
+let leg = 0
+let headwind = true
+m.on("drive_to_bay", |w| {
+    leg += 1
+    if leg < 3 { return plan.RUNNING }           # takes three ticks
+    leg = 0
+    if headwind { headwind = false; w.battery = 10; return plan.FAILURE }   # aborted, battery drained
+    w.at = "bay"; w.battery = w.battery - 20
+    true
+})
+
+let ticks = m.run(world, 100[ms], 200)
+for line in m.log { print(line) }
+print("ticks", ticks, "delivered", world.delivered, "battery", world.battery, "replans", m.replans)
+
+# ---- 4. utility decision with hysteresis
+let modes = [
+    {name: "explore", score: |w| 0.5},
+    {name: "recharge", score: |w| (100 - w.battery) / 100.0},
+    {name: "deliver", score: |w| if w.orders > 0 { 0.8 } else { 0.0 }, active: |w| w.battery > 20},
+]
+let mode = nil
+for w in [{battery: 90, orders: 2}, {battery: 45, orders: 0}, {battery: 48, orders: 0}, {battery: 10, orders: 3}] {
+    mode = plan.choose(modes, w, mode, 0.1).name
+    print("battery", w.battery, "orders", w.orders, "->", mode)
+}

@@ -421,6 +421,7 @@ pub fn path(m: &str, name: &str) -> Option<Value> {
             .find(|(n, _)| *n == name)
             .map(|(n, f)| Value::Builtin(n, *f)),
         ("pack" | "json" | "tlm" | "cosim", _) => crate::stdx::path(m, name),
+        ("tlink", _) => crate::link::path(name),
         _ => devices::path(m, name),
     }
 }
@@ -1571,6 +1572,7 @@ pub fn module_members(m: &str) -> Vec<&'static str> {
         "json" => vec!["encode", "decode", "load", "save"],
         "tlm" => vec!["enabled", "plot", "event", "status", "artifact"],
         "cosim" => vec!["connect", "available"],
+        "tlink" => crate::link::names(),
         "math" | "std" => GLOBALS.iter().map(|(n, _)| *n).collect(),
         _ => crate::host::names(m),
     }

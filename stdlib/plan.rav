@@ -1,0 +1,492 @@
+# std/plan — autonomous reasoning and task orchestration.
+#
+#   import "std/plan"
+#
+# Four layers, usable separately or together:
+#   1. Behavior trees   plan.Sequence / Selector / Parallel / Action / Condition + decorators
+#   2. Goal planning    plan.Planner (GOAP: A* over world states)
+#   3. Decomposition    plan.Domain  (HTN: compound tasks → primitive steps, with backtracking)
+#   4. Orchestration    plan.Mission (prioritised goals → plan → execute → monitor → replan)
+# plus plan.choose() for utility-based decisions.
+#
+# Everything is deterministic: no wall clock, no randomness. Time comes from millis(), so
+# runs under --virtual-time are reproducible.
+
+const SUCCESS = "success"
+const FAILURE = "failure"
+const RUNNING = "running"
+
+fn _status(v) {
+    if v == SUCCESS or v == FAILURE or v == RUNNING { return v }
+    if v == nil or v == true { return SUCCESS }
+    if v == false { return FAILURE }
+    error(f"behavior returned {repr(v)}; expected true/false/nil or plan.SUCCESS/FAILURE/RUNNING")
+}
+
+# ------------------------------------------------------------------ behavior trees
+
+struct Node {
+    kind: str
+    name: str = ""
+    children = []
+    f = nil
+    n: int = 0              # decorator parameter (retries, repeats, needed successes, ms)
+    status: str = "idle"
+    at: int = 0             # index of the running child (memory nodes)
+    count: int = 0
+    since = nil
+    ticks: int = 0
+
+    fn tick(self, bb = nil) {
+        self.ticks += 1
+        let s = self._run(bb)
+        self.status = s
+        s
+    }
+
+    fn reset(self) {
+        self.status = "idle"; self.at = 0; self.count = 0; self.since = nil
+        for c in self.children { c.reset() }
+    }
+
+    fn _run(self, bb) {
+        let k = self.kind
+        if k == "action" { return _status(self.f(bb)) }
+        if k == "condition" { return if self.f(bb) { SUCCESS } else { FAILURE } }
+        if k == "sequence" {
+            # resumes at the child that was RUNNING
+            while self.at < len(self.children) {
+                let s = self.children[self.at].tick(bb)
+                if s == RUNNING { return RUNNING }
+                if s == FAILURE { self.at = 0; return FAILURE }
+                self.at += 1
+            }
+            self.at = 0
+            return SUCCESS
+        }
+        if k == "selector" {
+            while self.at < len(self.children) {
+                let s = self.children[self.at].tick(bb)
+                if s == RUNNING { return RUNNING }
+                if s == SUCCESS { self.at = 0; return SUCCESS }
+                self.at += 1
+            }
+            self.at = 0
+            return FAILURE
+        }
+        if k == "reactive_sequence" {
+            # re-checks every child from the start on each tick (guards stay live)
+            for c in self.children {
+                let s = c.tick(bb)
+                if s != SUCCESS { return s }
+            }
+            return SUCCESS
+        }
+        if k == "reactive_selector" {
+            for c in self.children {
+                let s = c.tick(bb)
+                if s != FAILURE { return s }
+            }
+            return FAILURE
+        }
+        if k == "parallel" {
+            let ok = 0
+            let bad = 0
+            for c in self.children {
+                let s = c.tick(bb)
+                if s == SUCCESS { ok += 1 } elif s == FAILURE { bad += 1 }
+            }
+            if ok >= self.n { return SUCCESS }
+            if bad > len(self.children) - self.n { return FAILURE }
+            return RUNNING
+        }
+        let child = self.children[0]
+        if k == "invert" {
+            let s = child.tick(bb)
+            if s == SUCCESS { return FAILURE }
+            if s == FAILURE { return SUCCESS }
+            return RUNNING
+        }
+        if k == "succeed" {
+            let s = child.tick(bb)
+            return if s == RUNNING { RUNNING } else { SUCCESS }
+        }
+        if k == "retry" {
+            let s = child.tick(bb)
+            if s == FAILURE {
+                self.count += 1
+                if self.count >= self.n { self.count = 0; return FAILURE }
+                child.reset()
+                return RUNNING
+            }
+            if s == SUCCESS { self.count = 0 }
+            return s
+        }
+        if k == "repeat" {
+            let s = child.tick(bb)
+            if s == FAILURE { self.count = 0; return FAILURE }
+            if s == SUCCESS {
+                self.count += 1
+                if self.count >= self.n { self.count = 0; return SUCCESS }
+                child.reset()
+            }
+            return RUNNING
+        }
+        if k == "timeout" {
+            if self.since == nil { self.since = millis() }
+            if millis() - self.since > self.n { self.since = nil; child.reset(); return FAILURE }
+            let s = child.tick(bb)
+            if s != RUNNING { self.since = nil }
+            return s
+        }
+        if k == "cooldown" {
+            if self.since != nil and millis() - self.since < self.n { return FAILURE }
+            let s = child.tick(bb)
+            if s == SUCCESS { self.since = millis() }
+            return s
+        }
+        error(f"unknown behavior node kind '{k}'")
+    }
+
+    # An indented picture of the tree with each node's last status.
+    fn render(self, depth = 0) {
+        let label = if self.name != "" { f"{self.kind} {self.name}" } else { self.kind }
+        let out = "  ".repeat(depth) + label + "  [" + self.status + "]\n"
+        for c in self.children { out = out + c.render(depth + 1) }
+        out
+    }
+
+    # {kind, name, status, children} for tools (HermiSim draws this).
+    fn snapshot(self) {
+        {kind: self.kind, name: self.name, status: self.status, children: self.children.map(|c| c.snapshot())}
+    }
+}
+
+fn _ms(d) { if type(d) == "quantity" { int(d.in("ms")) } else { int(d) } }
+
+fn Action(name, f) { Node(kind: "action", name: name, f: f) }
+fn Condition(name, f) { Node(kind: "condition", name: name, f: f) }
+fn Sequence(children, name = "") { Node(kind: "sequence", name: name, children: children) }
+fn Selector(children, name = "") { Node(kind: "selector", name: name, children: children) }
+fn ReactiveSequence(children, name = "") { Node(kind: "reactive_sequence", name: name, children: children) }
+fn ReactiveSelector(children, name = "") { Node(kind: "reactive_selector", name: name, children: children) }
+fn Parallel(children, need = 0, name = "") {
+    Node(kind: "parallel", name: name, children: children, n: if need > 0 { need } else { len(children) })
+}
+fn Invert(child) { Node(kind: "invert", children: [child]) }
+fn Succeed(child) { Node(kind: "succeed", children: [child]) }
+fn Retry(child, times) { Node(kind: "retry", children: [child], n: times) }
+fn Repeat(child, times) { Node(kind: "repeat", children: [child], n: times) }
+fn Timeout(child, limit) { Node(kind: "timeout", children: [child], n: _ms(limit)) }
+fn Cooldown(child, period) { Node(kind: "cooldown", children: [child], n: _ms(period)) }
+
+# Tick a tree at a fixed period until it finishes or `max_ticks` is reached.
+fn run_tree(tree, bb = nil, period = 0, max_ticks = 1000) {
+    let n = 0
+    let s = RUNNING
+    while n < max_ticks {
+        s = tree.tick(bb)
+        n += 1
+        if s != RUNNING { break }
+        if _ms(period) > 0 { sleep_ms(_ms(period)) }
+    }
+    s
+}
+
+# ------------------------------------------------------------------ world states
+
+fn _key(state) {
+    let ks = sorted(state.keys())
+    ks.map(|k| f"{k}={repr(state[k])}").join(";")
+}
+
+# A requirement is a plain value (must be equal) or a predicate |v| -> bool.
+fn _holds(state, conds) {
+    for k, want in conds {
+        let have = state.get(k, nil)
+        if type(want) == "fn" {
+            if not want(have) { return false }
+        } elif have != want { return false }
+    }
+    true
+}
+
+# An effect is a plain value (assigned) or a function |v| -> new value.
+fn _apply(state, effects) {
+    let s = state.copy()
+    for k, e in effects {
+        s[k] = if type(e) == "fn" { e(s.get(k, nil)) } else { e }
+    }
+    s
+}
+
+fn _unmet(state, goal) {
+    let n = 0
+    for k, want in goal {
+        let have = state.get(k, nil)
+        if type(want) == "fn" {
+            if not want(have) { n += 1 }
+        } elif have != want { n += 1 }
+    }
+    n
+}
+
+# ------------------------------------------------------------------ GOAP planner
+
+struct Planner {
+    actions = []
+    max_nodes: int = 5000
+    expanded: int = 0
+
+    # pre / effect: dicts as described above. cost: a number, or |state| -> number.
+    fn action(self, name, pre = {}, effect = {}, cost = 1) {
+        self.actions.push({name: name, pre: pre, effect: effect, cost: cost})
+        self
+    }
+
+    # Cheapest action sequence taking `state` to a state satisfying `goal`. Returns a list of
+    # action names ([] if the goal already holds) or nil if none exists within max_nodes.
+    fn plan(self, state, goal) {
+        let r = self.solve(state, goal)
+        if r == nil { nil } else { r.steps }
+    }
+
+    # Like plan(), with details: {steps, cost, state, expanded}.
+    fn solve(self, state, goal) {
+        self.expanded = 0
+        let open = [{s: state, g: 0, f: _unmet(state, goal), steps: []}]
+        let best = {}
+        best[_key(state)] = 0
+        while len(open) > 0 {
+            # pop the lowest f; ties broken by insertion order, so results are deterministic
+            let bi = 0
+            for i, n in enumerate(open) { if n.f < open[bi].f { bi = i } }
+            let cur = open.pop(bi)
+            if _holds(cur.s, goal) {
+                return {steps: cur.steps, cost: cur.g, state: cur.s, expanded: self.expanded}
+            }
+            self.expanded += 1
+            if self.expanded > self.max_nodes { return nil }
+            for a in self.actions {
+                if not _holds(cur.s, a.pre) { continue }
+                let ns = _apply(cur.s, a.effect)
+                let c = if type(a.cost) == "fn" { a.cost(cur.s) } else { a.cost }
+                let g = cur.g + c
+                let key = _key(ns)
+                if key in best and best[key] <= g { continue }
+                best[key] = g
+                open.push({s: ns, g: g, f: g + _unmet(ns, goal), steps: cur.steps + [a.name]})
+            }
+        }
+        nil
+    }
+}
+
+# ------------------------------------------------------------------ HTN decomposition
+
+struct Domain {
+    primitives = {}
+    methods = {}
+
+    fn primitive(self, name, pre = {}, effect = {}) {
+        self.primitives[name] = {pre: pre, effect: effect}
+        self
+    }
+
+    # One way to achieve the compound task `task`: applicable when `pre` holds, by doing
+    # `subtasks` (primitive or compound names) in order. Methods are tried in the order added.
+    fn method(self, task, name, pre = {}, subtasks = []) {
+        if not (task in self.methods) { self.methods[task] = [] }
+        self.methods[task].push({name: name, pre: pre, subtasks: subtasks})
+        self
+    }
+
+    # Primitive plan for `tasks` from `state`, or nil. Depth-first with backtracking.
+    fn decompose(self, state, tasks) {
+        let r = self._seek(state, tasks, 0)
+        if r == nil { nil } else { r.steps }
+    }
+
+    # Like decompose(), also returning the methods chosen: {steps, state, trace}.
+    fn explain(self, state, tasks) { self._seek(state, tasks, 0) }
+
+    fn _seek(self, state, tasks, depth) {
+        if depth > 200 { error("plan.Domain: decomposition deeper than 200 (recursive methods?)") }
+        if len(tasks) == 0 { return {steps: [], state: state, trace: []} }
+        let t = tasks[0]
+        let rest = tasks[1..len(tasks)]
+        if t in self.primitives {
+            let p = self.primitives[t]
+            if not _holds(state, p.pre) { return nil }
+            let r = self._seek(_apply(state, p.effect), rest, depth + 1)
+            if r == nil { return nil }
+            return {steps: [t] + r.steps, state: r.state, trace: r.trace}
+        }
+        if not (t in self.methods) { error(f"plan.Domain: unknown task '{t}'") }
+        for m in self.methods[t] {
+            if not _holds(state, m.pre) { continue }
+            let r = self._seek(state, m.subtasks + rest, depth + 1)
+            if r != nil { return {steps: r.steps, state: r.state, trace: [f"{t} via {m.name}"] + r.trace} }
+        }
+        nil
+    }
+}
+
+# ------------------------------------------------------------------ utility decisions
+
+# options: [{name, score: |ctx| -> number, active: |ctx| -> bool (optional)}].
+# Returns the option with the highest score among those whose `active` holds, or nil.
+# `current` + `margin` add hysteresis: the current choice is kept unless another option
+# beats it by more than `margin`.
+fn choose(options, ctx = nil, current = nil, margin = 0) {
+    let best = nil
+    let best_score = 0
+    let cur_score = nil
+    let cur = nil
+    for o in options {
+        if "active" in o and not o.active(ctx) { continue }
+        let s = o.score(ctx)
+        if o.name == current { cur_score = s; cur = o }
+        if best == nil or s > best_score { best = o; best_score = s }
+    }
+    if cur != nil and best_score - cur_score <= margin { return cur }
+    best
+}
+
+# ------------------------------------------------------------------ mission orchestration
+
+# Goals with priorities → a plan from a Planner → executed one step at a time by handlers →
+# monitored and replanned when the world changes or a step fails.
+#
+#   let m = plan.Mission(planner)
+#   m.goal("charged", {battery_ok: true}, priority: 10, active: |w| not w.battery_ok)
+#   m.goal("delivered", {delivered: true}, priority: 1)
+#   m.on("dock", |w| { ...; plan.SUCCESS })
+#   every!(100[ms], { m.tick(world) })
+struct Mission {
+    planner
+    goals = []
+    handlers = {}
+    current = nil           # the goal being pursued (dict) or nil
+    steps = []              # remaining plan
+    step = nil              # step being executed
+    replans: int = 0
+    failures: int = 0
+    max_failures: int = 3
+    log = []
+    done = []
+
+    fn goal(self, name, want, priority = 0, active = nil) {
+        self.goals.push({name: name, want: want, priority: priority, active: active})
+        self
+    }
+
+    # handler(world) runs one tick of the step: return RUNNING until finished, then
+    # SUCCESS/true/nil, or FAILURE/false. It must update `world` with what really happened.
+    fn on(self, action, handler) { self.handlers[action] = handler; self }
+
+    fn _note(self, msg) {
+        self.log.push(f"[{millis()}] {msg}")
+        if len(self.log) > 200 { self.log.pop(0) }
+    }
+
+    # The highest-priority goal that is active and not yet satisfied.
+    fn _select(self, world) {
+        let best = nil
+        for g in self.goals {
+            if g.active != nil and not g.active(world) { continue }
+            if _holds(world, g.want) { continue }
+            if best == nil or g.priority > best.priority { best = g }
+        }
+        best
+    }
+
+    fn _replan(self, world, why) {
+        self.steps = []
+        self.step = nil
+        if self.current == nil { return }
+        let p = self.planner.plan(world, self.current.want)
+        self.replans += 1
+        if p == nil {
+            self._note(f"no plan for '{self.current.name}' ({why})")
+            self.current = nil
+        } else {
+            self.steps = p
+            self._note(f"plan for '{self.current.name}' ({why}): {p.join(' > ')}")
+        }
+    }
+
+    # One orchestration step. Returns "idle", "running", "done" (a goal was just achieved)
+    # or "stuck" (active goals exist but none can be planned).
+    fn tick(self, world) {
+        let want = self._select(world)
+        if want == nil {
+            if self.current != nil { self.current = nil; self.steps = []; self.step = nil }
+            return "idle"
+        }
+        if self.current == nil or self.current.name != want.name {
+            let why = if self.current == nil { "new goal" } else { f"preempted '{self.current.name}'" }
+            self.current = want
+            self.failures = 0
+            self._replan(world, why)
+            if self.current == nil { return "stuck" }
+        }
+        if self.step == nil {
+            if len(self.steps) == 0 {
+                self._replan(world, "plan exhausted")
+                if self.current == nil or len(self.steps) == 0 { return "stuck" }
+            }
+            self.step = self.steps.pop(0)
+            # the world may have moved since planning: check the step is still applicable
+            for a in self.planner.actions {
+                if a.name == self.step and not _holds(world, a.pre) {
+                    self._replan(world, f"'{a.name}' no longer applicable")
+                    if self.current == nil or len(self.steps) == 0 { return "stuck" }
+                    self.step = self.steps.pop(0)
+                    break
+                }
+            }
+            self._note(f"start {self.step}")
+        }
+        if not (self.step in self.handlers) { error(f"plan.Mission: no handler for action '{self.step}'") }
+        let s = _status(self.handlers[self.step](world))
+        if s == RUNNING { return "running" }
+        if s == FAILURE {
+            self.failures += 1
+            self._note(f"{self.step} failed ({self.failures}/{self.max_failures})")
+            if self.failures >= self.max_failures {
+                self._note(f"giving up on '{self.current.name}'")
+                self.current = nil; self.steps = []; self.step = nil
+                return "stuck"
+            }
+            self._replan(world, "step failed")
+            return if self.current == nil { "stuck" } else { "running" }
+        }
+        self.step = nil
+        if _holds(world, self.current.want) {
+            self._note(f"goal '{self.current.name}' achieved")
+            self.done.push(self.current.name)
+            self.current = nil
+            self.steps = []
+            return "done"
+        }
+        "running"
+    }
+
+    # Tick until no active goal remains (or max_ticks). Returns the number of ticks used.
+    fn run(self, world, period = 0, max_ticks = 10000) {
+        let n = 0
+        while n < max_ticks {
+            let s = self.tick(world)
+            n += 1
+            if s == "idle" or s == "stuck" { break }
+            if _ms(period) > 0 { sleep_ms(_ms(period)) }
+        }
+        n
+    }
+
+    fn status(self) {
+        {goal: if self.current == nil { nil } else { self.current.name }, step: self.step,
+         remaining: self.steps.copy(), replans: self.replans, done: self.done.copy()}
+    }
+}

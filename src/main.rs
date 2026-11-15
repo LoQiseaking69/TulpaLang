@@ -15,6 +15,12 @@ USAGE:
     tulpa repl [FLAGS]                            interactive prompt (default with no file)
     tulpa ast <file>                              dump the parsed syntax tree
     tulpa verify [--trials=N] <file>...           fuzz every fn against its own require/ensure
+    tulpa prove [--strict] [--json] <file>...     statically prove contracts, invariants, bounds
+    tulpa bundle <file> [-o out] [--hw] [--runtime tulpa-binary]
+                                                  standalone executable with the full language
+    tulpa deploy [dir] [--port P] [--host user@host] [--dry-run] [--no-flash] [--force]
+                                                  prove, check, build and flash a `tulpa new` project
+    tulpa link graph|echo <topic> [--domain N] [--for SECS]   inspect a live Tulpa Link network
     tulpa graph <file>...                         print Mermaid diagrams of every state machine
     tulpa emit-llvm <file> [--target T] [-o out.ll]  LLVM IR for the program
     tulpa build <file> [--target T] [-o out]      native object + C header (needs clang)
@@ -196,6 +202,471 @@ fn load_definitions(file: &str, o: &Opts) -> Result<Interpreter, ExitCode> {
     Ok(i)
 }
 
+/// Builds a hosted bundle: `runtime` + the program and its imports.
+fn make_bundle(
+    file: &str,
+    out: &str,
+    runtime: Option<&str>,
+    hardware: bool,
+) -> Result<usize, String> {
+    let mut p = tulpa::bundle::collect(std::path::Path::new(file))?;
+    p.hardware = hardware;
+    let rt = match runtime {
+        Some(r) => std::path::PathBuf::from(r),
+        None => std::env::current_exe().map_err(|e| e.to_string())?,
+    };
+    tulpa::bundle::write(&rt, std::path::Path::new(out), &p)?;
+    Ok(p.files.len())
+}
+
+/// `tulpa bundle file.rav [-o out] [--hw] [--runtime BIN]`
+fn bundle(args: &[String]) -> ExitCode {
+    let (mut file, mut out, mut runtime, mut hw) = (None, None, None, false);
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "-o" => out = it.next().cloned(),
+            "--runtime" => runtime = it.next().cloned(),
+            "--hw" => hw = true,
+            f => file = Some(f.to_string()),
+        }
+    }
+    let Some(file) = file else {
+        eprintln!("usage: tulpa bundle <file> [-o out] [--hw] [--runtime tulpa-binary]");
+        return ExitCode::from(2);
+    };
+    let stem = std::path::Path::new(&file)
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "app".into());
+    let out = out.unwrap_or_else(|| {
+        if cfg!(windows) {
+            format!("{stem}.exe")
+        } else {
+            stem
+        }
+    });
+    match make_bundle(&file, &out, runtime.as_deref(), hw) {
+        Ok(n) => {
+            eprintln!(
+                "bundled {out}: {n} source file(s) + the Tulpa runtime{}",
+                if hw { ", hardware backend" } else { "" }
+            );
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("tulpa bundle: {e}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+/// `tulpa deploy`: the simulation-to-hardware pipeline for a `tulpa new` project.
+///   1. prove      static proof of contracts and invariants; anything refuted stops the deploy
+///   2. check      the program compiles natively for the simulator (fast, no SDK needed)
+///   3. build      the board's own build (Pico SDK, ESP-IDF, or make)
+///   4. flash      picotool / UF2 drive, idf.py flash, or scp to a Linux board
+fn deploy(args: &[String], o: &Opts) -> ExitCode {
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
+    let (mut dir, mut port, mut host) = (String::from("."), None, None);
+    let (mut dry, mut flash, mut force) = (false, true, false);
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--port" => port = it.next().cloned(),
+            "--host" => host = it.next().cloned(),
+            "--dry-run" => dry = true,
+            "--no-flash" => flash = false,
+            "--force" => force = true,
+            d => dir = d.to_string(),
+        }
+    }
+    let root = PathBuf::from(&dir);
+    let app = root.join("app.rav");
+    if !app.is_file() {
+        eprintln!("tulpa deploy: {} has no app.rav (create a project with `tulpa new <dir> --board <board>`)", root.display());
+        return ExitCode::from(2);
+    }
+    let read = |p: &str| std::fs::read_to_string(root.join(p)).unwrap_or_default();
+    let name = std::fs::canonicalize(&root)
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| "app".into());
+    let board = if root.join("sdkconfig.defaults").is_file() {
+        "esp-idf"
+    } else if read("CMakeLists.txt").contains("pico_sdk") {
+        "rp2040"
+    } else if root.join("Makefile").is_file() {
+        "linux"
+    } else {
+        eprintln!("tulpa deploy: cannot tell which board {} is for (no CMakeLists.txt, sdkconfig.defaults or Makefile)", root.display());
+        return ExitCode::from(2);
+    };
+    println!("deploying {name} ({board})");
+
+    // 1. prove
+    let (_, prog) = match load(&app.to_string_lossy()) {
+        Ok(p) => p,
+        Err(c) => return c,
+    };
+    let report = prove_and_test(&app.to_string_lossy(), &prog, o, 300);
+    use tulpa::prove::Status;
+    println!(
+        "  [1/4] prove   {} proved, {} unproved, {} skipped",
+        report.count(Status::Proved),
+        report.count(Status::Unproved),
+        report.count(Status::Skipped)
+    );
+    let refuted: Vec<_> = report
+        .obligations
+        .iter()
+        .filter(|o| o.status == Status::Refuted)
+        .collect();
+    for o in &refuted {
+        println!("        REFUTED {}: {} {}", o.ctx, o.text, o.detail);
+    }
+    if !refuted.is_empty() && !force {
+        eprintln!("tulpa deploy: stopped: fix the refuted obligations or pass --force");
+        return ExitCode::from(1);
+    }
+
+    let me = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("tulpa"));
+    let run = |step: &str, cmd: &mut Command| -> bool {
+        let shown = format!(
+            "{} {}",
+            cmd.get_program().to_string_lossy(),
+            cmd.get_args()
+                .map(|a| a.to_string_lossy())
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+        println!("  {step}  {shown}");
+        if dry {
+            return true;
+        }
+        match cmd.status() {
+            Ok(s) if s.success() => true,
+            Ok(s) => {
+                eprintln!("tulpa deploy: `{shown}` failed ({s})");
+                false
+            }
+            Err(e) => {
+                eprintln!("tulpa deploy: cannot run `{shown}`: {e}");
+                false
+            }
+        }
+    };
+
+    // 2. native check on the simulator
+    let check = std::env::temp_dir().join(format!("tulpa-deploy-{}-{name}", std::process::id()));
+    let ok = run(
+        "[2/4] check ",
+        Command::new(&me)
+            .args(["build", "--target", "sim", "--exe"])
+            .arg(&app)
+            .arg("-o")
+            .arg(&check)
+            .stdout(std::process::Stdio::null()),
+    );
+    let _ = std::fs::remove_file(&check);
+    let _ = std::fs::remove_dir_all(check.with_extension("runtime"));
+    if !ok {
+        return ExitCode::from(1);
+    }
+
+    // 3. build
+    let tulpa_dir = me.parent().map(Path::to_path_buf).unwrap_or_default();
+    let path = format!(
+        "{}:{}",
+        tulpa_dir.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let built = match board {
+        "rp2040" => {
+            run(
+                "[3/4] build ",
+                Command::new("cmake")
+                    .args(["-B", "build"])
+                    .current_dir(&root)
+                    .env("PATH", &path),
+            ) && run(
+                "[3/4] build ",
+                Command::new("cmake")
+                    .args(["--build", "build"])
+                    .current_dir(&root)
+                    .env("PATH", &path),
+            )
+        }
+        "esp-idf" => run(
+            "[3/4] build ",
+            Command::new("idf.py")
+                .arg("build")
+                .current_dir(&root)
+                .env("PATH", &path),
+        ),
+        _ => run(
+            "[3/4] build ",
+            Command::new("make").current_dir(&root).env("TULPA", &me),
+        ),
+    };
+    if !built {
+        return ExitCode::from(1);
+    }
+    if !flash {
+        println!("  [4/4] flash   skipped (--no-flash)");
+        return ExitCode::SUCCESS;
+    }
+
+    // 4. flash
+    let done = match board {
+        "rp2040" => {
+            let uf2 = root.join("build").join(format!("{name}.uf2"));
+            let drive = port.map(PathBuf::from).or_else(|| {
+                [
+                    "/Volumes/RPI-RP2".to_string(),
+                    format!(
+                        "/media/{}/RPI-RP2",
+                        std::env::var("USER").unwrap_or_default()
+                    ),
+                    "/run/media/RPI-RP2".into(),
+                ]
+                .into_iter()
+                .map(PathBuf::from)
+                .find(|p| p.is_dir())
+            });
+            match drive {
+                Some(d) => run("[4/4] flash ", Command::new("cp").arg(&uf2).arg(&d)),
+                None => run(
+                    "[4/4] flash ",
+                    Command::new("picotool")
+                        .args(["load", "-f", "-x"])
+                        .arg(&uf2),
+                ),
+            }
+        }
+        "esp-idf" => {
+            let mut c = Command::new("idf.py");
+            if let Some(p) = &port {
+                c.args(["-p", p]);
+            }
+            run(
+                "[4/4] flash ",
+                c.arg("flash").current_dir(&root).env("PATH", &path),
+            )
+        }
+        _ => match &host {
+            Some(h) => {
+                run(
+                    "[4/4] flash ",
+                    Command::new("scp")
+                        .arg(root.join(&name))
+                        .arg(format!("{h}:{name}")),
+                ) && {
+                    println!("        run it with: ssh {h} sudo ./{name}");
+                    true
+                }
+            }
+            None => {
+                println!("  [4/4] flash   built ./{name} here; pass --host user@board to copy it to a board");
+                true
+            }
+        },
+    };
+    if done {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(1)
+    }
+}
+
+/// `tulpa link graph` / `tulpa link echo <topic>`: joins the UDP network as an observer.
+fn link_tool(args: &[String], o: &Opts) -> ExitCode {
+    let mut domain = 0u32;
+    let mut secs: Option<f64> = None;
+    let mut words = Vec::new();
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--domain" => domain = it.next().and_then(|v| v.parse().ok()).unwrap_or(0),
+            "--for" => secs = it.next().and_then(|v| v.parse().ok()),
+            w => words.push(w.to_string()),
+        }
+    }
+    let src = match words
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .as_slice()
+    {
+        ["graph"] => format!(
+            r#"import "std/link"
+let n = link.node("tulpa-link-{pid}", domain: {domain}, transport: "udp")
+link.spin_for({t}[s], 20[ms])
+let g = n.graph()
+for x in g.nodes {{
+    if x.name == n.name {{ continue }}
+    print(x.name)
+    for t in x.publishes {{ print("  pub ", t) }}
+    for t in x.subscribes {{ print("  sub ", t) }}
+    for t in x.services {{ print("  srv ", t) }}
+}}
+if len(g.nodes) == 1 {{ print("no nodes found on domain {domain}") }}
+n.close()"#,
+            pid = std::process::id(),
+            t = secs.unwrap_or(1.0)
+        ),
+        ["echo", topic] => format!(
+            r#"import "std/link"
+let n = link.node("tulpa-link-{pid}", domain: {domain}, transport: "udp")
+n.subscribe("{topic}", "any", |v, m| print(f"[{{m.from}} #{{m.seq}}]", v))
+link.spin_for({t}[s], 5[ms])
+n.close()"#,
+            pid = std::process::id(),
+            t = secs.unwrap_or(1e9)
+        ),
+        _ => {
+            eprintln!("usage: tulpa link graph [--domain N] [--for SECS]\n       tulpa link echo <topic> [--domain N] [--for SECS]");
+            return ExitCode::from(2);
+        }
+    };
+    let prog = match parse(&src) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("tulpa link: {}", e.msg);
+            return ExitCode::from(70);
+        }
+    };
+    let mut i = interpreter(o, &[]);
+    match i.run(&prog) {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("tulpa link: {e}");
+            ExitCode::from(70)
+        }
+    }
+}
+
+/// Static proof, then testing of every function the prover left open.
+fn prove_and_test(
+    file: &str,
+    prog: &[tulpa::ast::Stmt],
+    o: &Opts,
+    trials: usize,
+) -> tulpa::prove::Report {
+    let mut report = tulpa::prove::prove_program(prog);
+    // test the functions the prover could not settle
+    let open = report.open_contexts();
+    if !open.is_empty() {
+        if let Ok(mut i) = load_definitions(file, o) {
+            for (name, v) in i.global_functions() {
+                let ctx = format!("{name}()");
+                if !open.contains(&ctx) {
+                    continue;
+                }
+                let Ok(tulpa::Value::Dict(d)) = i.check_fn(&v, trials) else {
+                    continue;
+                };
+                let get = |k: &str| {
+                    d.borrow()
+                        .get(&tulpa::Value::str(k))
+                        .ok()
+                        .flatten()
+                        .unwrap_or(tulpa::Value::Nil)
+                };
+                if get("ok").truthy() {
+                    report.tested(&ctx, trials);
+                } else {
+                    let args = match get("counterexample") {
+                        tulpa::Value::List(l) => l
+                            .borrow()
+                            .iter()
+                            .map(|v| match v {
+                                tulpa::Value::Float(f)
+                                    if *f != 0.0 && (f.abs() < 1e-4 || f.abs() >= 1e15) =>
+                                {
+                                    format!("{f:e}")
+                                }
+                                v => v.repr(),
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                        _ => String::new(),
+                    };
+                    report.refute(&ctx, &get("error").to_string(), &args);
+                }
+            }
+        }
+    }
+    report
+}
+
+/// `tulpa prove`: static proof first, then testing to find counterexamples for whatever is
+/// left open. Exit code 1 if anything is refuted (or, with --strict, not proved).
+fn prove_files(files: &[String], o: &Opts, trials: usize, strict: bool, json: bool) -> ExitCode {
+    use tulpa::prove::Status;
+    if files.is_empty() {
+        eprintln!("usage: tulpa prove [--strict] [--json] [--trials=N] <file>...");
+        return ExitCode::from(2);
+    }
+    let mut bad = false;
+    let mut reports = Vec::new();
+    for file in files {
+        let (_, prog) = match load(file) {
+            Ok(p) => p,
+            Err(c) => return c,
+        };
+        let report = prove_and_test(file, &prog, o, trials);
+        bad |= report.count(Status::Refuted) > 0
+            || (strict && report.count(Status::Unproved) + report.count(Status::Skipped) > 0);
+        if json {
+            reports.push(report.to_json(file));
+            continue;
+        }
+        println!("{file}");
+        let mut ctx = String::new();
+        for ob in &report.obligations {
+            if ob.ctx != ctx {
+                ctx = ob.ctx.clone();
+                println!("  {ctx}");
+            }
+            let mark = match ob.status {
+                Status::Proved => "proved  ",
+                Status::Refuted => "REFUTED ",
+                Status::Unproved => "unproved",
+                Status::Skipped => "skipped ",
+            };
+            let line = if ob.line > 0 {
+                format!("  (line {})", ob.line)
+            } else {
+                String::new()
+            };
+            println!("    {mark}  {}{line}", ob.text);
+            if !ob.detail.is_empty() {
+                println!("              {}", ob.detail);
+            }
+        }
+        println!(
+            "\n{} proved, {} refuted, {} unproved, {} skipped",
+            report.count(Status::Proved),
+            report.count(Status::Refuted),
+            report.count(Status::Unproved),
+            report.count(Status::Skipped)
+        );
+    }
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&reports).unwrap_or_default()
+        );
+    }
+    if bad {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
 fn verify_files(files: &[String], o: &Opts, trials: usize) -> ExitCode {
     let mut failed = 0;
     let mut checked = 0;
@@ -357,12 +828,29 @@ fn native(rest: &[String], build: bool) -> ExitCode {
     for (name, why) in &report.skipped {
         eprintln!("  skipped {name}: {why}");
     }
-    if report.compiled.is_empty() {
-        eprintln!("tulpa: nothing in {file} fits the native subset");
+    if exe && !report.has_entry {
+        // Hosted targets still get a standalone executable: the program runs on the embedded
+        // interpreter instead of as static native code.
+        let hosted = target.is_none_or(|t| !t.embedded);
+        if build && hosted {
+            let out = out.clone().unwrap_or_else(|| stem.clone());
+            let hw = target.is_some_and(|t| t.name == "linux");
+            return match make_bundle(&file, &out, None, hw) {
+                Ok(n) => {
+                    eprintln!("built {out}: hosted bundle ({n} source file(s) + the Tulpa runtime), because the program uses features outside the static native subset (see 'skipped' above)");
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("tulpa: {e}");
+                    ExitCode::from(1)
+                }
+            };
+        }
+        eprintln!("tulpa: --exe needs the program's top-level code to compile natively (see 'skipped <program>' above)");
         return ExitCode::from(1);
     }
-    if exe && !report.has_entry {
-        eprintln!("tulpa: --exe needs the program's top-level code to compile natively (see 'skipped <program>' above)");
+    if report.compiled.is_empty() {
+        eprintln!("tulpa: nothing in {file} fits the native subset");
         return ExitCode::from(1);
     }
     if !build {
@@ -840,6 +1328,29 @@ fn repl(o: &Opts) -> ExitCode {
 
 fn real_main() -> ExitCode {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
+    // A bundle (see `tulpa bundle`) runs its embedded program; the command line is the
+    // program's own arguments.
+    if let Some(p) = tulpa::bundle::embedded() {
+        match tulpa::bundle::extract(&p) {
+            Ok((main, lib)) => {
+                let mut path = vec![lib];
+                if let Some(old) = std::env::var_os("TULPA_PATH") {
+                    path.extend(std::env::split_paths(&old));
+                }
+                if let Ok(joined) = std::env::join_paths(path) {
+                    std::env::set_var("TULPA_PATH", joined);
+                }
+                args.insert(0, main.to_string_lossy().into_owned());
+                if p.hardware {
+                    args.insert(0, "--hw".into());
+                }
+            }
+            Err(e) => {
+                eprintln!("{e}");
+                return ExitCode::from(70);
+            }
+        }
+    }
     let mut o = Opts {
         backend: Backend::Sim,
         trace: false,
@@ -861,7 +1372,17 @@ fn real_main() -> ExitCode {
     for a in args.drain(..) {
         let native_cmd = matches!(
             rest.first().map(String::as_str),
-            Some("build" | "emit-llvm" | "new" | "runtime" | "targets")
+            Some(
+                "build"
+                    | "emit-llvm"
+                    | "new"
+                    | "runtime"
+                    | "targets"
+                    | "prove"
+                    | "link"
+                    | "deploy"
+                    | "bundle"
+            )
         );
         if seen_file || native_cmd {
             rest.push(a);
@@ -919,6 +1440,10 @@ fn real_main() -> ExitCode {
                         | "repl"
                         | "ast"
                         | "verify"
+                        | "prove"
+                        | "link"
+                        | "deploy"
+                        | "bundle"
                         | "graph"
                         | "emit-llvm"
                         | "build"
@@ -970,6 +1495,25 @@ fn real_main() -> ExitCode {
             }
             verify_files(&files, &o, trials)
         }
+        Some("prove") => {
+            let mut trials = 500;
+            let (mut strict, mut json) = (false, false);
+            let mut files = Vec::new();
+            for a in &rest[1..] {
+                match a.as_str() {
+                    "--strict" => strict = true,
+                    "--json" => json = true,
+                    s => match s.strip_prefix("--trials=") {
+                        Some(n) => trials = n.parse().unwrap_or(500),
+                        None => files.push(a.clone()),
+                    },
+                }
+            }
+            prove_files(&files, &o, trials, strict, json)
+        }
+        Some("link") => link_tool(&rest[1..], &o),
+        Some("deploy") => deploy(&rest[1..], &o),
+        Some("bundle") => bundle(&rest[1..]),
         Some("graph") => graph_files(&rest[1..], &o),
         Some("emit-llvm") | Some("build") => native(&rest, rest[0] == "build"),
         Some("new") => new_project(&rest[1..]),

@@ -1,0 +1,91 @@
+# Unified simulation: physics → emulated chips → the real drivers → the controller.
+# The controller below never touches the simulator: it reads an MPU-6050 and a rangefinder
+# ADC through their drivers and commands motors through a PCA9685, exactly as on hardware.
+import "std/world"
+import "std/emu"
+import "std/verify"
+from "std/drivers/mpu6050" import Mpu6050
+from "std/drivers/pca9685" import Pca9685
+from "std/drivers/mcp3008" import Mcp3008
+
+sim::virtual_time(true)
+
+# ---- the plant: a 3 m x 2 m arena with a pillar
+let w = world.World(dt: 10[ms], seed: 7)
+w.arena(3, 2)
+w.disc(2.2, 1.0, 0.15)
+let body = w.rover(x: 0.4, y: 1.0, max_speed: 0.8[m/s])
+
+# ---- emulated hardware on the simulated bus
+let imu_chip = emu.Mpu6050(0x68)
+let pwm_chip = emu.Pca9685(0x40)
+let adc_chip = emu.Mcp3008()
+
+# ---- the robot software (drivers + state machine + safety envelope)
+let imu = Mpu6050(I2C::new(1, 0x68))
+let pwm = Pca9685(I2C::new(1, 0x40))
+let adc = Mcp3008(SPI::new(0, 0))
+imu.init(); pwm.init(); pwm.set_frequency(50[Hz])
+
+machine Drive {
+    state Cruise { on obstacle => Avoid; on fault => Halt }
+    state Avoid { on clear => Cruise; on fault => Halt }
+    state Halt { }
+}
+let mode = Drive()
+let ahead = 4[m]
+let yaw = 0[rad/s]
+
+fn motors(left: float, right: float)
+    require -1.0 <= left and left <= 1.0 and -1.0 <= right and right <= 1.0
+{
+    pwm.set_pulse(0, 1.5[ms] + 0.5[ms] * left)        # RC-style: 1 ms .. 2 ms
+    pwm.set_pulse(1, 1.5[ms] + 0.5[ms] * right)
+}
+
+always mode.state == "Halt" or imu.probe() else { mode.send("fault"); motors(0.0, 0.0); print(f"[{millis()} ms] IMU lost: halted") }
+
+fn control() {
+    imu.update()
+    yaw = imu.gyro_z()
+    ahead = adc.read_volts(0) / 3.3[V] * 4[m]         # analog rangefinder: 3.3 V = 4 m
+    if mode.state == "Cruise" {
+        if ahead < 0.6[m] { mode.send("obstacle"); print(f"[{millis()} ms] obstacle at {ahead:.2f}: turning") }
+        motors(0.6, 0.6)
+    } elif mode.state == "Avoid" {
+        if ahead > 1.2[m] { mode.send("clear"); print(f"[{millis()} ms] clear: cruising") }
+        motors(-0.3, 0.3)
+    }
+}
+
+# ---- the loop that ties plant and hardware together (this part does not ship)
+fn plant() {
+    let cmd = |ch| clamp((pwm_chip.pulse(ch).in("ms") - 1.5) / 0.5, -1.0, 1.0)
+    body.drive(cmd(0), cmd(1))
+    w.step()
+    let s = body.imu()
+    imu_chip.set(ax: s.ax, ay: s.ay, az: s.az, gz: s.gz)
+    adc_chip.feed(body.range(0[deg]) / 4[m] * 3.3[V])
+}
+
+plant()
+for tick in 0..900 {
+    control()
+    plant()
+    if tick == 700 { imu_chip.fault("offline") }       # inject a hardware fault
+}
+let p = body.position()
+print(f"final: x={p[0]:.2f} y={p[1]:.2f} mode={mode.state} bumps={body.bumps} t={millis()} ms")
+
+# ---- system verification: explore every event order of the mode machine
+let r = verify.explore(|| Drive(), ["obstacle", "clear", "fault"], depth: 6)
+print("explored:", r.states, "states,", r.runs, "runs, complete:", r.complete, "ok:", r.ok)
+let d = verify.deterministic(|seed| {
+    let ww = world.World(dt: 10[ms], seed: seed, advance_clock: false)
+    ww.arena(3, 2)
+    let b = ww.rover(x: 1, y: 1)
+    b.drive(0.5, 0.4)
+    ww.step(200)
+    [b.x, b.y, b.range(0[deg], sigma: 1[cm])]
+})
+print("deterministic:", d.ok)

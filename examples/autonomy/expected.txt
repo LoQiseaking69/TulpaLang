@@ -1,0 +1,33 @@
+grasp: success after 3 attempts
+reactive_sequence grasp  [success]
+  condition estop clear  [success]
+  retry  [success]
+    sequence  [success]
+      action open gripper  [success]
+      action close gripper  [success]
+
+htn: undock > drive_to_shelf > pick > drive_to_bay > place
+      deliver via carry; fetch via from dock
+plan: undock > drive_to_shelf > pick > drive_to_bay > place
+[0] plan for 'delivered' (new goal): undock > drive_to_shelf > pick > drive_to_bay > place
+[0] start undock
+[100] start drive_to_shelf
+[200] start pick
+[300] start drive_to_bay
+[500] drive_to_bay failed (1/3)
+[500] plan for 'delivered' (step failed): drive_to_dock > dock > charge > undock > drive_to_bay > place
+[600] plan for 'charged' (preempted 'delivered'): drive_to_dock > dock > charge
+[600] start drive_to_dock
+[700] start dock
+[800] start charge
+[800] goal 'charged' achieved
+[900] plan for 'delivered' (new goal): undock > drive_to_bay > place
+[900] start undock
+[1000] start drive_to_bay
+[1300] start place
+[1300] goal 'delivered' achieved
+ticks 15 delivered true battery 80 replans 4
+battery 90 orders 2 -> deliver
+battery 45 orders 0 -> recharge
+battery 48 orders 0 -> recharge
+battery 10 orders 3 -> recharge

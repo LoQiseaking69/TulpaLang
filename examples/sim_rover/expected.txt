@@ -1,0 +1,8 @@
+[2361 ms] obstacle at 0.60 m: turning
+[2571 ms] clear: cruising
+[4991 ms] obstacle at 0.59 m: turning
+[6091 ms] clear: cruising
+[7021 ms] IMU lost: halted
+final: x=2.10 m y=1.58 m mode=Halt bumps=0 t=9011 ms
+explored: 3 states, 9 runs, complete: true ok: true
+deterministic: true
