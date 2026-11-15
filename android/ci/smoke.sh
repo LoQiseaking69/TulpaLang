@@ -12,12 +12,12 @@ shot() { adb exec-out screencap -p > "$OUT/$1.png"; }
 dump() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb shell cat /sdcard/ui.xml; }
 # tap the centre of the first node whose text (or content-desc) matches exactly
 cat > /tmp/find_node.py <<'PY'
-import re,sys
+import re,sys,html
 want=sys.argv[1]; x=sys.stdin.read(); best=None
 for m in re.finditer(r'<node [^>]*>', x):
     n=m.group(0)
     t=re.search(r' text="([^"]*)"',n); d=re.search(r'content-desc="([^"]*)"',n)
-    if want in ((t.group(1) if t else None),(d.group(1) if d else None)):
+    if want in ((html.unescape(t.group(1)) if t else None),(html.unescape(d.group(1)) if d else None)):
         a=list(map(int,re.findall(r'\d+',re.search(r'bounds="([^"]*)"',n).group(1))))
         if best is None or a[1] < best[1]: best=a
 if best: print((best[0]+best[2])//2,(best[1]+best[3])//2)
