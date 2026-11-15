@@ -1,0 +1,19 @@
+# Contracts + units, then let check() hunt for a counterexample.
+
+fn kinetic_energy(m: [kg], v: [m/s]) -> [J]
+    require m > 0[kg]
+    ensure result' >= 0[J]
+{
+    0.5 * m * v * v
+}
+
+# A buggy clamp: forgets the lower bound.
+fn clamp_speed(v: [m/s]) -> [m/s]
+    ensure -2[m/s] <= result' and result' <= 2[m/s]
+{
+    if v > 2[m/s] { 2[m/s] } else { v }
+}
+
+print(kinetic_energy(1200[kg], 50[km/h]).to("kJ"))
+print(check(kinetic_energy))
+print(check(clamp_speed))       # finds a v < -2 m/s that breaks the postcondition

@@ -1,0 +1,17 @@
+# A byte link that survives corruption: pack:: + std/frame (COBS + CRC-16).
+import "std/frame"
+
+let stream = []
+for seq in 0..5 {
+    let payload = pack::pack("<Hf", seq * 100, seq * 1.5)
+    stream = stream + frame.encode(payload, type: 1, seq: seq)
+}
+# flip a byte inside frame #2 — its CRC fails, and the decoder resynchronises on the next 0x00
+stream[40] = stream[40] ^ 0x5A
+
+let dec = frame.Decoder()
+for f in dec.feed(stream) {
+    let v = pack::unpack("<Hf", f.payload)
+    print(f"frame seq={f.seq} type={f.type} → {v}")
+}
+print(dec.stats())

@@ -1210,8 +1210,20 @@ impl Interpreter {
             return Ok(());
         }
         if !timed {
-            std::thread::sleep(std::time::Duration::from_secs_f64(secs));
-            return Ok(());
+            if self.cancel.is_none() {
+                std::thread::sleep(std::time::Duration::from_secs_f64(secs));
+                return Ok(());
+            }
+            // interruptible: wake every 20 ms to look at the cancel flag
+            let end = std::time::Instant::now() + std::time::Duration::from_secs_f64(secs);
+            loop {
+                self.check_cancel()?;
+                let now = std::time::Instant::now();
+                if now >= end {
+                    return Ok(());
+                }
+                std::thread::sleep((end - now).min(std::time::Duration::from_millis(20)));
+            }
         }
         let end = self.now() + secs;
         loop {

@@ -1,0 +1,24 @@
+# Board design as code: a sensor node, checked electrically and costed.
+import "std/eda"
+
+let b = eda.Board(name: "sensor-node")
+b.power("VBAT", 3.7[V]); b.power("3V3", 3.3[V]); b.ground("GND")
+b.part("J1", "Connector", "JST-PH 2-pin (battery)", pins: ["VBAT", "GND"], cost: 0.12)
+b.regulator("U2", "LDO", "AP2112K-3.3", "VBAT", {"3V3": 1.98[W]}, efficiency: 0.88, cost: 0.35,
+            pins: ["VIN", "VOUT", "GND"])
+b.part("U1", "MCU", "ESP32-C3", pins: ["VDD", "GND", "SDA", "SCL"], cost: 2.1, draw: 0.25[W])
+b.part("U3", "IMU", "BMI270", pins: ["VDD", "GND", "SDA", "SCL"], cost: 3.4, draw: 0.003[W])
+b.connect("VBAT", ["J1.VBAT", "U2.VIN"]); b.connect("3V3", ["U2.VOUT", "U1.VDD", "U3.VDD"])
+b.connect("GND", ["J1.GND", "U2.GND", "U1.GND", "U3.GND"])
+b.connect("SDA", ["U1.SDA", "U3.SDA"]); b.connect("SCL", ["U1.SCL", "U3.SCL"])
+b.decouple("U1", "VDD", "GND"); b.decouple("U3", "VDD", "GND", count: 1)
+
+let problems = b.erc()
+print(if len(problems) == 0 { "ERC: clean" } else { f"ERC: {problems}" })
+for r in b.power_budget() {
+    let cap = if r.capacity > 0[W] { f" of {r.capacity}" } else { " (battery)" }
+    print(f"rail {r.rail:<5} {r.voltage}: {r.load.to(\"mW\")}{cap}, {r.current.to(\"mA\")}  ok={r.ok}")
+}
+for r in b.bom() { print(f"{r.qty} × {r.kind:<10} {r.value:<24} ${r.total:.2f}") }
+print(f"BOM cost: ${b.total_cost():.2f}")
+b.write_netlist("sensor-node.net"); b.write_bom("sensor-node_bom.csv")

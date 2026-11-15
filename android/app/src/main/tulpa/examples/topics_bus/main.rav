@@ -1,0 +1,12 @@
+# ROS-style topics on Tulpa signals: publishers, subscribers and a reactive rule on a topic.
+import "std/topics"
+
+let bus = topics.Bus()
+let hot = 0
+bus.subscribe("/motor/temp", |m| print(f"temp {m.data[0]} °C"))
+when bus.topic("/motor/temp").signal.get() != nil and bus.latest("/motor/temp").data[0] > 70 {
+    hot += 1
+    print("  ↳ over-temperature rule fired")
+}
+for t in [55, 62, 71, 68, 74] { bus.publish("/motor/temp", topics.Float64MultiArray([t])) }
+print(f"rule fired {hot}×;", bus.stats())

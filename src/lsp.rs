@@ -150,6 +150,7 @@ pub fn diagnostics(text: &str) -> Vec<J> {
     let known: HashSet<&str> = crate::builtins::global_names()
         .into_iter()
         .chain(crate::builtins::module_names().iter().copied())
+        .chain(crate::host::modules())
         .collect();
     let mut reported = HashSet::new();
     for (i, t) in toks.iter().enumerate() {

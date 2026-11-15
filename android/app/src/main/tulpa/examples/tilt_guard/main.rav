@@ -1,0 +1,21 @@
+# Safety envelope on a real sensor.
+# Imagine the phone is a payload that must stay within 60° of horizontal. Tip it past that
+# and the `always` monitor fires: torch on, buzz, and a log entry with the measured angle.
+
+let violations = 0
+
+always phone::tilt() < 60[deg] else {
+    violations += 1
+    print(f"tilt limit exceeded: {phone::tilt()}")
+    phone::torch(true)
+    phone::vibrate(300[ms])
+}
+
+every!(100[ms], 600, {
+    let t = phone::tilt()
+    phone::gauge("tilt", t, 0[deg], 90[deg])
+    tlm::plot("tilt", t.in("deg"))
+    if t < 50[deg] { phone::torch(false) }
+})
+phone::torch(false)
+print(f"done — {violations} violation(s)")

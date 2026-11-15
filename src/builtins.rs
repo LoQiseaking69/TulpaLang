@@ -507,6 +507,13 @@ fn b_print(i: I, a: Vec<Value>) -> Res {
 }
 
 fn b_input(i: I, a: Vec<Value>) -> Res {
+    if let Some(hook) = i.input_hook.clone() {
+        let prompt = a.first().map(|p| p.to_string()).unwrap_or_default();
+        return match hook(&prompt) {
+            Some(line) => Ok(Value::str(line.trim_end_matches(['\n', '\r']))),
+            None => Err("input(): end of input".into()),
+        };
+    }
     if let Some(p) = a.first() {
         i.write_out(&p.to_string());
     }
@@ -1547,7 +1554,7 @@ pub fn module_members(m: &str) -> Vec<&'static str> {
         "tlm" => vec!["enabled", "plot", "event", "status", "artifact"],
         "cosim" => vec!["connect", "available"],
         "math" | "std" => GLOBALS.iter().map(|(n, _)| *n).collect(),
-        _ => vec![],
+        _ => crate::host::names(m),
     }
 }
 

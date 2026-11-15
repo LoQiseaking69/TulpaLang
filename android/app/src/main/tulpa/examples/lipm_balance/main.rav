@@ -1,0 +1,19 @@
+# Balance physics for legged robots: the linear inverted pendulum and its capture point.
+import "std/lipm"
+
+let z = 0.9[m]                         # centre-of-mass height
+print("ω =", lipm.omega(z))
+# pushed: COM 2 cm ahead of the ankle, moving forward at 0.3 m/s
+let x = 0.02[m]; let v = 0.3[m/s]
+let xi = lipm.capture_point(x, v, z)
+print(f"capture point: {xi.in(\"m\"):.3f} m — step there and the robot stops")
+
+# simulate 0.6 s with the ZMP held at the ankle (no step): the pendulum falls away
+let s = [0.02, 0.3]
+for k in 0..6 {
+    s = lipm.step(s[0], s[1], 0.0, 0.9, 0.1)
+    tlm::plot("com x", s[0])
+    print(f"t={(k + 1) * 0.1:.1f}s  x={s[0]:.3f} m  v={s[1]:.3f} m/s")
+}
+let poly = lipm.support_polygon([[0.0, 0.1], [0.0, -0.1]])
+print("stability margin of the capture point:", lipm.margin([xi.in("m"), 0.0], poly))

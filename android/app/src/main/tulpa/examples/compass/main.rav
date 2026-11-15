@@ -1,0 +1,19 @@
+# Compass: heading from the rotation-vector sensor, with spoken cardinal points.
+
+fn cardinal(h) {
+    let names = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"]
+    names[int(round(h.in("deg") / 45)) % 8]
+}
+
+let last = ""
+every!(150[ms], 400, {
+    let h = phone::heading()
+    phone::gauge("heading", h, 0[deg], 360[deg])
+    tlm::plot("heading", h.in("deg"))
+    let c = cardinal(h)
+    if c != last {
+        print(f"{c:<11} {h.in(\"deg\"):6.1f}°")
+        phone::say(c)
+        last = c
+    }
+})

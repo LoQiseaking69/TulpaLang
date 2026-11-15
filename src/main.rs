@@ -481,34 +481,7 @@ fn test_files(files: &[String], o: &Opts) -> ExitCode {
 }
 
 fn balanced(src: &str) -> bool {
-    // Count brackets outside strings and comments.
-    let mut depth = 0i32;
-    let mut in_str: Option<char> = None;
-    let mut chars = src.chars().peekable();
-    while let Some(c) = chars.next() {
-        if let Some(q) = in_str {
-            if c == '\\' {
-                chars.next();
-            } else if c == q {
-                in_str = None;
-            }
-            continue;
-        }
-        match c {
-            '"' => in_str = Some(c),
-            '#' => {
-                for n in chars.by_ref() {
-                    if n == '\n' {
-                        break;
-                    }
-                }
-            }
-            '{' | '(' | '[' => depth += 1,
-            '}' | ')' | ']' => depth -= 1,
-            _ => {}
-        }
-    }
-    depth <= 0 && in_str.is_none()
+    tulpa::embed::balanced(src)
 }
 
 fn repl(o: &Opts) -> ExitCode {

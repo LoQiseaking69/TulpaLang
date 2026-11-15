@@ -20,6 +20,13 @@ pub struct Scope {
 
 pub type Env = Rc<RefCell<Scope>>;
 
+impl Scope {
+    /// Names defined directly in this scope (not its parents).
+    pub fn var_names(&self) -> Vec<String> {
+        self.vars.keys().cloned().collect()
+    }
+}
+
 pub fn new_env(parent: Option<Env>) -> Env {
     Rc::new(RefCell::new(Scope {
         vars: HashMap::new(),
@@ -143,7 +150,12 @@ pub(crate) fn at_line(c: Ctrl, line: usize) -> Ctrl {
 pub enum Output {
     Stdout,
     Buffer(Rc<RefCell<String>>),
+    /// Streams every write to a host callback (IDE consoles, mobile apps).
+    Sink(Rc<dyn Fn(&str)>),
 }
+
+/// Host-provided line reader used by `input()` instead of stdin. `None` = end of input.
+pub type InputHook = Rc<dyn Fn(&str) -> Option<String>>;
 
 /// A user macro: parameter names and body.
 type MacroDef = (Vec<String>, Vec<Stmt>);
@@ -179,6 +191,10 @@ pub struct Interpreter {
     pub sim: Rc<RefCell<SimBus>>,
     pub trace_devices: bool,
     pub output: Output,
+    /// Replaces stdin for `input()` when set.
+    pub input_hook: Option<InputHook>,
+    /// Cooperative cancellation: checked in loops, the VM and `sleep`.
+    pub cancel: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
     pub start: Instant,
     pub(crate) depth: usize,
     /// Run eligible functions on the bytecode VM (`--no-vm` / `TULPA_NO_VM=1` disables).
@@ -218,6 +234,8 @@ impl Interpreter {
             sim: Rc::new(RefCell::new(SimBus::default())),
             trace_devices: false,
             output: Output::Stdout,
+            input_hook: None,
+            cancel: None,
             start: Instant::now(),
             depth: 0,
             use_vm: std::env::var("TULPA_NO_VM")
@@ -244,7 +262,19 @@ impl Interpreter {
                 let _ = o.flush();
             }
             Output::Buffer(b) => b.borrow_mut().push_str(s),
+            Output::Sink(f) => f(s),
         }
+    }
+
+    /// Fails with "interrupted" once the host has raised the cancel flag (Stop button).
+    #[inline]
+    pub fn check_cancel(&self) -> R<()> {
+        if let Some(c) = &self.cancel {
+            if c.load(std::sync::atomic::Ordering::Relaxed) {
+                return rt("interrupted");
+            }
+        }
+        Ok(())
     }
 
     /// Runs a whole program, then drains any tasks that were spawned but never awaited.
@@ -407,6 +437,7 @@ impl Interpreter {
             }
             Stmt::While(c, invariants, body, line) => {
                 loop {
+                    self.check_cancel()?;
                     self.check_invariants(invariants, env, *line)?;
                     if !self.eval(c, env).map_err(|x| at_line(x, *line))?.truthy() {
                         break;
@@ -420,6 +451,7 @@ impl Interpreter {
                 Ok(Value::Nil)
             }
             Stmt::Loop(body) => loop {
+                self.check_cancel()?;
                 match self.exec_block(body, env) {
                     Ok(_) | Err(Ctrl::Continue) => {}
                     Err(Ctrl::Break) => return Ok(Value::Nil),
@@ -432,6 +464,7 @@ impl Interpreter {
                     .iterate(&iterable, names.len())
                     .map_err(|c| at_line(c, *line))?;
                 for item in items {
+                    self.check_cancel()?;
                     let scope = new_env(Some(env.clone()));
                     if names.len() == 1 {
                         define(&scope, &names[0], item);
@@ -454,7 +487,7 @@ impl Interpreter {
             Stmt::Break => Err(Ctrl::Break),
             Stmt::Continue => Err(Ctrl::Continue),
             Stmt::Use(path) => {
-                if !builtins::module_exists(&path[0]) {
+                if !builtins::module_exists(&path[0]) && !crate::host::has_module(&path[0]) {
                     return rt(format!("unknown module '{}'", path.join("::")));
                 }
                 Ok(Value::Nil)
@@ -598,6 +631,7 @@ impl Interpreter {
                 )),
             },
             Expr::Path(m, name, line) => builtins::path(m, name)
+                .or_else(|| crate::host::lookup(m, name))
                 .ok_or_else(|| at_line(format!("unknown item '{m}::{name}'").into(), *line)),
             Expr::List(items) => {
                 let mut out = Vec::with_capacity(items.len());
@@ -1120,6 +1154,7 @@ impl Interpreter {
                 let mut next = self.now();
                 let mut i = 0i64;
                 while count.is_none_or(|c| i < c) {
+                    self.check_cancel()?;
                     match self.macro_arg(body, env) {
                         Ok(_) | Err(Ctrl::Continue) => {}
                         Err(Ctrl::Break) => break,

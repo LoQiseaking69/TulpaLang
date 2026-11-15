@@ -10,7 +10,9 @@
 pub mod ast;
 pub mod builtins;
 pub mod devices;
+pub mod embed;
 pub mod ext;
+pub mod host;
 pub mod interp;
 pub mod lexer;
 pub mod llvm;

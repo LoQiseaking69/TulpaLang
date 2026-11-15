@@ -1,0 +1,13 @@
+# Barometric altimeter: altitude change since start, from the pressure sensor.
+# Walk up a flight of stairs and watch it climb (≈ 3 m per floor).
+
+let p0 = phone::pressure()
+print(f"reference pressure: {p0}")
+let peak = 0[m]
+every!(250[ms], 480, {
+    let h = phone::altitude(p0)          # altitude relative to the starting pressure
+    if h > peak { peak = h }
+    phone::gauge("Δh", h, -5[m], 15[m])
+    tlm::plot("altitude (m)", h.in("m"))
+})
+print(f"highest point: {peak.in(\"m\"):.1f} m above start")
