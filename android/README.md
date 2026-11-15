@@ -1,5 +1,20 @@
 # Tulpa Field — TulpaLang IDE for Android
 
+<p align="center">
+  <img src="docs/screenshots/editor.jpg" width="24%" alt="Editor with syntax colouring and the symbol bar">
+  <img src="docs/screenshots/run.jpg" width="24%" alt="Run screen: live gauges and plots from the phone's sensors">
+  <img src="docs/screenshots/machines.jpg" width="24%" alt="Machine inspector">
+  <img src="docs/screenshots/verify.jpg" width="24%" alt="Contract verification">
+</p>
+<p align="center">
+  <img src="docs/screenshots/guide.jpg" width="24%" alt="In-app guide with runnable code blocks">
+  <img src="docs/screenshots/library.jpg" width="24%" alt="Example library">
+  <img src="docs/screenshots/repl.jpg" width="24%" alt="REPL">
+  <img src="docs/screenshots/sensors.jpg" width="24%" alt="Live sensor readings">
+</p>
+<p align="center"><sub>Editor · live gauges & plots · machine inspector · verify — guide · library · REPL · sensors.
+Captured by CI on an Android 14 emulator (<code>android/ci/smoke.sh</code>).</sub></p>
+
 A pocket IDE for TulpaLang that runs the **entire Tulpa runtime on the phone** (interpreter,
 bytecode VM, units, contracts, machines, signals, `std/` libraries) and turns the handset itself
 into a device you can program.
@@ -25,6 +40,9 @@ android/
     src/main/tulpa/examples/   phone-specific examples (bundled with ../../examples)
     src/main/tulpa/guide/      in-app guide chapters (bundled with ../../docs)
     src/main/assets/           catalog.json (library index) and guide.json (guide index)
+  ci/smoke.sh      emulator smoke test: launches the app, runs code, captures the screenshots
+  docs/screenshots/
+  VERSION          bump on main to publish a signed release
 ```
 
 The Gradle build copies `examples/`, `docs/` and `stdlib/` from the repository into the APK, so the
@@ -49,15 +67,14 @@ cargo install cargo-ndk
 (cd android && gradle assembleDebug)      # or open android/ in Android Studio
 ```
 
-### Release signing
+### Releases and signing
 
-Without secrets the release APK is signed with the CI debug key. For a stable signature, create a
-keystore once and add four repository secrets:
+Releases are signed with the same HermiTech release keystore as the other Android apps, read
+from four repository secrets: `KEYSTORE_BASE64` (the `.jks` file, base64), `KEYSTORE_PASSWORD`,
+`KEY_ALIAS` and `KEY_PASSWORD`. The workflow verifies the APK with `apksigner` and prints the
+certificate fingerprint in the log.
 
-```sh
-keytool -genkeypair -v -keystore release.jks -alias tulpafield -keyalg RSA -keysize 4096 -validity 10000
-base64 -w0 release.jks   # → TULPA_FIELD_KEYSTORE
-```
-
-`TULPA_FIELD_KEYSTORE_PASSWORD`, `TULPA_FIELD_KEY_ALIAS` (e.g. `tulpafield`) and
-`TULPA_FIELD_KEY_PASSWORD` complete the set.
+To ship a release, bump `android/VERSION` on main: CI builds, signs, runs the emulator smoke test
+and publishes `android-v<version>` with the APK attached. A tag push `android-v1.2.3` or a manual
+run with *publish* works too. Without the keystore secrets the APK is still built (debug-signed, as
+a workflow artifact) but nothing is published, so an unsigned build never reaches the Releases page.

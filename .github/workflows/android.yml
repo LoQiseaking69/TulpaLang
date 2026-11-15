@@ -27,10 +27,30 @@ concurrency:
 jobs:
   apk:
     runs-on: ubuntu-latest
-    env:
-      TULPA_FIELD_VERSION: ${{ startsWith(github.ref, 'refs/tags/android-v') && github.ref_name || inputs.version || '1.0.0' }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Version
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          base="$(tr -d ' \n' < android/VERSION)"
+          v="$base"; release=false
+          if [[ "$GITHUB_REF" == refs/tags/android-v* ]]; then
+            v="${GITHUB_REF#refs/tags/android-v}"; release=true
+          elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            v="${INPUT_VERSION:-$base}"; [ "$INPUT_PUBLISH" = true ] && release=true
+          elif [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/main ] && \
+               ! gh release view "android-v$base" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            release=true   # android/VERSION bumped on main and not yet released
+          fi
+          echo "TULPA_FIELD_VERSION=$v" >> "$GITHUB_ENV"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "Tulpa Field $v (release=$release)"
 
       - uses: actions/setup-java@v4
         with:
@@ -67,20 +87,23 @@ jobs:
         with:
           gradle-version: "8.11.1"
 
-      - name: Release keystore (optional)
+      - name: Release signing key
+        id: sign
         env:
-          KEYSTORE_B64: ${{ secrets.TULPA_FIELD_KEYSTORE }}
-          KEYSTORE_PASSWORD: ${{ secrets.TULPA_FIELD_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.TULPA_FIELD_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.TULPA_FIELD_KEY_PASSWORD }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 || secrets.TULPA_FIELD_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.TULPA_FIELD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || secrets.TULPA_FIELD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.TULPA_FIELD_KEY_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > android/release.jks
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/release.jks
             printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-              "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/keystore.properties
+              "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "${KEY_PASSWORD:-$KEYSTORE_PASSWORD}" > android/keystore.properties
+            echo "signed=true" >> "$GITHUB_OUTPUT"
             echo "Signing with the release keystore."
           else
-            echo "No keystore secret — the APK is signed with the CI debug key (installable, but not upgradeable across machines)."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No KEYSTORE_BASE64 secret — APK is signed with an ephemeral debug key and will not be published."
           fi
 
       - name: Assemble APK
@@ -92,6 +115,10 @@ jobs:
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/TulpaField-${TULPA_FIELD_VERSION#android-v}.apk"
           ls -la dist
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs dist/*.apk > dist/signature.txt
+          grep -iE "DN:|SHA-256" dist/signature.txt || cat dist/signature.txt
+          rm dist/signature.txt
 
       - uses: actions/upload-artifact@v4
         with:
@@ -121,10 +148,10 @@ jobs:
           path: smoke/
 
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/android-v') || inputs.publish
+        if: steps.ver.outputs.release == 'true' && steps.sign.outputs.signed == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/android-v') && github.ref_name || format('android-v{0}', inputs.version) }}
+          tag_name: android-v${{ steps.ver.outputs.version }}
           name: Tulpa Field ${{ env.TULPA_FIELD_VERSION }}
           target_commitish: ${{ github.sha }}
           files: dist/*.apk
@@ -132,4 +159,10 @@ jobs:
             **Tulpa Field** — the TulpaLang IDE for Android.
 
             Download the APK below and open it on your phone (allow "install unknown apps" for your browser or file manager once).
-            Requires Android 8.0+ on arm64, armv7 or x86_64.
+            Requires Android 8.0+ on arm64, armv7 or x86_64. Signed with the HermiTech release key.
+
+      - name: Release skipped (unsigned)
+        if: steps.ver.outputs.release == 'true' && steps.sign.outputs.signed != 'true'
+        run: |
+          echo "::error::Release android-v${{ steps.ver.outputs.version }} was not published: add the KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD secrets to this repository, then re-run."
+          exit 1

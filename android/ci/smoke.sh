@@ -12,12 +12,12 @@ shot() { adb exec-out screencap -p > "$OUT/$1.png"; }
 dump() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb shell cat /sdcard/ui.xml; }
 # tap the centre of the first node whose text (or content-desc) matches exactly
 cat > /tmp/find_node.py <<'PY'
-import re,sys
+import re,sys,html
 want=sys.argv[1]; x=sys.stdin.read(); best=None
 for m in re.finditer(r'<node [^>]*>', x):
     n=m.group(0)
     t=re.search(r' text="([^"]*)"',n); d=re.search(r'content-desc="([^"]*)"',n)
-    if want in ((t.group(1) if t else None),(d.group(1) if d else None)):
+    if want in ((html.unescape(t.group(1)) if t else None),(html.unescape(d.group(1)) if d else None)):
         a=list(map(int,re.findall(r'\d+',re.search(r'bounds="([^"]*)"',n).group(1))))
         if best is None or a[1] < best[1]: best=a
 if best: print((best[0]+best[2])//2,(best[1]+best[3])//2)
@@ -64,6 +64,25 @@ tap "Instruments"; sleep 1; tap "Sensors"; sleep 4; alive; shot 08-sensors
 adb shell input keyevent 4; sleep 1
 tap "Projects"; sleep 2; shot 09-projects
 alive
+
+# ---- showcase screenshots for the README (never fail the run) ----
+hidekb() { adb shell dumpsys input_method | grep -q "mInputShown=true" && adb shell input keyevent 111; sleep 1; }
+search() { tap "Learn"; sleep 2; tap "Library"; sleep 1; tap "Search 28 examples" || tap "Search"; sleep 1; adb shell input text "$1"; sleep 1; hidekb; }
+search bubble; tap "Bubble level"; sleep 2
+# rock the emulated phone so the gauges and plots move
+( for k in $(seq 0 40); do
+    x=$(python3 -c "import math;print(round(4*math.sin($k/3),2))"); z=$(python3 -c "import math;print(round(9.0+0.6*math.cos($k/3),2))")
+    adb emu sensor set acceleration "$x:3.2:$z" >/dev/null 2>&1; sleep 0.25; done ) &
+tap "Run"; sleep 9; shot 10-run-gauges; wait
+tap "Stop"; sleep 2
+search shake; tap "Shake alarm machine"; sleep 2; tap "Open as project"; sleep 4; hidekb; shot 11-editor
+tap "More"; sleep 1; tap "Machines"; sleep 4; shot 12-machines
+adb shell input keyevent 4; sleep 1
+search contracts; tap "Contracts + check()"; sleep 2; tap "Open as project"; sleep 3; hidekb
+tap "More"; sleep 1; tap "Verify & tests"; sleep 2; tap "Check contracts"; sleep 6; shot 13-verify
+adb shell input keyevent 4; sleep 1
+tap "REPL"; sleep 2; hidekb; shot 14-repl
+alive
 adb logcat -d | grep -A30 "FATAL EXCEPTION" && { echo "!! crash in log"; FAIL=1; }
 # small JPEG previews in the log (artifact downloads are not always reachable)
 python3 -m pip install -q pillow >/dev/null 2>&1
@@ -71,8 +90,8 @@ python3 - "$OUT" <<'PY'
 import base64, glob, io, sys
 from PIL import Image
 for f in sorted(glob.glob(sys.argv[1] + "/*.png")):
-    im = Image.open(f).convert("RGB"); im.thumbnail((432, 960))
-    b = io.BytesIO(); im.save(b, "JPEG", quality=60)
+    im = Image.open(f).convert("RGB"); im.thumbnail((540, 1200))
+    b = io.BytesIO(); im.save(b, "JPEG", quality=78)
     print(f"@@shot {f.split('/')[-1]} {base64.b64encode(b.getvalue()).decode()}")
 PY
 exit ${FAIL:-0}
