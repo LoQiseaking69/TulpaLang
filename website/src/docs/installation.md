@@ -29,9 +29,8 @@ Release packages are built by the `release` workflow on every `v*` tag and attac
 | VS Code | `tulpa-lang-<version>.vsix` | `code --install-extension tulpa-lang-<version>.vsix` |
 
 > [!NOTE]
-> The latest published release is **v3.1.1**. Until a `v3.2.0` tag is pushed, build from source
-> (or use the toolchain bundled with HermiSim) to get the 3.2 libraries: `nn::`, `pack::`,
-> `json::`, `tlm::`, `cosim::` and `std/`.
+> The latest release is **v3.3.0**. It includes the 3.2 libraries (`nn::`, `pack::`, `json::`,
+> `tlm::`, `cosim::`, `std/`), the Driver SDK and the embedded backend.
 
 ## Build Tulpa from source
 
@@ -48,6 +47,14 @@ Install it with `scripts/deploy.sh [PREFIX]`. `scripts/release.sh` builds the ta
 `.vsix` for the host, and `scripts/cross_compile.sh` cross-compiles for a Raspberry Pi.
 
 Native compilation (`tulpa build`) additionally needs **clang 14+** on your `PATH`.
+
+Firmware builds also need the board's SDK:
+
+- **RP2040:** the [Pico SDK](https://github.com/raspberrypi/pico-sdk) 2.x, with
+  `PICO_SDK_PATH` set.
+- **ESP32 family:** [ESP-IDF](https://docs.espressif.com/projects/esp-idf/) 5.x. The Xtensa
+  chips (ESP32, S2, S3) also need Espressif's clang:
+  `python $IDF_PATH/tools/idf_tools.py install esp-clang`.
 
 ## Run HermiSim from source (Linux, macOS, Windows)
 

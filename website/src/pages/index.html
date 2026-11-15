@@ -143,17 +143,38 @@
     <div class="section-head reveal">
       <span class="kicker">Execution architecture</span>
       <h2>Prototype in a REPL. Ship native code.</h2>
-      <p>The interpreter and VM run the whole language. Hot functions move to bytecode automatically, and the typed numeric subset compiles through LLVM into an object file and a C header for firmware.</p>
+      <p>The interpreter and VM run the whole language. Hot functions move to bytecode automatically. Whole programs, including structs, drivers, state machines and monitors, compile through LLVM into executables or firmware for RP2040 and ESP32.</p>
     </div>
     <div class="tiers reveal">
       <div class="tier"><span class="n">TIER 1</span><h3>Tree-walking interpreter</h3><p>Runs the whole language and backs the REPL.</p>
         <div class="bench">fib(30)<div class="bar"><i style="width:100%"></i></div><b>1.15 s</b></div></div>
       <div class="tier"><span class="n">TIER 2 · default</span><h3>Bytecode VM</h3><p>Eligible functions compile on first call and fall back to the interpreter transparently.</p>
         <div class="bench">fib(30)<div class="bar"><i style="width:24.3%"></i></div><b>0.28 s</b> · about 4× faster</div></div>
-      <div class="tier"><span class="n">TIER 3 · tulpa build</span><h3>LLVM native</h3><p>Typed numeric code becomes an object or shared library plus a C header. Contracts stay as runtime checks.</p>
+      <div class="tier"><span class="n">TIER 3 · tulpa build</span><h3>LLVM native</h3><p>Programs become executables, firmware objects or shared libraries, each with a C header. Contracts and <code>always</code> monitors stay as runtime checks.</p>
         <div class="bench">fib(30)<div class="bar"><i style="width:1.2%;min-width:4px"></i></div><b>0.005 s</b></div></div>
     </div>
     <p class="note">Release-build benchmarks from the TulpaLang README. Every test runs under both the interpreter and the VM, and native output is differential-tested against the interpreter.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">New in 3.3 · standalone robotics software</span>
+      <h2>From the simulator to the microcontroller.</h2>
+      <p>Write a driver once in Tulpa, test it against the simulated bus, and compile the same file for a Pico or an ESP32. CI checks that native output matches the interpreter byte for byte.</p>
+    </div>
+    <div class="grid g3">
+      <a class="card reveal" href="docs/drivers.html">
+        <h3>Driver SDK</h3><p>Typed <code>interface</code>s checked when a struct is defined, <code>std/driver</code> helpers, and reference MPU-6050, PCA9685 and MCP3008 drivers.</p>
+        <code class="syn">struct Mpu6050 impl Imu, Thermometer</code></a>
+      <a class="card reveal" href="docs/embedded.html#what-compiles-natively">
+        <h3>Native driver compilation</h3><p>Structs with invariants, devices, state machines, <code>always</code> monitors and <code>every!</code> loops all compile through LLVM.</p>
+        <code class="syn">tulpa build app.rav --target sim --exe</code></a>
+      <a class="card reveal" href="docs/embedded.html#firmware-projects">
+        <h3>Embedded backend</h3><p>RP2040, ESP32, S2, S3, C3 and C6, plus generic Cortex-M and RISC-V, on a portable C HAL. <code>tulpa new</code> scaffolds the project.</p>
+        <code class="syn">tulpa new rover --board rp2040</code></a>
+    </div>
   </div>
 </section>
 
@@ -182,6 +203,7 @@
       <h2>Start anywhere.</h2>
     </div>
     <div class="grid g5">
+      <a class="card reveal" href="docs/embedded.html"><h3>Embedded targets</h3><p>Compile Tulpa for RP2040, ESP32 and Linux boards. Includes drivers and HAL porting.</p><span class="more">Build firmware →</span></a>
       <a class="card reveal" href="docs/installation.html"><h3>Install</h3><p>Release packages, the Windows installer, or build from source.</p><span class="more">Installation →</span></a>
       <a class="card reveal" href="docs/language-guide.html"><h3>Language guide</h3><p>Syntax, types, units, structs, machines, reactive rules and more.</p><span class="more">Read the guide →</span></a>
       <a class="card reveal" href="docs/libraries.html"><h3>Libraries</h3><p><code>nn</code>, <code>pack</code>, <code>json</code>, <code>tlm</code>, <code>cosim</code> and <code>std/</code>.</p><span class="more">Browse libraries →</span></a>

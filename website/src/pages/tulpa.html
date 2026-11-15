@@ -21,7 +21,7 @@
       <div class="stat reveal"><b class="grad">3</b><span>execution tiers: interpreter, bytecode VM, LLVM</span></div>
       <div class="stat reveal"><b class="grad">9</b><span>device families: GPIO to CAN and BLE</span></div>
       <div class="stat reveal"><b class="grad">11</b><span>library modules: 5 native, 6 in <code>std/</code></span></div>
-      <div class="stat reveal"><b class="grad">84</b><span>Rust tests, each run under both tiers</span></div>
+      <div class="stat reveal"><b class="grad">11</b><span>native targets: host, RP2040, ESP32 family, Cortex-M, RISC-V</span></div>
     </div>
   </div>
 </section>
@@ -88,6 +88,21 @@
   </div>
 </section>
 
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">3.3 · Drivers &amp; embedded</span>
+      <h2>Standalone robotics software.</h2>
+      <p>Drivers, control logic and safety envelopes, written once in Tulpa and compiled for the board.</p>
+    </div>
+    <div class="grid g3">
+      <a class="card reveal" href="docs/drivers.html"><code class="syn" style="margin:0 0 12px">interface · impl · std/driver</code><h3>Driver SDK</h3><p>Interfaces with unit-typed signatures, checked when each struct is defined. Includes bit helpers that compile natively, plus MPU-6050, PCA9685 and MCP3008 drivers.</p></a>
+      <a class="card reveal" href="docs/embedded.html#what-compiles-natively"><code class="syn" style="margin:0 0 12px">tulpa build --exe</code><h3>Native compilation</h3><p>Structs, devices, state machines, <code>always</code> monitors, <code>every!</code> loops and top-level code. Output is tested byte for byte against the interpreter.</p></a>
+      <a class="card reveal" href="docs/embedded.html#targets"><code class="syn" style="margin:0 0 12px">--target rp2040 · esp32s3 · esp32c3</code><h3>Embedded backend</h3><p>Ports for the Pico SDK, ESP-IDF, Linux and the simulator. Use <code>tulpa new --board</code> for a new project, or <code>tulpa runtime</code> to port to your own board.</p></a>
+    </div>
+  </div>
+</section>
+
 <section class="section">
   <div class="wrap split">
     <div class="reveal">
@@ -98,6 +113,7 @@
         <li><div><strong>Hardware regression testing</strong><span>Record on the rig once, then replay in CI.</span></div></li>
         <li><div><strong>Safety-oriented control logic</strong><span>Contracts, invariants and monitors catch invalid states early.</span></div></li>
         <li><div><strong>Sensor and actuator bring-up</strong><span><code>I2C::scan()</code>, registers from the REPL, and <code>--trace</code>.</span></div></li>
+        <li><div><strong>Microcontroller firmware</strong><span>Drivers and control loops compiled for RP2040 and ESP32, tested on the simulator first.</span></div></li>
         <li><div><strong>Embedded and control education</strong><span>Readable syntax, simulated hardware, built-in PID and kinematics.</span></div></li>
         <li><div><strong>Engineering experimentation</strong><span>Learning, simulation, RTL and boards in one language.</span></div></li>
       </ul>
@@ -111,7 +127,7 @@
         <button class="tab" role="tab" aria-selected="false" aria-controls="i-win" id="ti-win" tabindex="-1">Windows</button>
       </div>
       <div class="tabpanel" role="tabpanel" id="i-src" aria-labelledby="ti-src">
-        <p>Rust 1.82+ required. This gets you the 3.2 libraries today.</p>
+        <p>Rust 1.82+ required. Add clang 14+ for <code>tulpa build</code>.</p>
         <div class="code"><div class="code-head"><span>Shell</span><button class="copy" type="button">Copy</button></div><pre><code class="hljs">git clone {{tulpa.repo}}.git
 cd TulpaLang &amp;&amp; cargo build --release
 ./target/release/tulpa examples/tour/main.rav</code></pre></div>

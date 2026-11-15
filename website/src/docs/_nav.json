@@ -38,6 +38,16 @@
         "repo": "docs/device_integration.md"
       },
       {
+        "slug": "drivers",
+        "title": "Driver SDK",
+        "repo": "docs/drivers.md"
+      },
+      {
+        "slug": "embedded",
+        "title": "Native & embedded targets",
+        "repo": "docs/embedded.md"
+      },
+      {
         "slug": "cli",
         "file": "cli.md",
         "title": "CLI reference"

@@ -14,8 +14,11 @@ Everything in Tulpa goes through one binary, `tulpa`. With no arguments it start
 | `tulpa verify [--trials=N] <file>...` | Fuzz every contracted function against its own `require` / `ensure`. |
 | `tulpa graph <file>...` | Print Mermaid `stateDiagram-v2` source for every `machine`. |
 | `tulpa bytecode <file>` | Show the VM bytecode generated for each eligible function. |
-| `tulpa emit-llvm <file> [-o out.ll]` | Print LLVM IR for the typed numeric subset. |
-| `tulpa build <file> [-o out.o] [--shared] [-O0..3]` | Native object or shared library plus a C header. Needs clang 14+. |
+| `tulpa emit-llvm <file> [--target T] [-o out.ll]` | Print the LLVM IR for a program. |
+| `tulpa build <file> [--target T] [-o out] [--exe] [--shared] [--sim] [-O0..3]` | Compile natively. Writes an object file plus a C header, a standalone executable (`--exe`, for targets `sim` and `linux`), or a shared library. Needs clang 14+. See [Native & embedded targets](embedded.html). |
+| `tulpa targets` | List the native targets: `sim`, `linux`, `rp2040`, `esp32`, `esp32s2`, `esp32s3`, `esp32c3`, `esp32c6`, `cortex-m0`, `cortex-m4f`, `riscv32`. |
+| `tulpa new <dir> --board B` | Scaffold a firmware project for a board (Pico SDK, ESP-IDF, or a Linux Makefile). |
+| `tulpa runtime <dir> [--target T]` | Write the C runtime and HAL port, for use in your own build system. |
 | `tulpa lsp` | Language server over stdio, for editors. |
 
 ## Flags
@@ -52,6 +55,8 @@ Everything in Tulpa goes through one binary, `tulpa`. With no arguments it start
 | `TULPA_TELEMETRY` | `tlm::` | `1` makes `tlm::*` calls emit `@@tlm {json}` lines. HermiSim sets it. |
 | `TULPA_COSIM` | `cosim::connect()` | Address of the co-simulation server. HermiSim sets it. |
 | `TULPA_BIN` | HermiSim | Path of the `tulpa` binary to use. |
+| `TULPA_CLANG` | `tulpa build` | The clang binary to use. ESP32, S2 and S3 builds need Espressif's clang, which is found automatically in `~/.espressif`. |
+| `TULPA_GPIOCHIP` | native `linux` target | The gpiochip device to use (default `/dev/gpiochip0`). |
 
 ## Recipes
 
@@ -59,6 +64,9 @@ Everything in Tulpa goes through one binary, `tulpa`. With no arguments it start
 tulpa examples/warehouse_robot/main.rav        # machine + signals + safety envelope + servos
 tulpa --virtual-time examples/timing/main.rav  # debounce + deadlines on a simulated clock
 tulpa build examples/native/main.rav -o ctl.o  # ctl.o + ctl.h for firmware
+tulpa build examples/drivers/main.rav --target sim --exe -o drv && ./drv   # native == interpreter
+tulpa new rover --board rp2040                 # Pico SDK project → build/rover.uf2
+tulpa new rover --board esp32c3                # ESP-IDF project → idf.py build flash
 tulpa --record run.tape robot.rav              # capture device traffic on the rig...
 tulpa --replay run.tape robot.rav              # ...and regression-test against it in CI
 sudo tulpa --hw robot.rav                      # real hardware on a Raspberry Pi
