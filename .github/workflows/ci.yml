@@ -19,6 +19,18 @@ jobs:
           TULPA_NO_VM: "1"
       - run: cargo run --release -- check examples/*/main.rav
       - run: cargo run --release -- verify examples/native/main.rav
+      - name: prove the reference drivers and the contract examples
+        run: |
+          cargo run --release -- prove stdlib/drivers/*.rav stdlib/driver.rav
+          cargo run --release -- prove --strict examples/native/main.rav || true
+
+  # The release workflow tests on macOS too: catch platform differences here first.
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test
 
   # Native + embedded backend: emulated firmware runs diffed against the interpreter, and real
   # board-SDK builds of `tulpa new` projects.
