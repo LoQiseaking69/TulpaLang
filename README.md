@@ -28,7 +28,7 @@ abstractions, and native hardware integration.
 | Engineering model | Units, contracts, invariants, state machines, reactive rules, timing constraints |
 | Hardware integration | GPIO, I2C, SPI, UART, PWM, Servo, PID, CAN, Bluetooth LE |
 | Verification | Runtime contracts, contract fuzzing, safety monitors, record/replay |
-| Developer tooling | REPL, test runner, LSP, VS Code extension, Mermaid state diagrams, [HermiSim IDE](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer) |
+| Developer tooling | REPL, test runner, LSP, VS Code extension, Mermaid state diagrams, [HermiSim IDE](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer), [Tulpa Field](android/README.md) for Android |
 | License | BSD 3-Clause |
 
 ## A language designed around physical systems
@@ -242,6 +242,22 @@ larger robotics and simulation environment:
 - an RTL torque governor
 - the mainboard as code
 
+## Tulpa Field (Android)
+
+[`android/`](android/README.md) is **Tulpa Field**, a pocket IDE that runs the whole Tulpa runtime
+on the phone, offline. It turns the handset into a device you can program:
+
+- the `phone::` module reads the accelerometer, gyro, magnetometer, orientation, light, barometer,
+  proximity, battery, steps and GPS as unit-checked quantities, and drives vibration, the torch,
+  speech, tones and notifications
+- live `tlm::plot` charts and `phone::gauge` readouts while a program runs
+- a touch-first editor with diagnostics, completion and a symbol/unit keyboard bar
+- a REPL, a tappable state-machine inspector, and one-tap contract verification and tests
+- 28 runnable examples and an in-app guide whose code blocks run with one tap
+
+The APK is built by CI and attached to `android-v*` releases. Other hosts can embed the runtime the
+same way through `tulpa::embed` (run/REPL/analysis API) and `tulpa::host` (host-provided modules).
+
 ## Install
 
 Download a release package from [Releases](https://github.com/LoQiseaking69/TulpaLang/releases).
@@ -398,6 +414,8 @@ src/units.rs       dimensional analysis (SI base vector, unit parser, conversion
 src/builtins.rs    standard library, kin:: module, string/list/dict methods, formatting
 src/nn.rs          nn:: tensors, reverse-mode autodiff, layers, optimisers
 src/stdx.rs        pack:: json:: tlm:: cosim::
+src/embed.rs       embedding API for host apps (run, REPL sessions, cancel, editor analysis)
+src/host.rs        registry for host-provided native modules (e.g. phone:: in Tulpa Field)
 stdlib/            std/ library written in Tulpa (rtl, eda, rl, lipm, topics, frame)
 src/devices/       GPIO/I2C/SPI/UART/PWM/Servo/PID/CAN/BLE; sim.rs, linux.rs, tape.rs (record/replay)
 examples/          runnable programs with expected.txt (checked by cargo test)
@@ -405,6 +423,7 @@ tests/             84 Rust tests (run under both tiers) + Tulpa-level tests
 editors/           VS Code extension (editors/vscode) + Neovim/Helix setup
 scripts/           release.sh (tarball, .deb, .vsix), deploy.sh, cross_compile.sh
 website/           project website + docs site (GitHub Pages), see website/README.md
+android/           Tulpa Field, the Android IDE (Rust JNI bridge + Kotlin/Compose app)
 ```
 
 ## Performance
@@ -431,6 +450,8 @@ differential-tested against the interpreter.
   extension, and release packaging.
 - **3.2:** the `nn`, `pack`, `json`, `tlm`, and `cosim` modules; the `std/` library (rtl, eda,
   rl, lipm, topics, frame); operator overloading for native objects; and the library search path.
+- **Tulpa Field:** the Android IDE, the `phone::` host module, and the `tulpa::embed` /
+  `tulpa::host` embedding API.
 
 ### Planned
 - CAN-FD and ISO-TP (UDS diagnostics) on top of the CAN layer.
