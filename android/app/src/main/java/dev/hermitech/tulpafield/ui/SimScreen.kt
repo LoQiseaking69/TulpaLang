@@ -110,10 +110,10 @@ fun SimScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
             }
             // running program strip
             if (run.running || run.console.isNotEmpty()) {
-                Surface(color = TF.Bg.copy(alpha = 0.8f), shape = RoundedCornerShape(10.dp), modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).widthIn(max = 210.dp)) {
+                Surface(color = TF.Bg.copy(alpha = 0.8f), shape = RoundedCornerShape(10.dp), modifier = Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = 92.dp).fillMaxWidth()) {
                     Row(Modifier.padding(start = 10.dp, end = 4.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(run.console.lastOrNull { it.text.isNotBlank() }?.text ?: "", fontSize = 11.sp, fontFamily = TF.Mono, color = TF.Dim,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                         if (run.running) IconButton(onClick = { vm.runner.stop() }) { Icon(Icons.Default.Stop, "Stop", tint = TF.Err) }
                         else IconButton(onClick = { vm.go(Screen.Run) }) { Icon(Icons.Default.Terminal, "Console", tint = TF.Dim) }
                     }
@@ -145,7 +145,7 @@ fun SimScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
                 }
             }
             Text("drag: orbit · two fingers: pan · pinch: zoom · double-tap: frame", color = TF.Dim.copy(alpha = 0.7f), fontSize = 10.sp,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 70.dp))
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 72.dp))
         }
     }
 

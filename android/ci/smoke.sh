@@ -24,7 +24,12 @@ if best: print((best[0]+best[2])//2,(best[1]+best[3])//2)
 PY
 # tap the centre of the top-most node whose text or content-desc is exactly $1
 tap() {
-  local b; b=$(dump | python3 /tmp/find_node.py "$1")
+  local x b; x=$(dump)
+  # emulator system dialogs ("Pixel Launcher isn't responding") cover the app: dismiss them
+  if printf '%s' "$x" | grep -q "isn&apos;t responding\|isn't responding"; then
+    b=$(printf '%s' "$x" | python3 /tmp/find_node.py "Wait"); [ -n "$b" ] && adb shell input tap $b && echo "dismissed a system ANR dialog" && sleep 1
+  fi
+  b=$(dump | python3 /tmp/find_node.py "$1")
   if [ -z "$b" ]; then echo "!! no node '$1'"; return 1; fi
   adb shell input tap $b; echo "tapped '$1' at $b"
 }
@@ -33,7 +38,8 @@ has() { dump | grep -q "$1"; }
 texts() { dump | grep -o ' text="[^"]\+"' | sed 's/ text=//' | tr '\n' ' ' | cut -c1-1500; echo; }
 
 adb shell am start -W -n $PKG/.MainActivity
-sleep 6; alive; shot 00-home
+sleep 6; alive
+tap "Home" >/dev/null || true; sleep 1; shot 00-home
 has "Welcome to Tulpa Field" && echo "ok: welcome page" || { echo "!! welcome page not shown"; FAIL=1; }
 tap "Start the tour"; sleep 3; shot 01-welcome
 { ! has "Start the tour" && has "Welcome to Tulpa Field"; } && echo "ok: guide opens" || echo "!! guide welcome chapter not shown"
