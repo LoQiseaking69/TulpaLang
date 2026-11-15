@@ -309,7 +309,7 @@ same way through `tulpa::embed` (run/REPL/analysis API) and `tulpa::host` (host-
 ## Install
 
 Download a release package from [Releases](https://github.com/LoQiseaking69/TulpaLang/releases).
-The `release` workflow builds them on every `v*` tag. The latest release is **v3.3.1**
+The `release` workflow builds them on every `v*` tag. The latest release is **v3.3.2**
 (it includes the 3.2 libraries, the Driver SDK and the embedded backend).
 
 - **Linux** (x86_64, arm64 for Raspberry Pi 3/4/5, armv7): download
@@ -511,6 +511,8 @@ differential-tested against the interpreter.
   loops; standalone executables (`--exe`); embedded targets for RP2040, ESP32, ESP32-S2/S3/C3/C6
   and generic Cortex-M/RISC-V, with `tulpa new` firmware projects and a portable C HAL.
 - **3.3.1:** documentation brought in line with 3.3 across the README, guides and website.
+- **3.3.2:** `sim::virtual_time(true)` starts the simulated clock at 0, like `--virtual-time`,
+  so simulated runs are reproducible however long start-up takes.
 - **Tulpa Field:** the Android IDE, the `phone::` host module, and the `tulpa::embed` /
   `tulpa::host` embedding API.
 

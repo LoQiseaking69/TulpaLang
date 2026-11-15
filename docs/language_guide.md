@@ -430,7 +430,7 @@ re-check the rules every 2 ms, and every `every!` tick checks them too.
 clock with a simulated one:
 - `sleep`, `sleep_ms`, `every!` and `sim::advance(dur)` move it forward instantly.
 - With timing rules registered, it moves in 1 ms steps.
-- `millis()` reads it.
+- `millis()` reads it. It starts at 0, so runs are reproducible.
 
 Timing logic then runs deterministically and fast in tests. `sim::gpio_input`, `sim::i2c_set` and
 `sim::uart_feed` count as external events, so rules see them immediately.

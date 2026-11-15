@@ -948,7 +948,13 @@ const SIM: &[(&str, NativeFn)] = &[
     ("virtual_time", |i, a| {
         pad_args("sim::virtual_time", &a, 0, 1)?;
         let on = a.first().map(|v| v.truthy()).unwrap_or(true);
-        i.virtual_time = if on { Some(i.now()) } else { None };
+        // The simulated clock starts at 0 (like --virtual-time and native sim builds), so runs
+        // are reproducible no matter how long start-up took; turning it on again keeps its time.
+        i.virtual_time = if on {
+            Some(i.virtual_time.unwrap_or(0.0))
+        } else {
+            None
+        };
         Ok(Value::Nil)
     }),
     ("advance", |i, a| {
