@@ -94,6 +94,9 @@ jobs:
           cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 --platform 26 \
             -o ../app/src/main/jniLibs build --release
           for abi in arm64-v8a armeabi-v7a x86_64; do cp ../mujoco/$abi/lib/libmujoco.so ../app/src/main/jniLibs/$abi/; done
+          # the NDK toolchain always compiles with -g: strip debug info before packaging
+          STRIP="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+          "$STRIP" --strip-unneeded ../app/src/main/jniLibs/*/*.so
           ls -la ../app/src/main/jniLibs/*
 
       - uses: gradle/actions/setup-gradle@v4
@@ -148,6 +151,8 @@ jobs:
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/TulpaField-${TULPA_FIELD_VERSION#android-v}.apk"
           ls -la dist
+          size=$(stat -c %s dist/*.apk)
+          if [ "$size" -gt 60000000 ]; then echo "::error::APK is $((size / 1000000)) MB: native libraries were not stripped?"; exit 1; fi
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           "$APKSIGNER" verify --print-certs dist/*.apk > dist/signature.txt
           grep -iE "DN:|SHA-256" dist/signature.txt || cat dist/signature.txt
