@@ -90,21 +90,41 @@ jobs:
       - name: Release signing key
         id: sign
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 || secrets.TULPA_FIELD_KEYSTORE }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.TULPA_FIELD_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS || secrets.TULPA_FIELD_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.TULPA_FIELD_KEY_PASSWORD }}
+          # Accept repository secrets or variables (and the older TULPA_FIELD_* names)
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 || vars.KEYSTORE_BASE64 || secrets.TULPA_FIELD_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || vars.KEYSTORE_PASSWORD || secrets.TULPA_FIELD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || vars.KEY_ALIAS || secrets.TULPA_FIELD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || vars.KEY_PASSWORD || secrets.TULPA_FIELD_KEY_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > android/release.jks
-            printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-              "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "${KEY_PASSWORD:-$KEYSTORE_PASSWORD}" > android/keystore.properties
-            echo "signed=true" >> "$GITHUB_OUTPUT"
-            echo "Signing with the release keystore."
-          else
+          if [ -z "$KEYSTORE_BASE64" ]; then
             echo "signed=false" >> "$GITHUB_OUTPUT"
             echo "::warning::No KEYSTORE_BASE64 secret — APK is signed with an ephemeral debug key and will not be published."
+            exit 0
           fi
+          # tolerate whitespace/newlines pasted into the secret
+          printf '%s' "$KEYSTORE_BASE64" | tr -d ' \r\n\t' | base64 -d > android/release.jks
+          KEYSTORE_PASSWORD="$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d '\r\n')"
+          KEY_PASSWORD="$(printf '%s' "${KEY_PASSWORD:-$KEYSTORE_PASSWORD}" | tr -d '\r\n')"
+          KEY_ALIAS="$(printf '%s' "$KEY_ALIAS" | tr -d ' \r\n')"
+          if [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error title=Signing::KEYSTORE_PASSWORD is empty — add it as a repository secret."; exit 1
+          fi
+          if ! keytool -list -keystore android/release.jks -storepass "$KEYSTORE_PASSWORD" > /tmp/ks.txt 2>&1; then
+            echo "::error title=Signing::Cannot open the keystore — KEYSTORE_PASSWORD does not match KEYSTORE_BASE64."; cat /tmp/ks.txt | grep -v JAVA_TOOL; exit 1
+          fi
+          # PKCS12 stores use the store password for the key
+          grep -q "Keystore type: PKCS12" /tmp/ks.txt && KEY_PASSWORD="$KEYSTORE_PASSWORD"
+          aliases="$(keytool -list -v -keystore android/release.jks -storepass "$KEYSTORE_PASSWORD" 2>/dev/null | sed -n 's/^Alias name: //p')"
+          if [ -z "$KEY_ALIAS" ] || ! printf '%s\n' "$aliases" | grep -qx "$KEY_ALIAS"; then
+            [ -n "$KEY_ALIAS" ] && echo "::warning title=Signing::KEY_ALIAS '$KEY_ALIAS' is not in the keystore (has: $aliases); using the keystore's key."
+            KEY_ALIAS="$(printf '%s\n' "$aliases" | head -1)"
+          fi
+          echo "Key alias: $KEY_ALIAS"
+          printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/keystore.properties
+          echo "::add-mask::$KEYSTORE_PASSWORD"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+          echo "Signing with the release keystore."
 
       - name: Assemble APK
         working-directory: android
