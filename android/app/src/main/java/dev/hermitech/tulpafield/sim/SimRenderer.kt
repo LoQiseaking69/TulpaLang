@@ -154,7 +154,7 @@ out vec3 vN; out vec3 vW;
 void main() { vec4 w = uModel * vec4(aPos, 1.0); vW = w.xyz; vN = normalize(uNrm * aNrm); gl_Position = uMVP * vec4(aPos, 1.0); }"""
 
 private const val FS = """#version 300 es
-precision mediump float;
+precision highp float;
 in vec3 vN; in vec3 vW;
 uniform vec4 uColor; uniform vec3 uEye;
 out vec4 o;
@@ -189,10 +189,10 @@ void main() {
 }"""
 
 private const val SHADOW_FS = """#version 300 es
-precision mediump float;
-in vec3 vN; in vec3 vW; uniform vec4 uColor; uniform vec3 uEye; uniform mat4 uModel;
+precision highp float;
+in vec3 vN; in vec3 vW; uniform vec4 uColor; uniform vec3 uCenter; uniform float uRadius;
 out vec4 o;
-void main() { vec2 c = (inverse(uModel) * vec4(vW, 1.0)).xy; float r = length(c); o = vec4(0.0, 0.0, 0.0, uColor.a * smoothstep(1.0, 0.2, r)); }"""
+void main() { float r = length(vW.xy - uCenter.xy) / uRadius; o = vec4(0.0, 0.0, 0.0, uColor.a * smoothstep(1.0, 0.2, r)); }"""
 
 private fun program(vs: String, fs: String): Int {
     fun sh(t: Int, src: String): Int {
@@ -316,8 +316,11 @@ class SimRenderer(private val sim: SimManager, val camera: OrbitCamera, val hud:
                 val zH = frame[o + 7]
                 if (zH < -0.01f || zH > ext * 3f) continue
                 val a = (0.38f * (1f - zH / (ext * 3f))).coerceIn(0f, 0.38f)
+                val rad = r + zH * 0.25f
                 Matrix.setIdentityM(model, 0); Matrix.translateM(model, 0, frame[o + 5], frame[o + 6], 0.001f * ext + 0.0005f)
-                Matrix.scaleM(model, 0, r + zH * 0.25f, r + zH * 0.25f, 1f)
+                Matrix.scaleM(model, 0, rad, rad, 1f)
+                glUniform3f(glGetUniformLocation(shadowProg, "uCenter"), frame[o + 5], frame[o + 6], 0f)
+                glUniform1f(glGetUniformLocation(shadowProg, "uRadius"), rad)
                 setModel(shadowProg, BLACK, a); draw(quad)
             }
             glDepthMask(true)

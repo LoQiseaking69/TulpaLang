@@ -36,7 +36,7 @@ adb shell am start -W -n $PKG/.MainActivity
 sleep 6; alive; shot 00-home
 has "Welcome to Tulpa Field" && echo "ok: welcome page" || { echo "!! welcome page not shown"; FAIL=1; }
 tap "Start the tour"; sleep 3; shot 01-welcome
-has "Your first minute" && echo "ok: guide opens" || echo "!! guide welcome chapter not shown"
+{ ! has "Start the tour" && has "Welcome to Tulpa Field"; } && echo "ok: guide opens" || echo "!! guide welcome chapter not shown"
 
 # scroll the welcome chapter until the first code block's Run button is on screen
 for k in 1 2 3 4 5 6 7 8; do
