@@ -153,6 +153,17 @@
   ]
  },
  {
+  "id": "phone_imu",
+  "title": "Your phone as an Imu",
+  "category": "Phone sensors",
+  "summary": "Implements std/driver's Imu interface on the phone's accelerometer and gyro, then runs a tilt filter written against the interface.",
+  "tags": [
+   "drivers",
+   "interfaces",
+   "sensors"
+  ]
+ },
+ {
   "id": "robot_arm",
   "title": "Two-link robot arm",
   "category": "Robotics",
@@ -211,6 +222,19 @@
    "devices",
    "can",
    "ble"
+  ]
+ },
+ {
+  "id": "drivers",
+  "title": "Driver SDK: IMU, PWM, ADC",
+  "category": "Robotics",
+  "summary": "The bundled MPU-6050, PCA9685 and MCP3008 drivers on the simulated bus. The same file compiles for RP2040 and ESP32.",
+  "tags": [
+   "drivers",
+   "interfaces",
+   "i2c",
+   "spi",
+   "native"
   ]
  },
  {

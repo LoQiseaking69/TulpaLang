@@ -76,5 +76,17 @@
   "title": "Device integration",
   "section": "Reference",
   "asset": "guide/reference/device_integration.md"
+ },
+ {
+  "id": "drivers",
+  "title": "Driver SDK",
+  "section": "Reference",
+  "asset": "guide/reference/drivers.md"
+ },
+ {
+  "id": "embedded",
+  "title": "Native & embedded targets",
+  "section": "Reference",
+  "asset": "guide/reference/embedded.md"
  }
 ]

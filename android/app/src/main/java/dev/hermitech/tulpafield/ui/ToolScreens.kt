@@ -369,7 +369,7 @@ fun SettingsScreen(vm: AppViewModel) {
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Text("About", style = MaterialTheme.typography.titleSmall, color = TF.Violet)
             Text("Tulpa Field ${BuildConfig.VERSION_NAME}", fontWeight = FontWeight.SemiBold)
-            Text("TulpaLang runtime ${runCatching { TulpaNative.version() }.getOrDefault("?")} · interpreter, bytecode VM, units, contracts, machines, signals, std/ libraries", color = TF.Dim, fontSize = 13.sp)
+            Text("TulpaLang runtime ${runCatching { TulpaNative.version() }.getOrDefault("?")} · interpreter, bytecode VM, units, contracts, machines, signals, Driver SDK, std/ libraries", color = TF.Dim, fontSize = 13.sp)
             Text("Physics: MuJoCo ${runCatching { TulpaNative.simVersion() }.getOrDefault("?")} (Apache-2.0), rendered with OpenGL ES 3.", color = TF.Dim, fontSize = 13.sp)
             val mods = remember { vm.modules.keys.sorted().joinToString(" · ") }
             Text("Modules: $mods", color = TF.Dim, fontSize = 12.sp, fontFamily = TF.Mono)

@@ -82,6 +82,23 @@ button.set(1); sleep(10[ms]); button.set(0)     # a bounce: ignored
 button.set(1); sleep(50[ms])                     # a real press
 ```
 
+## Interfaces and drivers
+
+```tulpa
+interface Thermometer { fn temperature(self) -> [K] }
+struct Fake impl Thermometer {                  # checked when it's defined
+    t: [K] = 294[K]
+    fn temperature(self) -> [K] { self.t }
+}
+fn report(s: Thermometer) { print(s.temperature()) }      # 294 K
+report(Fake())
+```
+
+`std/driver` defines the standard `Imu`, `Rangefinder`, `Adc` and `PwmController`
+interfaces. `std/drivers/` holds real drivers (MPU-6050, PCA9685, MCP3008) that run here on
+the simulated bus. On a computer, `tulpa build --target rp2040` compiles the same code into
+firmware. Try **Your phone as an Imu** in the Library.
+
 ## Next
 
 Open the **Language guide** for the full reference, or browse the **Library**.

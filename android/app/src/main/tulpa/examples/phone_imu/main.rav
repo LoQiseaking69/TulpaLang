@@ -1,0 +1,47 @@
+# Driver SDK on a real sensor: the phone becomes an `Imu`.
+#
+# std/driver defines the Imu interface that the MPU-6050 driver also implements. Code written
+# against Imu (the tilt estimator below) works unchanged with either one: on the phone today,
+# and on a robot's MPU-6050 when you build the same code for an RP2040 or ESP32.
+
+from "std/driver" import Imu
+
+struct PhoneImu impl Imu {
+    a: list = [0[m/s^2], 0[m/s^2], 9.81[m/s^2]]
+    w: list = [0[rad/s], 0[rad/s], 0[rad/s]]
+    fn probe(self) -> bool { phone::has("accel") and phone::has("gyro") }
+    fn init(self) { }
+    fn update(self) {
+        self.a = phone::accel()
+        self.w = phone::gyro()
+    }
+    fn accel_x(self) -> [m/s^2] { self.a[0] }
+    fn accel_y(self) -> [m/s^2] { self.a[1] }
+    fn accel_z(self) -> [m/s^2] { self.a[2] }
+    fn gyro_x(self) -> [rad/s] { self.w[0] }
+    fn gyro_y(self) -> [rad/s] { self.w[1] }
+    fn gyro_z(self) -> [rad/s] { self.w[2] }
+}
+
+# Complementary filter: integrate the gyro, correct drift with the accelerometer's gravity angle.
+struct Tilt {
+    imu: Imu
+    pitch: [rad] = 0[rad]
+    fn step(self, dt: [s], k: float = 0.98) {
+        self.imu.update()
+        let from_accel = atan2(self.imu.accel_y().si, self.imu.accel_z().si) * 1[rad]
+        self.pitch = k * (self.pitch + self.imu.gyro_x() * dt) + (1 - k) * from_accel
+    }
+}
+
+let imu = PhoneImu()
+print("probe:", imu.probe(), " implements Imu:", implements(imu, "Imu"))
+imu.init()
+let est = Tilt(imu)
+
+every!(20[ms], 500, {
+    est.step(20[ms])
+    phone::gauge("pitch", est.pitch.to("deg"), -90[deg], 90[deg])
+    tlm::plot("pitch (deg)", est.pitch.in("deg"))
+})
+print(f"final pitch: {est.pitch.to("deg"):.1f}")
