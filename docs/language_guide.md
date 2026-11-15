@@ -287,6 +287,28 @@ struct Motor {
 - **Operator overloading:** `op_add op_sub op_mul op_div op_mod op_eq op_cmp`. `op_cmp` returns a number that is negative, zero or positive. `2 * v` and `1 + v` try `op_rmul`/`op_radd` first, then fall back to `op_mul`/`op_add`.
 - **Reflection:** `Type.fields()` and `Type.name()`.
 
+## Interfaces
+
+```tulpa
+interface Thermometer {
+    fn temperature(self) -> [K]
+}
+interface Probe: Thermometer {           # extends: inherits temperature()
+    fn probe(self) -> bool
+}
+struct Tmp102 impl Probe {
+    bus: I2C
+    fn probe(self) -> bool { true }
+    fn temperature(self) -> [K] { 273.15[K] + 0.0625[K] * float(self.bus.read_reg(0)) }
+}
+fn report(t: Thermometer) { print(t.temperature()) }   # interface as a parameter type
+```
+
+- An interface lists method signatures without bodies. A unit return type such as `-> [K]` is part of the contract.
+- `struct S impl A, B` is checked when `S` is defined. Missing methods, wrong parameter counts and mismatched return units are errors.
+- An interface name works as a parameter type. `implements(x, "Probe")` tests conformance at run time.
+- Interfaces are exported from modules like any other name. The standard driver interfaces are in `std/driver` (see the [Driver SDK](drivers.md)).
+
 ## State machines
 
 ```tulpa
@@ -423,34 +445,43 @@ Timing logic then runs deterministically and fast in tests. `sim::gpio_input`, `
    - Both tiers share values, contracts, types and error traces.
    - `tulpa bytecode file.rav` shows each function's bytecode, or why it stays interpreted.
    - `--no-vm` or `TULPA_NO_VM=1` turns the VM off.
-3. **Native code.** `tulpa build file.rav -o ctl.o [--shared] [-O3]` compiles the typed numeric
-   subset through LLVM and writes `ctl.h` with C prototypes. Each function is exported as
-   `tulpa_<name>`. `tulpa emit-llvm` prints the IR instead.
-   It needs clang 14 or newer: `$TULPA_CLANG` if set, else `clang`, else the newest `clang-N`
-   on the PATH.
+3. **Native code.** `tulpa build file.rav [--target T] [-o out]` compiles through LLVM and
+   writes a C header with the prototypes and struct layouts. `tulpa emit-llvm` prints the IR
+   instead. It needs clang 14 or newer: `$TULPA_CLANG` if set, else `clang`, else the newest
+   `clang-N` on the PATH. The ESP32, S2 and S3 need Espressif's clang.
 
-   **What compiles natively:**
-   - `int`, `float`, `num` and `bool` parameters (unannotated means `float`)
-   - locals, arithmetic, comparisons, `and`/`or`
-   - `if`, `while` (including invariants), `for i in a..b`, `loop`, `break`/`continue`, `return`
-   - `assert`, `const` numbers, calls between native functions
-   - math builtins: `sqrt sin cos tan asin acos atan atan2 hypot exp log log10 abs floor ceil round min max clamp pow float int radians degrees`
+   **What compiles natively (3.3):**
+   - numbers, booleans, quantities with units, string literals, fixed-size arrays
+   - structs with invariants, methods and interfaces
+   - `GPIO`/`I2C`/`SPI`/`UART`/`PWM`/`Servo`
+   - state machines, `always` monitors
+   - `every!` and `repeat!`
+   - contracts, default and keyword arguments
+   - `print` with f-strings and format specs
+   - top-level program code
+
+   **Outputs:**
+   - `--target sim|linux --exe` links a standalone executable.
+   - Firmware targets (`rp2040`, `esp32*`, `cortex-m*`, `riscv32`) produce an object file for
+     the board's SDK.
+   - `tulpa new <dir> --board B` scaffolds a complete firmware project.
 
    **Semantics match the interpreter:**
    - Integer `/` and `%` are Euclidean.
-   - Integer overflow and division by zero are caught.
-   - `require`, `ensure`, loop `invariant` and `assert` become checks that call
-     `tulpa_violation(msg)`. That's a weak symbol which prints the message and aborts, so you can
-     override it in firmware (for example, to trigger an emergency stop).
+   - Integer overflow, division by zero and array bounds are checked.
+   - Device errors use the interpreter's messages.
+   - `require`, `ensure`, invariants, `assert` and `always` call `tulpa_violation(msg)`. That's
+     a weak symbol: on a host it prints the message and aborts; on a board it calls
+     `tulpa_hal_panic`. Override it to trigger an emergency stop.
 
-   **Unit-typed parameters** (`v: [km/h]`, `-> [m]`) compile too.
-   - Dimensions are checked when you build, so `d + t` with a length and a time is rejected with a unit-mismatch message.
-   - The generated code works in SI doubles.
-   - At the C boundary, values pass in the declared unit: `tulpa_stop_dist(36.0 /* km/h */, ...)`.
-   - Calls between native functions convert automatically.
-   - `.in("unit")` and `.to("unit")` with a literal unit, `.si`, `sqrt`, `abs`, `min`/`max`/`clamp`, and trig on angles are all supported.
+   **Units:**
+   - Dimensions are checked at build time, so `d + t` with a length and a time is rejected.
+   - The generated code works in SI doubles. At the C boundary, values pass in the declared unit.
+   - Native `print` shows SI units unless the value is printed through `.to("unit")`.
 
-   Functions outside the subset are listed with the reason they were skipped.
+   Dicts, closures, `match`, `try`, tasks, signals and `when` rules stay on the interpreter.
+   Functions that are skipped are listed with the reason. The full list of targets, the runtime
+   layers and the HAL porting guide are in [Native and embedded targets](embedded.md).
 
 ## Editor support
 
@@ -498,7 +529,9 @@ tulpa check file.rav ...     syntax check only
 tulpa ast file.rav           dump the AST
 tulpa                        REPL (:log, :reset, :quit)
 tulpa verify file.rav        fuzz contracted functions (--trials=N)
-tulpa build file.rav -o x.o  native object + header (--shared, -O0..3); emit-llvm prints IR
+tulpa build file.rav -o x.o  native object + header (--target T, --exe, --shared, -O0..3)
+tulpa new dir --board B      firmware project (rp2040, esp32, esp32c3, linux, ...)
+tulpa runtime dir --target T C runtime + HAL port; tulpa targets lists targets
 tulpa bytecode file.rav      VM bytecode per function
 tulpa lsp                    language server over stdio
 --virtual-time / --no-vm     simulated clock / interpreter only

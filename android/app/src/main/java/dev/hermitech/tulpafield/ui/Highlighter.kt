@@ -14,7 +14,7 @@ import dev.hermitech.tulpafield.core.Diagnostic
 object Highlighter {
     val keywords = setOf(
         "let", "const", "fn", "def", "return", "if", "elif", "else", "while", "loop", "for", "in", "not", "and", "or",
-        "break", "continue", "match", "struct", "machine", "state", "on", "enter", "exit", "when", "always", "after",
+        "break", "continue", "match", "struct", "machine", "interface", "impl", "state", "on", "enter", "exit", "when", "always", "after",
         "within", "ensure", "require", "import", "from", "as", "use", "try", "catch", "throw", "spawn", "await", "unit",
         "contract",
     )

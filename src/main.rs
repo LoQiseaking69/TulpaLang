@@ -5,7 +5,7 @@ use std::process::ExitCode;
 use tulpa::{parse, Backend, Interpreter, ParseError};
 
 const USAGE: &str = "\
-Tulpa 3.1 — device-integration scripting language
+Tulpa {VERSION} — a language for robots and hardware
 
 USAGE:
     tulpa [FLAGS] <file.tlp|file.rav> [args...]   run a program
@@ -16,8 +16,15 @@ USAGE:
     tulpa ast <file>                              dump the parsed syntax tree
     tulpa verify [--trials=N] <file>...           fuzz every fn against its own require/ensure
     tulpa graph <file>...                         print Mermaid diagrams of every state machine
-    tulpa emit-llvm <file> [-o out.ll]            LLVM IR for the typed numeric subset
-    tulpa build <file> [-o out.o] [--shared]      native object/library + C header (needs clang)
+    tulpa emit-llvm <file> [--target T] [-o out.ll]  LLVM IR for the program
+    tulpa build <file> [--target T] [-o out]      native object + C header (needs clang)
+        --target T   sim | linux | rp2040 | esp32 | esp32s3 | esp32c3 | esp32c6 | ... (tulpa targets)
+        --exe        link a runnable program (targets sim, linux)
+        --sim        allow sim::* calls (you link hal_sim.c, e.g. to test firmware in QEMU)
+        --shared     shared library (host)
+    tulpa new <dir> --board B                     firmware project for a board (rp2040, esp32c3, ...)
+    tulpa runtime <dir> [--target T]              write the C runtime + HAL port for your own build
+    tulpa targets                                 list native targets
     tulpa bytecode <file>                         show VM bytecode per function
     tulpa lsp                                     language server over stdio
 
@@ -248,50 +255,114 @@ fn verify_files(files: &[String], o: &Opts, trials: usize) -> ExitCode {
     }
 }
 
-/// `tulpa emit-llvm file.rav [-o out.ll]` / `tulpa build file.rav [-o out.o] [--shared]`
+/// `tulpa emit-llvm file.rav [--target T] [-o out.ll]` /
+/// `tulpa build file.rav [--target T] [-o out] [--exe] [--shared] [-O2]`
 fn native(rest: &[String], build: bool) -> ExitCode {
     let mut file = None;
     let mut out: Option<String> = None;
     let mut shared = false;
-    let mut opt = "-O2".to_string();
+    let mut exe = false;
+    let mut sim_hal = false;
+    let mut target_name: Option<String> = None;
+    let mut opt: Option<String> = None;
     let mut it = rest[1..].iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "-o" => out = it.next().cloned(),
             "--shared" => shared = true,
-            "-O0" | "-O1" | "-O2" | "-O3" | "-Os" => opt = a.clone(),
+            "--exe" => exe = true,
+            "--sim" => sim_hal = true,
+            "--target" => target_name = it.next().cloned(),
+            t if t.starts_with("--target=") => {
+                target_name = Some(t["--target=".len()..].to_string())
+            }
+            "-O0" | "-O1" | "-O2" | "-O3" | "-Os" | "-Oz" => opt = Some(a.clone()),
+            f if f.starts_with('-') => {
+                eprintln!("tulpa {}: unknown option {f}", rest[0]);
+                return ExitCode::from(2);
+            }
             f => file = Some(f.to_string()),
         }
     }
     let Some(file) = file else {
         eprintln!(
-            "usage: tulpa {} <file.rav> [-o out]",
+            "usage: tulpa {} <file.rav> [--target T] [-o out]",
             if build { "build" } else { "emit-llvm" }
         );
         return ExitCode::from(2);
     };
+    if exe && target_name.is_none() {
+        target_name = Some(
+            if cfg!(target_os = "linux") {
+                "linux"
+            } else {
+                "sim"
+            }
+            .to_string(),
+        );
+    }
+    let target = match &target_name {
+        None => None,
+        Some(n) => match tulpa::native::target(n) {
+            Some(t) => Some(t),
+            None => {
+                eprintln!("tulpa: unknown target '{n}'; `tulpa targets` lists them");
+                return ExitCode::from(2);
+            }
+        },
+    };
+    if exe && !target.is_some_and(|t| t.exe) {
+        eprintln!("tulpa: --exe links a host program; use --target sim or --target linux (firmware targets produce an object for the board's SDK)");
+        return ExitCode::from(2);
+    }
     let (_, prog) = match load(&file) {
         Ok(x) => x,
         Err(c) => return c,
+    };
+    let (prog, aliases) = match tulpa::native::flatten_imports(prog, std::path::Path::new(&file)) {
+        Ok(x) => x,
+        Err(e) => {
+            eprintln!("tulpa: {e}");
+            return ExitCode::from(2);
+        }
     };
     let stem = std::path::Path::new(&file)
         .file_stem()
         .map(|s| s.to_string_lossy().to_string())
         .unwrap_or_else(|| "tulpa".into());
-    let report = tulpa::llvm::emit_module(&prog, &stem);
+    let opts = tulpa::llvm::Options {
+        embedded: target.is_some(),
+        sim: sim_hal || target.is_some_and(|t| t.hal == tulpa::native::Hal::Sim),
+        module_aliases: aliases,
+    };
+    let report = tulpa::llvm::emit_program(&prog, &stem, &opts);
     for (name, sig) in &report.compiled {
         let ps: Vec<String> = sig
             .params
             .iter()
-            .map(|(n, t)| format!("{n}: {}", t.c()))
+            .zip(sig.cparams.iter())
+            .map(|((n, _), c)| format!("{n}: {}", c.trim_end()))
             .collect();
-        eprintln!("  native  {name}({}) -> {}", ps.join(", "), sig.ret.c());
+        let ret = if sig.void {
+            "void".to_string()
+        } else {
+            sig.cret.trim_end().to_string()
+        };
+        eprintln!(
+            "  native  {}({}) -> {ret}",
+            name.replace("__", "."),
+            ps.join(", ")
+        );
     }
     for (name, why) in &report.skipped {
         eprintln!("  skipped {name}: {why}");
     }
     if report.compiled.is_empty() {
-        eprintln!("tulpa: no functions in {file} fit the native subset");
+        eprintln!("tulpa: nothing in {file} fits the native subset");
+        return ExitCode::from(1);
+    }
+    if exe && !report.has_entry {
+        eprintln!("tulpa: --exe needs the program's top-level code to compile natively (see 'skipped <program>' above)");
         return ExitCode::from(1);
     }
     if !build {
@@ -307,10 +378,18 @@ fn native(rest: &[String], build: bool) -> ExitCode {
         }
         return ExitCode::SUCCESS;
     }
-    let out = out.unwrap_or_else(|| format!("{stem}{}", if shared { ".so" } else { ".o" }));
+    let default_out = if exe {
+        stem.clone()
+    } else if shared {
+        format!("{stem}.so")
+    } else {
+        format!("{stem}.o")
+    };
+    let out = out.unwrap_or(default_out);
     let base = out
-        .trim_end_matches(".so")
-        .trim_end_matches(".o")
+        .strip_suffix(".so")
+        .or_else(|| out.strip_suffix(".o"))
+        .unwrap_or(&out)
         .to_string();
     let ll = format!("{base}.ll");
     let header = format!("{base}.h");
@@ -325,47 +404,205 @@ fn native(rest: &[String], build: bool) -> ExitCode {
         eprintln!("tulpa: {e}");
         return ExitCode::from(2);
     }
-    let (cc, major) = match find_clang() {
+    // the header includes tulpa_hal.h when the program uses devices or the runtime
+    let out_dir = std::path::Path::new(&header)
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(std::path::Path::new("."))
+        .to_path_buf();
+    if report.needs_runtime || target.is_some() {
+        if let Err(e) = std::fs::write(out_dir.join("tulpa_hal.h"), tulpa::native::HAL_H) {
+            eprintln!("tulpa: {e}");
+            return ExitCode::from(2);
+        }
+    }
+    let xtensa = target.is_some_and(|t| t.xtensa);
+    let (cc, major) = match find_clang(xtensa) {
         Ok(x) => x,
         Err(msg) => {
             eprintln!("tulpa: {msg}; the IR is in {ll} and the header in {header}");
             return ExitCode::from(1);
         }
     };
+    let opt = opt.unwrap_or_else(|| {
+        if target.is_some_and(|t| t.embedded) {
+            "-Os"
+        } else {
+            "-O2"
+        }
+        .to_string()
+    });
     let mut cmd = std::process::Command::new(&cc);
     cmd.args([opt.as_str(), "-Wno-override-module"]);
     if major == Some(14) {
         // The IR uses opaque `ptr`, which clang 14 only accepts behind this flag.
         cmd.args(["-mllvm", "-opaque-pointers"]);
     }
+    if let Some(t) = target {
+        cmd.args(t.cflags);
+        if t.embedded {
+            cmd.args(["-ffunction-sections", "-fdata-sections"]);
+        }
+    }
+    let obj = if exe {
+        format!("{base}.o")
+    } else {
+        out.clone()
+    };
     if shared {
         cmd.args(["-shared", "-fPIC"]);
     } else {
         cmd.arg("-c");
     }
-    cmd.args([&ll, "-o", &out]);
+    cmd.args([&ll, "-o", if shared { &out } else { &obj }]);
     if shared {
         cmd.arg("-lm");
     }
     match cmd.status() {
-        Ok(s) if s.success() => {
-            eprintln!("built {out} (+ {header}, {ll})");
-            ExitCode::SUCCESS
-        }
+        Ok(s) if s.success() => {}
         Ok(_) => {
             eprintln!("tulpa: {cc} failed compiling {ll}");
-            ExitCode::from(1)
+            return ExitCode::from(1);
         }
         Err(e) => {
             eprintln!("tulpa: cannot run {cc} ({e}); the IR is in {ll} and the header in {header}");
+            return ExitCode::from(1);
+        }
+    }
+    if !exe {
+        eprintln!("built {out} (+ {header}, {ll})");
+        if let Some(t) = target {
+            if t.embedded {
+                let hal = t.hal.source().map(|(n, _)| n).unwrap_or("your HAL port");
+                eprintln!(
+                    "link it with tulpa_rt.c and {hal} (`tulpa runtime <dir> --target {}` writes them; `tulpa new` scaffolds a whole project)",
+                    t.name
+                );
+            }
+        }
+        return ExitCode::SUCCESS;
+    }
+    // --exe: link with the runtime and the target's HAL into a host program
+    let t = target.unwrap();
+    let rtdir = std::path::PathBuf::from(format!("{base}.runtime"));
+    let files = match tulpa::native::write_runtime(&rtdir, t.hal) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("tulpa: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let main_c = rtdir.join("main.c");
+    if let Err(e) = std::fs::write(
+        &main_c,
+        "#include \"tulpa_hal.h\"\nint main(void) { tulpa_entry(); return 0; }\n",
+    ) {
+        eprintln!("tulpa: {e}");
+        return ExitCode::from(2);
+    }
+    let mut link = std::process::Command::new(&cc);
+    link.args([opt.as_str(), "-std=c11", "-I"]).arg(&rtdir);
+    for f in files
+        .iter()
+        .filter(|f| f.extension().is_some_and(|e| e == "c"))
+    {
+        link.arg(f);
+    }
+    link.arg(&main_c).arg(&obj).args(["-o", &out, "-lm"]);
+    match link.status() {
+        Ok(s) if s.success() => {
+            eprintln!(
+                "built {out} (target {}; runtime in {})",
+                t.name,
+                rtdir.display()
+            );
+            ExitCode::SUCCESS
+        }
+        Ok(_) => {
+            eprintln!("tulpa: linking {out} failed");
             ExitCode::from(1)
+        }
+        Err(e) => {
+            eprintln!("tulpa: cannot run {cc} ({e})");
+            ExitCode::from(1)
+        }
+    }
+}
+
+/// `tulpa new <dir> --board rp2040`
+fn new_project(rest: &[String]) -> ExitCode {
+    let mut dir = None;
+    let mut board = None;
+    let mut it = rest.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--board" | "--target" => board = it.next().cloned(),
+            b if b.starts_with("--board=") => board = Some(b["--board=".len()..].to_string()),
+            d => dir = Some(d.to_string()),
+        }
+    }
+    let (Some(dir), Some(board)) = (dir, board) else {
+        eprintln!("usage: tulpa new <dir> --board <rp2040|esp32|esp32s3|esp32c3|esp32c6|linux>");
+        return ExitCode::from(2);
+    };
+    match tulpa::native::new_project(std::path::Path::new(&dir), &board) {
+        Ok(files) => {
+            for f in &files {
+                println!("  created {}", f.display());
+            }
+            let next = match tulpa::native::target(&board).map(|t| t.hal) {
+                Some(tulpa::native::Hal::Pico) => format!("cd {dir} && cmake -B build -DPICO_SDK_PATH=$PICO_SDK_PATH && cmake --build build"),
+                Some(tulpa::native::Hal::EspIdf) => format!("cd {dir} && idf.py set-target {board} && idf.py build flash monitor"),
+                _ => format!("cd {dir} && make"),
+            };
+            println!("\ntry it on the simulator: tulpa run {dir}/app.rav --virtual-time\nbuild the firmware:      {next}");
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("tulpa new: {e}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+/// `tulpa runtime <dir> [--target T]`
+fn write_runtime(rest: &[String]) -> ExitCode {
+    let mut dir = None;
+    let mut t = "cortex-m0".to_string();
+    let mut it = rest.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--target" | "--board" => t = it.next().cloned().unwrap_or_default(),
+            d => dir = Some(d.to_string()),
+        }
+    }
+    let Some(dir) = dir else {
+        eprintln!("usage: tulpa runtime <dir> [--target T]");
+        return ExitCode::from(2);
+    };
+    let Some(target) = tulpa::native::target(&t) else {
+        eprintln!("tulpa: unknown target '{t}'");
+        return ExitCode::from(2);
+    };
+    match tulpa::native::write_runtime(std::path::Path::new(&dir), target.hal) {
+        Ok(files) => {
+            for f in files {
+                println!("  wrote {}", f.display());
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("tulpa: {e}");
+            ExitCode::from(2)
         }
     }
 }
 
 /// Picks the C compiler for `tulpa build`: `$TULPA_CLANG`, else `clang`, else the newest
 /// installed `clang-N`. Returns the command and its major version when it can be read.
-fn find_clang() -> Result<(String, Option<u32>), String> {
+/// Xtensa targets (ESP32, ESP32-S2/S3) need Espressif's clang, which is looked up in the
+/// ESP-IDF tools directory (`idf_tools.py install esp-clang`).
+fn find_clang(xtensa: bool) -> Result<(String, Option<u32>), String> {
     fn major_of(cc: &str) -> Option<Option<u32>> {
         let out = std::process::Command::new(cc)
             .arg("--version")
@@ -379,13 +616,51 @@ fn find_clang() -> Result<(String, Option<u32>), String> {
             .and_then(|n| n.parse().ok());
         Some(v)
     }
+    // upstream LLVM has a generic, experimental Xtensa backend without the ESP32 CPUs;
+    // Espressif's build is the one that targets them
+    fn has_xtensa(cc: &str) -> bool {
+        std::process::Command::new(cc)
+            .arg("--version")
+            .output()
+            .map(|o| {
+                String::from_utf8_lossy(&o.stdout)
+                    .to_lowercase()
+                    .contains("espressif")
+            })
+            .unwrap_or(false)
+    }
     let explicit = std::env::var("TULPA_CLANG").ok();
-    let candidates: Vec<String> = match &explicit {
+    let mut candidates: Vec<String> = match &explicit {
         Some(cc) => vec![cc.clone()],
         None => std::iter::once("clang".to_string())
             .chain((14..=22).rev().map(|n| format!("clang-{n}")))
             .collect(),
     };
+    if xtensa && explicit.is_none() {
+        let mut roots = Vec::new();
+        if let Some(p) = std::env::var_os("IDF_TOOLS_PATH") {
+            roots.push(std::path::PathBuf::from(p));
+        }
+        if let Some(h) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
+            roots.push(std::path::PathBuf::from(h).join(".espressif"));
+        }
+        let mut found = Vec::new();
+        for r in roots {
+            if let Ok(vers) = std::fs::read_dir(r.join("tools/esp-clang")) {
+                for v in vers.flatten() {
+                    for exe in ["clang", "clang.exe"] {
+                        let p = v.path().join("esp-clang/bin").join(exe);
+                        if p.is_file() {
+                            found.push(p.to_string_lossy().to_string());
+                        }
+                    }
+                }
+            }
+        }
+        found.sort();
+        found.reverse();
+        candidates = found.into_iter().chain(candidates).collect();
+    }
     for cc in candidates {
         if let Some(major) = major_of(&cc) {
             if let Some(m) = major {
@@ -395,8 +670,17 @@ fn find_clang() -> Result<(String, Option<u32>), String> {
                     ));
                 }
             }
+            if xtensa && !has_xtensa(&cc) {
+                if explicit.is_some() {
+                    return Err(format!("{cc} is not Espressif's clang, which ESP32 / ESP32-S2 / ESP32-S3 (Xtensa) need"));
+                }
+                continue;
+            }
             return Ok((cc, major));
         }
+    }
+    if xtensa {
+        return Err("ESP32 / ESP32-S2 / ESP32-S3 are Xtensa chips and need Espressif's clang: run `python $IDF_PATH/tools/idf_tools.py install esp-clang`, or set TULPA_CLANG".into());
     }
     Err(match explicit {
         Some(cc) => format!("cannot run {cc} (from TULPA_CLANG)"),
@@ -568,7 +852,11 @@ fn real_main() -> ExitCode {
     let mut seen_file = false;
     let mut want_value: Option<&'static str> = None;
     for a in args.drain(..) {
-        if seen_file {
+        let native_cmd = matches!(
+            rest.first().map(String::as_str),
+            Some("build" | "emit-llvm" | "new" | "runtime" | "targets")
+        );
+        if seen_file || native_cmd {
             rest.push(a);
             continue;
         }
@@ -601,7 +889,7 @@ fn real_main() -> ExitCode {
             "--virtual-time" => o.virtual_time = true,
             "--no-vm" => o.no_vm = true,
             "-h" | "--help" => {
-                print!("{USAGE}");
+                print!("{}", USAGE.replace("{VERSION}", env!("CARGO_PKG_VERSION")));
                 return ExitCode::SUCCESS;
             }
             "-V" | "--version" => {
@@ -609,7 +897,10 @@ fn real_main() -> ExitCode {
                 return ExitCode::SUCCESS;
             }
             s if s.starts_with("--") => {
-                eprintln!("tulpa: unknown flag {s}\n\n{USAGE}");
+                eprintln!(
+                    "tulpa: unknown flag {s}\n\n{}",
+                    USAGE.replace("{VERSION}", env!("CARGO_PKG_VERSION"))
+                );
                 return ExitCode::from(2);
             }
             _ => {
@@ -626,6 +917,9 @@ fn real_main() -> ExitCode {
                         | "build"
                         | "bytecode"
                         | "lsp"
+                        | "new"
+                        | "runtime"
+                        | "targets"
                 ) || !rest.is_empty()
                 {
                     seen_file = true;
@@ -671,6 +965,14 @@ fn real_main() -> ExitCode {
         }
         Some("graph") => graph_files(&rest[1..], &o),
         Some("emit-llvm") | Some("build") => native(&rest, rest[0] == "build"),
+        Some("new") => new_project(&rest[1..]),
+        Some("runtime") => write_runtime(&rest[1..]),
+        Some("targets") => {
+            for t in tulpa::native::TARGETS {
+                println!("  {:<11} {}", t.name, t.about);
+            }
+            ExitCode::SUCCESS
+        }
         Some("bytecode") => bytecode(&rest[1..]),
         Some("lsp") => tulpa::lsp::serve(),
         Some("ast") => match rest.get(1).map(|f| load(f)) {

@@ -312,6 +312,126 @@ impl Interpreter {
 
     // ------------------------------------------------------------------ types
 
+    /// Every method an interface requires, including those of the interfaces it extends.
+    pub(crate) fn interface_methods(&self, name: &str) -> Vec<(String, MethodSig)> {
+        let mut out = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        let mut todo = vec![name.to_string()];
+        while let Some(n) = todo.pop() {
+            if !seen.insert(n.clone()) {
+                continue;
+            }
+            if let Some(def) = self.interfaces.get(&n) {
+                for m in &def.methods {
+                    out.push((n.clone(), m.clone()));
+                }
+                todo.extend(def.extends.iter().cloned());
+            }
+        }
+        out
+    }
+
+    /// Does a struct that declares `implements` satisfy `want` (directly or through `extends`)?
+    pub(crate) fn satisfies(&self, implements: &[String], want: &str) -> bool {
+        let mut todo: Vec<String> = implements.to_vec();
+        let mut seen = std::collections::HashSet::new();
+        while let Some(n) = todo.pop() {
+            if n == want {
+                return true;
+            }
+            if seen.insert(n.clone()) {
+                if let Some(def) = self.interfaces.get(&n) {
+                    todo.extend(def.extends.iter().cloned());
+                }
+            }
+        }
+        false
+    }
+
+    /// Checks `struct S impl A, B { ... }` against the interfaces' method signatures: every
+    /// required method exists with the same number of parameters, and wherever the interface
+    /// annotates a parameter or return type, the struct's method declares the same type (units
+    /// are compared by dimension, so `[mm]` satisfies `[m]`).
+    pub(crate) fn check_conformance(&self, def: &StructDef) -> R<()> {
+        fn same(a: &TypeAnn, b: &TypeAnn) -> bool {
+            match (a, b) {
+                (TypeAnn::Unit(x, xo), TypeAnn::Unit(y, yo)) => x.dim == y.dim && xo == yo,
+                (TypeAnn::Name(x, xo), TypeAnn::Name(y, yo)) => x == y && xo == yo,
+                _ => false,
+            }
+        }
+        fn show(t: &TypeAnn) -> String {
+            match t {
+                TypeAnn::Unit(u, o) => format!("[{}]{}", u.name, if *o { "?" } else { "" }),
+                TypeAnn::Name(n, o) => format!("{n}{}", if *o { "?" } else { "" }),
+            }
+        }
+        for iface in &def.implements {
+            if !self.interfaces.contains_key(iface) {
+                return rt(format!(
+                    "struct {} implements unknown interface '{iface}' (declare it, or import the module that does)",
+                    def.name
+                ));
+            }
+            for (owner, sig) in self.interface_methods(iface) {
+                let Some(m) = def.methods.iter().find(|m| m.name == sig.name) else {
+                    let ps: Vec<&str> = sig.params.iter().map(|p| p.name.as_str()).collect();
+                    return rt(format!(
+                        "struct {} implements {owner} but has no method {}({})",
+                        def.name,
+                        sig.name,
+                        ps.join(", ")
+                    ));
+                };
+                if m.params.len() != sig.params.len() {
+                    return rt(format!(
+                        "{}.{}() takes {} parameter(s) but {owner}.{} declares {}",
+                        def.name,
+                        sig.name,
+                        m.params.len(),
+                        sig.name,
+                        sig.params.len()
+                    ));
+                }
+                for (want, got) in sig.params.iter().zip(&m.params) {
+                    if let Some(w) = &want.ty {
+                        match &got.ty {
+                            Some(g) if same(w, g) => {}
+                            other => {
+                                return rt(format!(
+                                    "{}.{}(): parameter '{}' must be declared {} to implement {owner} (it is {})",
+                                    def.name,
+                                    sig.name,
+                                    got.name,
+                                    show(w),
+                                    other.as_ref().map(show).unwrap_or_else(|| "untyped".into())
+                                ))
+                            }
+                        }
+                    }
+                }
+                if let Some(w) = &sig.ret {
+                    match &m.ret {
+                        Some(g) if same(w, g) => {}
+                        other => {
+                            return rt(format!(
+                                "{}.{}() must return {} to implement {owner} (it returns {})",
+                                def.name,
+                                sig.name,
+                                show(w),
+                                other
+                                    .as_ref()
+                                    .map(show)
+                                    .unwrap_or_else(|| "an untyped value".into())
+                            ))
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn type_matches(&self, ty: &TypeAnn, v: &Value) -> bool {
         let (ok, optional) = match ty {
             TypeAnn::Unit(u, opt) => (matches!(v, Value::Quantity(q) if q.dim == u.dim), *opt),
@@ -335,7 +455,12 @@ impl Interpreter {
                     "quantity" => matches!(v, Value::Quantity(_)),
                     "signal" => matches!(v, Value::Signal(_)),
                     other => match v {
-                        Value::Object(o) => o.borrow().ty.def.name == other,
+                        Value::Object(o) => {
+                            let b = o.borrow();
+                            b.ty.def.name == other
+                                || (self.interfaces.contains_key(other)
+                                    && self.satisfies(&b.ty.def.implements, other))
+                        }
                         Value::Machine(m) => m.borrow().ty.def.name == other,
                         Value::Native(n) => n.borrow().type_name() == other,
                         _ => false,

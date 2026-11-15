@@ -3,12 +3,12 @@ export default function tulpa(hljs) {
   const IDENT = '[A-Za-z_][A-Za-z0-9_]*';
   const KEYWORDS = {
     keyword: [
-      'fn', 'def', 'let', 'const', 'mut', 'struct', 'machine', 'state', 'on', 'enter', 'exit',
+      'fn', 'def', 'let', 'const', 'mut', 'struct', 'machine', 'interface', 'impl', 'state', 'on', 'enter', 'exit',
       'if', 'elif', 'else', 'while', 'for', 'in', 'loop', 'break', 'continue', 'return', 'match',
       'try', 'catch', 'spawn', 'await', 'use', 'import', 'from', 'as', 'after', 'within',
       'and', 'or', 'not'
     ],
-    built_in: ['print', 'len', 'signal', 'derive', 'check', 'round', 'sin', 'cos', 'sqrt', 'float', 'int', 'str', 'abs', 'min', 'max', 'range'],
+    built_in: ['print', 'len', 'signal', 'derive', 'check', 'implements', 'round', 'sin', 'cos', 'sqrt', 'float', 'int', 'str', 'abs', 'min', 'max', 'range'],
     literal: ['true', 'false', 'nil', 'self', 'PI', 'TAU', 'E', 'HIGH', 'LOW', 'ARGS']
   };
   const SPEC = { className: 'meta', begin: /\b(require|ensure|invariant|assert|always|when)\b/ };

@@ -1,0 +1,130 @@
+# std/driver: building blocks for hardware drivers written in Tulpa.
+#
+#   from "std/driver" import Imu, bits, i16_be
+#
+#   struct MyImu impl Imu { bus: I2C ... }
+#
+# The interfaces below are the contracts tools rely on: anything that implements Imu can be
+# handed to code that expects an Imu, and `struct X impl Imu` is checked when it is defined
+# (every method present, units matching). The helpers are plain integer functions, so drivers
+# built on them also compile natively (`tulpa build --target rp2040`).
+
+# --------------------------------------------------------------------- interfaces
+
+# Every driver: confirm the device answers (and is the part you think it is), then configure it.
+interface Driver {
+    fn probe(self) -> bool
+    fn init(self)
+}
+
+# Inertial measurement unit. `update()` reads all axes in one bus transaction; the accessors
+# return the values from the last update.
+interface Imu: Driver {
+    fn update(self)
+    fn accel_x(self) -> [m/s^2]
+    fn accel_y(self) -> [m/s^2]
+    fn accel_z(self) -> [m/s^2]
+    fn gyro_x(self) -> [rad/s]
+    fn gyro_y(self) -> [rad/s]
+    fn gyro_z(self) -> [rad/s]
+}
+
+interface Thermometer: Driver {
+    fn temperature(self) -> [K]
+}
+
+interface Rangefinder: Driver {
+    fn distance(self) -> [m]
+}
+
+# Analog-to-digital converter.
+interface Adc: Driver {
+    fn read_raw(self, channel: int) -> int
+    fn read_volts(self, channel: int) -> [V]
+}
+
+# Multi-channel PWM generator (servo and LED drivers).
+interface PwmController: Driver {
+    fn set_frequency(self, f: [Hz])
+    fn set_pulse(self, channel: int, width: [s])
+}
+
+# --------------------------------------------------------------------- bit helpers
+
+# `width` bits of `v` starting at bit `shift`.
+fn bits(v: int, shift: int, width: int) -> int
+    require shift >= 0 and width > 0 and shift + width <= 62
+{
+    (v >> shift) & ((1 << width) - 1)
+}
+
+# `v` with `width` bits at `shift` replaced by `x`.
+fn with_bits(v: int, shift: int, width: int, x: int) -> int
+    require shift >= 0 and width > 0 and shift + width <= 62
+    require x >= 0 and x < (1 << width)
+{
+    let mask = ((1 << width) - 1) << shift
+    (v & ~mask) | (x << shift)
+}
+
+fn bit(v: int, n: int) -> bool
+    require n >= 0 and n < 62
+{
+    ((v >> n) & 1) == 1
+}
+
+# Interprets the low `nbits` of `v` as a two's-complement number.
+fn twos(v: int, nbits: int) -> int
+    require nbits > 0 and nbits < 63
+{
+    let m = v & ((1 << nbits) - 1)
+    if m >= (1 << (nbits - 1)) { m - (1 << nbits) } else { m }
+}
+
+fn u16_be(hi: int, lo: int) -> int => ((hi & 255) << 8) | (lo & 255)
+fn u16_le(lo: int, hi: int) -> int => ((hi & 255) << 8) | (lo & 255)
+fn i16_be(hi: int, lo: int) -> int => twos(u16_be(hi, lo), 16)
+fn i16_le(lo: int, hi: int) -> int => twos(u16_le(lo, hi), 16)
+
+fn lo8(v: int) -> int => v & 255
+fn hi8(v: int) -> int => (v >> 8) & 255
+
+# --------------------------------------------------------------------- register maps
+
+# Bus-agnostic register access for the interpreter: wraps an I2C device, or an SPI device that
+# marks reads with a flag bit in the register address (0x80 for most sensors).
+#
+#   let r = Regmap(I2C::new(1, 0x68))
+#   let r = Regmap(SPI::new(0, 0), 0x80)
+struct Regmap {
+    dev
+    read_flag: int = 0x80
+
+    fn read(self, reg: int) -> int {
+        if type(self.dev) == "I2C" {
+            return self.dev.read_reg(reg)
+        }
+        self.dev.transfer([reg | self.read_flag, 0])[1]
+    }
+    fn read_n(self, reg: int, n: int) {
+        if type(self.dev) == "I2C" {
+            return self.dev.read_regs(reg, n)
+        }
+        let rx = self.dev.transfer([reg | self.read_flag] + [0] * n)
+        rx[1..len(rx)]
+    }
+    fn write(self, reg: int, v: int) {
+        if type(self.dev) == "I2C" {
+            self.dev.write_reg(reg, v)
+        } else {
+            self.dev.transfer([reg & ~self.read_flag, v])
+        }
+    }
+    fn update(self, reg: int, mask: int, v: int) {
+        self.write(reg, (self.read(reg) & ~mask) | (v & mask))
+    }
+    fn field(self, reg: int, shift: int, width: int) -> int => bits(self.read(reg), shift, width)
+    fn set_field(self, reg: int, shift: int, width: int, x: int) {
+        self.write(reg, with_bits(self.read(reg), shift, width, x))
+    }
+}

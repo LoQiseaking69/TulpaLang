@@ -17,6 +17,7 @@ pub mod interp;
 pub mod lexer;
 pub mod llvm;
 pub mod lsp;
+pub mod native;
 pub mod nn;
 pub mod parser;
 pub mod stdx;

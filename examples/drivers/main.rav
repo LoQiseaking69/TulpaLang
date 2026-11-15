@@ -1,0 +1,31 @@
+from "std/drivers/mpu6050" import Mpu6050
+from "std/drivers/pca9685" import Pca9685
+from "std/drivers/mcp3008" import Mcp3008
+from "std/driver" import bits, with_bits, twos, i16_be
+
+# IMU at 1 g on Z, gyro x = +131 counts (1 deg/s), temperature raw 0 → 36.53 °C
+sim::i2c_set(0x68, 0x75, [0x68])
+sim::i2c_set(0x68, 0x3B, [0, 0, 0, 0, 0x40, 0x00, 0, 0, 0, 131, 0, 0, 0, 0])
+let imu = Mpu6050(I2C::new(1, 0x68))
+print("probe", imu.probe(), implements(imu, "Imu"), implements(imu, "Driver"))
+imu.init()
+print("pwr", sim::i2c_get(0x68, 0x6B))
+imu.update()
+print(f"az {imu.accel_z():.4f}  gx {imu.gyro_x().to("deg/s"):.3f}  T {imu.temperature().in("K") - 273.15:.2f} C")
+imu.set_ranges(1, 2)
+imu.update()
+print(f"az {imu.accel_z():.4f}  gx {imu.gyro_x().to("deg/s"):.3f}")
+
+let pwm = Pca9685(I2C::new(1, 0x40))
+pwm.init()
+print("prescale", sim::i2c_get(0x40, 0xFE))
+pwm.set_angle(3, 90[deg])
+print("ch3", sim::i2c_get(0x40, 0x06 + 12, 4))
+
+let adc = Mcp3008(SPI::new(0, 0), 3.3[V])
+sim::spi_respond(0, 0, [0, 0x02, 0x00])
+print("raw", adc.read_raw(2))
+sim::spi_respond(0, 0, [0, 0x03, 0xFF])
+print(f"volts {adc.read_volts(5).in("V"):.3f}")
+
+print("bits", bits(0xF0, 4, 4), with_bits(0, 2, 3, 5), twos(0xFFFE, 16), i16_be(0x80, 0))

@@ -1,0 +1,90 @@
+# NXP PCA9685 16-channel, 12-bit PWM controller over I2C (default address 0x40). Common on
+# servo driver boards.
+#
+#   from "std/drivers/pca9685" import Pca9685
+#   let pwm = Pca9685(I2C::new(1, 0x40))
+#   pwm.init()
+#   pwm.set_frequency(50[Hz])
+#   pwm.set_angle(0, 90[deg])
+
+from "std/driver" import PwmController, lo8, hi8
+
+const MODE1 = 0x00
+const MODE2 = 0x01
+const LED0_ON_L = 0x06
+const PRESCALE = 0xFE
+const OSC_HZ = 25000000.0
+
+struct Pca9685 impl PwmController {
+    bus: I2C
+    freq: [Hz] = 50[Hz]
+    min_pulse: [s] = 500[us]       # servo pulse at 0°
+    max_pulse: [s] = 2500[us]      # servo pulse at the end of the range
+    range: [rad] = 180[deg]
+    invariant self.min_pulse < self.max_pulse
+
+    # MODE1 reads 0x01 (ALLCALL) after power-on or 0x00-0x7F; bit 7 (RESTART) is never set
+    # without a prior sleep, so a register file of 0xFF means nothing is there.
+    fn probe(self) -> bool {
+        self.bus.read_reg(MODE1) != 0xFF
+    }
+
+    fn init(self) {
+        self.bus.write_reg(MODE2, 0x04)        # totem-pole outputs
+        self.bus.write_reg(MODE1, 0x20)        # auto-increment on, oscillator running
+        self.set_frequency(self.freq)
+    }
+
+    fn prescale_for(self, f: [Hz]) -> int {
+        clamp(round(OSC_HZ / (4096.0 * f.in("Hz"))) - 1, 3, 255)
+    }
+
+    fn set_frequency(self, f: [Hz])
+        require f >= 24[Hz] and f <= 1526[Hz]
+    {
+        let pre = self.prescale_for(f)
+        let mode = self.bus.read_reg(MODE1)
+        self.bus.write_reg(MODE1, (mode & 0x7F) | 0x10)   # sleep while changing the prescaler
+        self.bus.write_reg(PRESCALE, pre)
+        self.bus.write_reg(MODE1, mode & 0x6F)            # wake
+        time::sleep(500[us])
+        self.bus.write_reg(MODE1, (mode & 0x6F) | 0x80)   # restart PWM channels
+        self.freq = f
+    }
+
+    # 12-bit on/off counts for one channel.
+    fn set_counts(self, channel: int, on: int, off: int)
+        require channel >= 0 and channel <= 15
+        require on >= 0 and on <= 4096 and off >= 0 and off <= 4096
+    {
+        let base = LED0_ON_L + 4 * channel
+        self.bus.write_reg(base, lo8(on))
+        self.bus.write_reg(base + 1, hi8(on))
+        self.bus.write_reg(base + 2, lo8(off))
+        self.bus.write_reg(base + 3, hi8(off))
+    }
+
+    fn counts_for(self, width: [s]) -> int {
+        clamp(round(width * self.freq * 4096.0), 0, 4095)
+    }
+
+    fn set_pulse(self, channel: int, width: [s])
+        require channel >= 0 and channel <= 15
+        require width >= 0[s] and width * self.freq <= 1.0
+    {
+        self.set_counts(channel, 0, self.counts_for(width))
+    }
+
+    fn set_angle(self, channel: int, angle: [rad])
+        require angle >= 0[rad] and angle <= self.range
+    {
+        let w = self.min_pulse + (self.max_pulse - self.min_pulse) * (angle / self.range)
+        self.set_pulse(channel, w)
+    }
+
+    fn off(self, channel: int)
+        require channel >= 0 and channel <= 15
+    {
+        self.set_counts(channel, 0, 4096)      # full-off bit
+    }
+}

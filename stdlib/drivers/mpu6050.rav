@@ -1,0 +1,89 @@
+# InvenSense MPU-6050 / MPU-6500 six-axis IMU over I2C (address 0x68, or 0x69 with AD0 high).
+#
+#   from "std/drivers/mpu6050" import Mpu6050
+#   let imu = Mpu6050(I2C::new(1, 0x68))
+#   imu.init()
+#   imu.update()
+#   print(imu.accel_z(), imu.gyro_x(), imu.temperature())
+
+from "std/driver" import Imu, Thermometer, i16_be
+
+const WHO_AM_I = 0x75
+const PWR_MGMT_1 = 0x6B
+const SMPLRT_DIV = 0x19
+const CONFIG = 0x1A
+const GYRO_CONFIG = 0x1B
+const ACCEL_CONFIG = 0x1C
+const ACCEL_XOUT_H = 0x3B
+
+const STANDARD_G = 9.80665[m/s^2]
+
+struct Mpu6050 impl Imu, Thermometer {
+    bus: I2C
+    accel_range: int = 0     # 0..3 = ±2, ±4, ±8, ±16 g
+    gyro_range: int = 0      # 0..3 = ±250, ±500, ±1000, ±2000 °/s
+    ax: [m/s^2] = 0[m/s^2]
+    ay: [m/s^2] = 0[m/s^2]
+    az: [m/s^2] = 0[m/s^2]
+    gx: [rad/s] = 0[rad/s]
+    gy: [rad/s] = 0[rad/s]
+    gz: [rad/s] = 0[rad/s]
+    temp: [K] = 0[K]
+    invariant 0 <= self.accel_range and self.accel_range <= 3
+    invariant 0 <= self.gyro_range and self.gyro_range <= 3
+
+    # WHO_AM_I reads 0x68 on the MPU-6050 and 0x70 on the MPU-6500.
+    fn probe(self) -> bool {
+        let id = self.bus.read_reg(WHO_AM_I)
+        id == 0x68 or id == 0x70
+    }
+
+    fn init(self) {
+        self.bus.write_reg(PWR_MGMT_1, 0x01)            # wake up, PLL on the X gyro
+        self.bus.write_reg(SMPLRT_DIV, 7)               # 1 kHz / (1 + 7) = 125 Hz
+        self.bus.write_reg(CONFIG, 0x03)                # 44 Hz digital low-pass filter
+        self.bus.write_reg(GYRO_CONFIG, self.gyro_range << 3)
+        self.bus.write_reg(ACCEL_CONFIG, self.accel_range << 3)
+    }
+
+    fn set_ranges(self, accel: int, gyro: int)
+        require accel >= 0 and accel <= 3 and gyro >= 0 and gyro <= 3
+    {
+        self.accel_range = accel
+        self.gyro_range = gyro
+        self.bus.write_reg(GYRO_CONFIG, gyro << 3)
+        self.bus.write_reg(ACCEL_CONFIG, accel << 3)
+    }
+
+    # Counts per g: 16384 at ±2 g, halving with each range step.
+    fn accel_scale(self) => STANDARD_G / float(16384 >> self.accel_range)
+
+    # Counts per °/s: 131, 65.5, 32.8, 16.4.
+    fn gyro_scale(self) => 1[deg/s] * float(1 << self.gyro_range) / 131.0
+
+    # One 14-byte burst: accel x/y/z, temperature, gyro x/y/z, all big-endian int16.
+    fn update(self) {
+        let r = self.bus.read_regs(ACCEL_XOUT_H, 14)
+        let a = self.accel_scale()
+        let g = self.gyro_scale()
+        self.ax = a * float(i16_be(r[0], r[1]))
+        self.ay = a * float(i16_be(r[2], r[3]))
+        self.az = a * float(i16_be(r[4], r[5]))
+        self.temp = 273.15[K] + 36.53[K] + 1[K] * float(i16_be(r[6], r[7])) / 340.0
+        self.gx = g * float(i16_be(r[8], r[9]))
+        self.gy = g * float(i16_be(r[10], r[11]))
+        self.gz = g * float(i16_be(r[12], r[13]))
+    }
+
+    fn accel_x(self) -> [m/s^2] { self.ax }
+    fn accel_y(self) -> [m/s^2] { self.ay }
+    fn accel_z(self) -> [m/s^2] { self.az }
+    fn gyro_x(self) -> [rad/s] { self.gx }
+    fn gyro_y(self) -> [rad/s] { self.gy }
+    fn gyro_z(self) -> [rad/s] { self.gz }
+    fn temperature(self) -> [K] { self.temp }
+
+    # Interpreter conveniences.
+    fn accel(self) => [self.ax, self.ay, self.az]
+    fn gyro(self) => [self.gx, self.gy, self.gz]
+}

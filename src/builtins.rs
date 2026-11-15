@@ -84,6 +84,24 @@ const GLOBALS: &[(&str, NativeFn)] = &[
         arity("bool", &a, 1, 1)?;
         Ok(Value::Bool(a[0].truthy()))
     }),
+    ("implements", |i, a| {
+        arity("implements", &a, 2, 2)?;
+        let want = match &a[1] {
+            Value::Str(s) => s.to_string(),
+            other => {
+                return Err(format!(
+                    "implements() expects an interface name, got {other}"
+                ))
+            }
+        };
+        if !i.interfaces.contains_key(&want) {
+            return Err(format!("implements(): unknown interface '{want}'"));
+        }
+        Ok(Value::Bool(match &a[0] {
+            Value::Object(o) => i.satisfies(&o.borrow().ty.def.implements, &want),
+            _ => false,
+        }))
+    }),
     ("type", |_, a| {
         arity("type", &a, 1, 1)?;
         Ok(Value::str(a[0].type_name()))

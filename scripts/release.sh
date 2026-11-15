@@ -39,6 +39,8 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE/bin" "$STAGE/lib/tulpa" "$STAGE/share/tulpa" "$STAGE/share/doc/tulpa"
 cp "$BIN" "$STAGE/bin/"
 cp stdlib/*.rav "$STAGE/lib/tulpa/"   # import "std/..." resolves to <bin>/../lib/tulpa
+mkdir -p "$STAGE/lib/tulpa/drivers" && cp stdlib/drivers/*.rav "$STAGE/lib/tulpa/drivers/"
+cp -r runtime "$STAGE/share/tulpa/"   # C runtime + HAL ports (also embedded in the binary: tulpa runtime)
 cp -r examples editors "$STAGE/share/tulpa/"
 rm -rf "$STAGE/share/tulpa/editors/vscode/node_modules" "$STAGE/share/tulpa/editors/vscode/out" "$STAGE"/share/tulpa/editors/vscode/*.vsix
 cp README.md LICENSE "$STAGE/share/doc/tulpa/"
@@ -86,7 +88,7 @@ if [ "$DEB" = 1 ] && command -v dpkg-deb >/dev/null 2>&1; then
     rm -rf "$DEBROOT"
     mkdir -p "$DEBROOT/DEBIAN" "$DEBROOT/usr/bin" "$DEBROOT/usr/lib/tulpa" "$DEBROOT/usr/share/tulpa" "$DEBROOT/usr/share/doc/tulpa"
     install -m 0755 "$BIN" "$DEBROOT/usr/bin/tulpa"
-    cp stdlib/*.rav "$DEBROOT/usr/lib/tulpa/"
+    cp -r "$STAGE/lib/tulpa/." "$DEBROOT/usr/lib/tulpa/"
     cp -r "$STAGE/share/tulpa/." "$DEBROOT/usr/share/tulpa/"
     cp -r "$STAGE/share/doc/tulpa/." "$DEBROOT/usr/share/doc/tulpa/"
     SIZE=$(du -sk "$DEBROOT/usr" | cut -f1)

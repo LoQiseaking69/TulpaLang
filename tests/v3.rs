@@ -156,7 +156,7 @@ fn tri(n: int) -> int { let s = 0
     i += 1 }
   s }
 fn mix(x: int, y: float) -> float { if x > 2 and y < 10.0 { sqrt(x * y) } else { max(x, y) } }
-fn label(name: str) { name }
+fn label(names: list) { names }
 "#;
 
 #[test]
@@ -168,7 +168,7 @@ fn llvm_report_and_ir_shape() {
     assert_eq!(r.skipped.len(), 1);
     assert!(r.skipped[0]
         .1
-        .contains("type 'str' has no native representation"));
+        .contains("type 'list' has no native representation"));
     assert!(
         r.ir.contains("define i64 @tulpa_fib(i64 %a.n)")
             && r.ir.contains("@llvm.sadd.with.overflow.i64")

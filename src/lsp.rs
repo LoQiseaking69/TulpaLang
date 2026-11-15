@@ -240,7 +240,10 @@ fn defined_names(toks: &[Token]) -> HashSet<String> {
             _ => None,
         };
         match &t.tok {
-            Tok::Kw("let" | "const" | "fn" | "def" | "struct" | "machine" | "for" | "catch") => {
+            Tok::Kw(
+                "let" | "const" | "fn" | "def" | "struct" | "machine" | "interface" | "for"
+                | "catch",
+            ) => {
                 let mut k = i + 1;
                 if matches!(toks.get(k).map(|t| &t.tok), Some(Tok::Kw("mut"))) {
                     k += 1;
@@ -677,6 +680,8 @@ pub fn hover(text: &str, line: usize, col: usize) -> Option<String> {
             "ensure" => "**ensure** — postcondition; `x` is the initial value, `x'` the final one, `result'` the return value".into(),
             "invariant" => "**invariant** — checked before every loop test, or after every struct method/field write".into(),
             "machine" => "**machine** Name(params) { state … { on event => Target } }".into(),
+            "interface" => "**interface** Name[: Base] { fn method(self, …) [-> type] } — method signatures a struct promises with `impl`".into(),
+            "impl" => "**struct** Name **impl** A, B { … } — checked against each interface when the struct is defined".into(),
             other => format!("keyword **{other}**"),
         }),
         _ => None,
@@ -809,6 +814,7 @@ pub fn symbols(text: &str) -> Vec<J> {
             Tok::Kw("fn" | "def") => (12, "fn"),
             Tok::Kw("struct") => (23, "struct"),
             Tok::Kw("machine") => (5, "machine"),
+            Tok::Kw("interface") => (11, "interface"),
             Tok::Kw("const") => (14, "const"),
             Tok::Ident(s) if s == "state" => (22, "state"),
             _ => continue,
@@ -837,7 +843,8 @@ pub fn definition(text: &str, line: usize, col: usize) -> Option<(usize, usize, 
         return None;
     };
     for (i, d) in toks.iter().enumerate() {
-        if let Tok::Kw("fn" | "def" | "struct" | "machine" | "let" | "const") = d.tok {
+        if let Tok::Kw("fn" | "def" | "struct" | "machine" | "interface" | "let" | "const") = d.tok
+        {
             let mut k = i + 1;
             if matches!(toks.get(k).map(|t| &t.tok), Some(Tok::Kw("mut"))) {
                 k += 1;

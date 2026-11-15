@@ -57,6 +57,27 @@ pub struct StructDef {
     pub fields: Vec<Param>,
     pub methods: Vec<Rc<FnDef>>,
     pub invariants: Vec<Contract>,
+    /// Interfaces this struct declares it implements: `struct Mpu6050 impl Imu, Sensor { ... }`
+    pub implements: Vec<String>,
+}
+
+/// A method a driver must provide: `fn accel(self) -> [m/s^2]`
+#[derive(Debug, Clone)]
+pub struct MethodSig {
+    pub name: String,
+    pub params: Vec<Param>,
+    pub ret: Option<TypeAnn>,
+    pub line: usize,
+}
+
+/// `interface Imu: Sensor { fn accel(self) -> [m/s^2] ... }`
+#[derive(Debug, Clone)]
+pub struct InterfaceDef {
+    pub name: String,
+    /// Interfaces this one extends; their methods are required too.
+    pub extends: Vec<String>,
+    pub methods: Vec<MethodSig>,
+    pub line: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -166,6 +187,7 @@ pub enum Stmt {
     Use(Vec<String>),
     Assert(Expr, Option<Expr>, String, usize),
     Struct(Rc<StructDef>),
+    Interface(Rc<InterfaceDef>),
     Machine(Rc<MachineDef>),
     /// Edge-triggered reactive rule: `when cond { rising } else { falling }`
     /// `when cond [for duration] { rising } else { falling }`

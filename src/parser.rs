@@ -212,6 +212,10 @@ impl Parser {
                 self.next();
                 Ok(Stmt::Machine(Rc::new(self.machine_rest()?)))
             }
+            Tok::Kw("interface") => {
+                self.next();
+                Ok(Stmt::Interface(Rc::new(self.interface_rest()?)))
+            }
             Tok::Kw("when") => {
                 self.next();
                 let cond = self.expr()?;
@@ -386,6 +390,15 @@ impl Parser {
 
     fn struct_rest(&mut self) -> PResult<StructDef> {
         let name = self.ident()?;
+        let mut implements = Vec::new();
+        if self.eat_kw("impl") {
+            loop {
+                implements.push(self.ident()?);
+                if !self.eat_sym(",") {
+                    break;
+                }
+            }
+        }
         self.expect_sym("{")?;
         let (mut fields, mut methods, mut invariants) = (Vec::new(), Vec::new(), Vec::new());
         loop {
@@ -426,6 +439,62 @@ impl Parser {
             fields,
             methods,
             invariants,
+            implements,
+        })
+    }
+
+    /// `interface Name [: Base, ...] { fn method(self, ...) [-> type] ... }` (after `interface`)
+    fn interface_rest(&mut self) -> PResult<InterfaceDef> {
+        let line = self.line();
+        let name = self.ident()?;
+        let mut extends = Vec::new();
+        if self.eat_sym(":") {
+            loop {
+                extends.push(self.ident()?);
+                if !self.eat_sym(",") {
+                    break;
+                }
+            }
+        }
+        self.expect_sym("{")?;
+        let mut methods = Vec::new();
+        loop {
+            while self.eat_sym(";") || self.eat_sym(",") {}
+            if self.eat_sym("}") {
+                break;
+            }
+            if self.at_eof() {
+                return self.err("unexpected end of file in interface; missing '}'");
+            }
+            let mline = self.line();
+            if !(self.eat_kw("fn") || self.eat_kw("def")) {
+                return self
+                    .err("an interface lists method signatures: fn name(self, ...) [-> type]");
+            }
+            let mname = self.ident()?;
+            let params = self.params()?;
+            let ret = if self.eat_sym("->") {
+                Some(self.type_ann()?)
+            } else {
+                None
+            };
+            if self.is_sym("{") {
+                return self.err(format!(
+                    "interface method '{mname}' has a body; interfaces only declare signatures"
+                ));
+            }
+            methods.push(MethodSig {
+                name: mname,
+                params,
+                ret,
+                line: mline,
+            });
+        }
+        Ok(InterfaceDef {
+            name,
+            extends,
+            methods,
+            line,
         })
     }
 

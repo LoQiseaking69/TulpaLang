@@ -200,6 +200,8 @@ pub struct Interpreter {
     /// Run eligible functions on the bytecode VM (`--no-vm` / `TULPA_NO_VM=1` disables).
     pub use_vm: bool,
     pub(crate) compiled: HashMap<usize, (Rc<FnDef>, Option<Rc<crate::vm::Chunk>>)>,
+    /// Interfaces declared so far (`interface Imu { ... }`), by name.
+    pub(crate) interfaces: HashMap<String, Rc<crate::ast::InterfaceDef>>,
 }
 
 const MAX_DEPTH: usize = 2500;
@@ -242,6 +244,7 @@ impl Interpreter {
                 .map(|v| v.is_empty() || v == "0")
                 .unwrap_or(true),
             compiled: HashMap::new(),
+            interfaces: HashMap::new(),
         }
     }
 
@@ -382,7 +385,29 @@ impl Interpreter {
                 }
                 Ok(Value::Nil)
             }
+            Stmt::Interface(def) => {
+                for base in &def.extends {
+                    if !self.interfaces.contains_key(base) {
+                        return rt::<Value>(format!(
+                            "interface {} extends unknown interface '{base}'",
+                            def.name
+                        ))
+                        .map_err(|c| at_line(c, def.line));
+                    }
+                }
+                self.interfaces.insert(def.name.clone(), def.clone());
+                // bound in scope so `from "mod" import Imu` works; conformance uses the registry
+                define(
+                    env,
+                    &def.name,
+                    Value::str(format!("<interface {}>", def.name)),
+                );
+                Ok(Value::Nil)
+            }
             Stmt::Struct(def) => {
+                if !def.implements.is_empty() {
+                    self.check_conformance(def)?;
+                }
                 let t = crate::value::StructType {
                     def: def.clone(),
                     env: env.clone(),

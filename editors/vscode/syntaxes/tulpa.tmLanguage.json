@@ -176,6 +176,28 @@
           }
         },
         {
+          "match": "\\b(interface)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.interface.tulpa"
+            },
+            "2": {
+              "name": "entity.name.type.interface.tulpa"
+            }
+          }
+        },
+        {
+          "match": "\\b(impl)\\s+([A-Za-z_][A-Za-z0-9_]*(?:\\s*,\\s*[A-Za-z_][A-Za-z0-9_]*)*)",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.impl.tulpa"
+            },
+            "2": {
+              "name": "entity.other.inherited-class.tulpa"
+            }
+          }
+        },
+        {
           "match": "\\b(machine)\\s+([A-Za-z_][A-Za-z0-9_]*)",
           "captures": {
             "1": {
@@ -275,7 +297,7 @@
         },
         {
           "name": "storage.type.tulpa",
-          "match": "\\b(fn|def|let|const|mut|struct|machine)\\b"
+          "match": "\\b(fn|def|let|const|mut|struct|machine|interface|impl)\\b"
         }
       ]
     },

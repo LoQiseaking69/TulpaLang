@@ -1,0 +1,9 @@
+probe true true true
+pwr [1]
+az 9.8066 m/s^2  gx 1.000 deg/s  T 36.53 C
+az 19.6133 m/s^2  gx 4.000 deg/s
+prescale [121]
+ch3 [0, 0, 51, 1]
+raw 512
+volts 3.300
+bits 15 20 -2 -32768

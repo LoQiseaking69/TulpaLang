@@ -1,0 +1,2 @@
+# A Tulpa program runs in the main task; give it room for its objects.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384

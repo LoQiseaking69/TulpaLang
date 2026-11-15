@@ -73,6 +73,8 @@ pub const KEYWORDS: &[&str] = &[
     "catch",
     "const",
     "struct",
+    "interface",
+    "impl",
     "machine",
     "when",
     "always",

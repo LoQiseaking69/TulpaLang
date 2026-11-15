@@ -1,0 +1,37 @@
+# @NAME@: a Tulpa program for @BOARD@.
+#
+# The whole file compiles to native code: structs, devices, machines, every! loops and
+# `always` monitors. `tulpa run app.rav` runs the same program on the simulator first.
+
+const LED_PIN = @LED@
+const BUTTON_PIN = @BUTTON@
+
+let led = GPIO::new(LED_PIN)
+let button = GPIO::new(BUTTON_PIN, "in")
+
+machine Blinker {
+    state Slow {
+        on press => Fast
+    }
+    state Fast {
+        on press => Slow
+    }
+}
+
+let mode = Blinker()
+let was_down = false
+
+# Never leave the LED on while the blinker is between states (a toy safety envelope).
+always not (led.read() == 1 and mode.state != "Slow" and mode.state != "Fast")
+
+print("@NAME@ running on @BOARD@")
+every!(50[ms], {
+    let down = button.read() == 0          # buttons usually pull the pin low
+    if down and not was_down {
+        mode.press()
+        print("mode:", mode.state)
+    }
+    was_down = down
+    let period = if mode.state == "Fast" { 2 } else { 10 }   # in 50 ms ticks
+    if time::millis() / 50 % period == 0 { led.toggle() }
+})

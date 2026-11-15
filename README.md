@@ -224,6 +224,30 @@ The `std/` library provides higher-level engineering functionality implemented i
 
 See the [library guide](docs/libraries.md).
 
+## Standalone robotics software (3.3)
+
+Tulpa 3.3 compiles whole programs to native code, from the simulator all the way to a
+microcontroller.
+
+- **Driver SDK.** Write a driver once, in Tulpa, against a typed interface, then run it in the
+  simulator, on a Raspberry Pi, or in firmware. `std/driver` has the `Driver`, `Imu`,
+  `Thermometer`, `Rangefinder`, `Adc` and `PwmController` interfaces, plus bit helpers that
+  compile natively. `std/drivers/` has reference drivers for the MPU-6050, PCA9685 and MCP3008.
+- **Native driver compilation.** LLVM codegen covers structs and invariants, interfaces,
+  devices, state machines, `always` monitors, `every!` loops and top-level code. Native output
+  is tested byte for byte against the interpreter.
+- **Embedded backend.** There are targets for RP2040, ESP32, ESP32-S2/S3/C3/C6, and generic
+  Cortex-M0/M4F and RV32. A portable C runtime runs on board HALs for the Pico SDK, ESP-IDF,
+  Linux and the simulator. `tulpa new --board` scaffolds a ready-to-build firmware project.
+
+```
+tulpa new rover --board rp2040 && cd rover
+tulpa app.rav --virtual-time              # try it on the simulator first
+cmake -B build && cmake --build build      # → build/rover.uf2
+```
+
+See the [Driver SDK](docs/drivers.md) and [Native and embedded targets](docs/embedded.md).
+
 ## HermiSim integration
 
 The [HermiSim](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer) IDE bundles Tulpa with:
@@ -271,9 +295,8 @@ same way through `tulpa::embed` (run/REPL/analysis API) and `tulpa::host` (host-
 ## Install
 
 Download a release package from [Releases](https://github.com/LoQiseaking69/TulpaLang/releases).
-The `release` workflow builds them on every `v*` tag. The latest published release is
-**v3.1.1**. Until a `v3.2.0` tag is pushed, build from source to get the 3.2 libraries, or use
-the toolchain bundled with HermiSim.
+The `release` workflow builds them on every `v*` tag. The latest release is **v3.3.0**
+(it includes the 3.2 libraries, the Driver SDK and the embedded backend).
 
 - **Linux** (x86_64, arm64 for Raspberry Pi 3/4/5, armv7): download
   `tulpa-<version>-<target>.tar.gz`, unpack it, and run `./install.sh`, or
@@ -384,7 +407,8 @@ strengthening system-level guarantees, and improving adoption.
 
 Some important boundaries of its current scope:
 
-- LLVM compilation supports a typed numeric subset, not the whole language.
+- Native compilation covers structs, devices, state machines, monitors and timing loops, but not
+  dicts, closures, `match`, `try`, tasks or signals; those stay on the interpreter.
 - Contract fuzzing explores test cases; it is not a mathematical proof of correctness.
 - Runtime safety envelopes detect violations at defined checkpoints. They are not independent
   hardware safety interlocks.
@@ -408,6 +432,10 @@ Its source is in [`website/`](website/README.md). The guides below are rendered 
   library.
 - [Device integration guide](docs/device_integration.md): devices, backends, the simulator,
   record/replay, and wiring notes.
+- [Driver SDK](docs/drivers.md): interfaces, `std/driver`, and writing drivers in Tulpa that
+  compile natively.
+- [Native and embedded targets](docs/embedded.md): `tulpa build --target`, RP2040 and ESP32
+  projects, the runtime layers, and porting to a new board.
 
 ## Project layout
 
@@ -418,7 +446,9 @@ src/interp.rs      evaluator core: scopes, closures, contracts, macros, tasks
 src/ext.rs         units math, kwargs, types, structs, machines, signals, reactive rules,
                    safety monitors, modules + library search path, contract fuzzing
 src/vm.rs          bytecode compiler + VM (automatic tier for eligible functions)
-src/llvm.rs        LLVM IR generator for the typed numeric subset (tulpa build / emit-llvm)
+src/llvm.rs        LLVM IR generator: structs, devices, machines, monitors (tulpa build / emit-llvm)
+src/native.rs      targets, firmware project scaffolding, import flattening
+runtime/           C runtime + HAL ports (sim, linux, pico, esp_idf) and board templates
 src/lsp.rs         language server (tulpa lsp)
 src/units.rs       dimensional analysis (SI base vector, unit parser, conversions)
 src/builtins.rs    standard library, kin:: module, string/list/dict methods, formatting
@@ -426,10 +456,10 @@ src/nn.rs          nn:: tensors, reverse-mode autodiff, layers, optimisers
 src/stdx.rs        pack:: json:: tlm:: cosim::
 src/embed.rs       embedding API for host apps (run, REPL sessions, cancel, editor analysis)
 src/host.rs        registry for host-provided native modules (e.g. phone:: in Tulpa Field)
-stdlib/            std/ library written in Tulpa (rtl, eda, rl, lipm, topics, frame)
+stdlib/            std/ library written in Tulpa (rtl, eda, rl, lipm, topics, frame, driver, drivers/)
 src/devices/       GPIO/I2C/SPI/UART/PWM/Servo/PID/CAN/BLE; sim.rs, linux.rs, tape.rs (record/replay)
 examples/          runnable programs with expected.txt (checked by cargo test)
-tests/             84 Rust tests (run under both tiers) + Tulpa-level tests
+tests/             Rust tests (run under both tiers) + Tulpa-level tests
 editors/           VS Code extension (editors/vscode) + Neovim/Helix setup
 scripts/           release.sh (tarball, .deb, .vsix), deploy.sh, cross_compile.sh
 website/           project website + docs site (GitHub Pages), see website/README.md
@@ -460,13 +490,18 @@ differential-tested against the interpreter.
   extension, and release packaging.
 - **3.2:** the `nn`, `pack`, `json`, `tlm`, and `cosim` modules; the `std/` library (rtl, eda,
   rl, lipm, topics, frame); operator overloading for native objects; and the library search path.
+- **3.3:** interfaces and the Driver SDK (`std/driver`, MPU-6050, PCA9685 and MCP3008 drivers);
+  native compilation of structs, devices, state machines, `always` monitors and `every!`
+  loops; standalone executables (`--exe`); embedded targets for RP2040, ESP32, ESP32-S2/S3/C3/C6
+  and generic Cortex-M/RISC-V, with `tulpa new` firmware projects and a portable C HAL.
 - **Tulpa Field:** the Android IDE, the `phone::` host module, and the `tulpa::embed` /
   `tulpa::host` embedding API.
 
 ### Planned
 - CAN-FD and ISO-TP (UDS diagnostics) on top of the CAN layer.
 - BLE peripheral (GATT server) mode, so a Raspberry Pi can act as a sensor.
-- Native code generation for structs and state machines.
+- Native dicts, closures and `try` in firmware builds.
+- More reference drivers (BMP280, VL53L0X, INA219) and a board-support package for STM32.
 - Publishing the VS Code extension to the Marketplace and Open VSX.
 - A package registry for Tulpa modules.
 

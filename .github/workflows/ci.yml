@@ -19,3 +19,62 @@ jobs:
           TULPA_NO_VM: "1"
       - run: cargo run --release -- check examples/*/main.rav
       - run: cargo run --release -- verify examples/native/main.rav
+
+  # Native + embedded backend: emulated firmware runs diffed against the interpreter, and real
+  # board-SDK builds of `tulpa new` projects.
+  firmware:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: toolchains
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld qemu-system-arm qemu-system-misc \
+            gcc-arm-none-eabi libnewlib-arm-none-eabi gcc-riscv64-unknown-elf picolibc-riscv64-unknown-elf \
+            cmake ninja-build python3
+      - run: cargo build --release
+      - run: echo "$PWD/target/release" >> "$GITHUB_PATH"
+      - name: every firmware target produces an object
+        run: |
+          for t in rp2040 esp32c3 esp32c6 cortex-m0 cortex-m4f riscv32; do
+            tulpa build examples/drivers/main.rav --target $t --sim -o /tmp/app-$t.o
+          done
+      - name: Cortex-M0 on QEMU (micro:bit) matches the interpreter
+        run: |
+          for p in examples/drivers/main.rav examples/native/main.rav; do
+            tests/firmware/run_qemu_m0.sh $p
+          done
+      - name: RV32IMC (ESP32-C3 ISA) on QEMU matches the interpreter
+        run: |
+          for p in examples/drivers/main.rav examples/native/main.rav; do
+            tests/firmware/run_qemu_riscv32.sh $p
+          done
+      - name: Pico SDK build of a tulpa new project
+        run: |
+          git clone --depth 1 --branch 2.1.1 https://github.com/raspberrypi/pico-sdk /tmp/pico-sdk
+          git -C /tmp/pico-sdk submodule update --init --depth 1 lib/tinyusb
+          tulpa new /tmp/blinky --board rp2040
+          cd /tmp/blinky
+          PICO_SDK_PATH=/tmp/pico-sdk cmake -B build -G Ninja
+          cmake --build build
+          ls -l build/blinky.uf2
+
+  esp-idf:
+    runs-on: ubuntu-24.04
+    container: espressif/idf:v5.4.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: build tulpa
+        shell: bash
+        run: |
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          apt-get update && apt-get install -y clang
+          . "$HOME/.cargo/env" && cargo build --release
+      - name: ESP32-C3 firmware from tulpa new
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          export PATH="$PWD/target/release:$PATH"
+          tulpa new /tmp/espblink --board esp32c3
+          cd /tmp/espblink && idf.py set-target esp32c3 && idf.py build
