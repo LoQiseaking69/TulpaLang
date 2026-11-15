@@ -9,7 +9,7 @@ On Windows, with Rust, Python, Node.js and [Inno Setup 6](https://jrsoftware.org
 installed, and TulpaLang cloned next to HermiSim:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1 -TulpaSrc ..\TulpaLang -Version 2.1.0
+powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1 -TulpaSrc ..\TulpaLang -Version 2.2.0
 ```
 
 The script:
