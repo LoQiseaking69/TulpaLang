@@ -5,6 +5,13 @@ set -uo pipefail
 APK="$1"; OUT="${2:-smoke}"
 PKG=dev.hermitech.tulpafield
 mkdir -p "$OUT"
+# CI emulators often report the (background) launcher as not responding; its dialog covers the
+# app. Hide background ANR dialogs and park the launcher: the test never goes home.
+adb shell settings put secure anr_show_background 0 >/dev/null 2>&1 || true
+for l in com.google.android.apps.nexuslauncher com.android.launcher3; do
+  adb shell pm disable-user --user 0 "$l" >/dev/null 2>&1 || true
+done
+adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
 adb install -r "$APK"
 adb logcat -c
 
