@@ -19,6 +19,21 @@ if [ ! -f "$SRC/CMakeLists.txt" ]; then
   git clone --quiet --depth 1 --branch "$VERSION" https://github.com/google-deepmind/mujoco "$SRC"
 fi
 
+# Android before API 28 has no aligned_alloc: use memalign (bionic frees it with free()).
+patch_android() {
+  local f="$SRC/src/engine/engine_util_errmem.c"
+  grep -q "TULPA_FIELD_PATCH" "$f" && return
+  python3 - "$f" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p).read()
+s = s.replace("#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L\n  return aligned_alloc(align, size);",
+              "#elif defined(__ANDROID__)  // TULPA_FIELD_PATCH\n  return memalign(align, size);\n#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L\n  return aligned_alloc(align, size);", 1)
+s = "#ifdef __ANDROID__\n#include <malloc.h>\n#endif\n" + s
+open(p, "w").write(s)
+PY
+  grep -q "TULPA_FIELD_PATCH" "$f" || { echo "::error::could not patch $f"; exit 1; }
+}
+
 build() {  # name, extra cmake args...
   local name="$1"; shift
   if [ -f "$OUT/$name/include/mujoco/mujoco.h" ] && ls "$OUT/$name/lib/libmujoco.so" >/dev/null 2>&1; then
@@ -40,6 +55,7 @@ build() {  # name, extra cmake args...
 if [ "${SKIP_HOST:-0}" != 1 ]; then build host; fi
 
 if [ -n "$NDK" ]; then
+  patch_android
   for abi in $ABIS; do
     build "$abi" \
       -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
