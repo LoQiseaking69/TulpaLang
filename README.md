@@ -24,7 +24,7 @@ abstractions, and native hardware integration.
 | Language identity | Python-flavoured, expression-oriented programming language |
 | Implementation | Rust |
 | Primary domain | Robotics, mechatronics, embedded systems, physical computing |
-| Execution | Tree-walking interpreter, bytecode VM, LLVM native compilation |
+| Execution | Tree-walking interpreter, bytecode VM, LLVM native compilation (host executables and RP2040 / ESP32 / Cortex-M / RISC-V firmware) |
 | Engineering model | Units, contracts, invariants, state machines, reactive rules, timing constraints |
 | Hardware integration | GPIO, I2C, SPI, UART, PWM, Servo, PID, CAN, Bluetooth LE |
 | Verification | Runtime contracts, contract fuzzing, safety monitors, record/replay |
@@ -122,7 +122,7 @@ physical systems.
 | **Record and replay** | `--record run.tape`, `--replay run.tape` | Captures hardware sessions with timestamps for regression testing without the hardware. Inputs replay over time, commands must match in order, and timing rules run against the recorded clock. |
 | **Invariant-aware structures** | Fields, defaults, methods, invariants, operator overloading | Structure invariants are rechecked after method calls and field writes. A write that would violate an invariant is rolled back. |
 | **Hardware integration** | GPIO, I2C, SPI, UART, PWM, Servo, PID, CAN, Bluetooth LE, `kin::` | Deterministic simulation by default; Linux hardware with `--hw`. GPIO goes through `/dev/gpiochipN` with a sysfs fallback, CAN through SocketCAN, and Bluetooth LE through `hci0`. |
-| **Multiple execution tiers** | Interpreter, bytecode VM, LLVM native compilation | Interactive execution, automatic VM execution of eligible functions, and native compilation of the typed numeric subset. |
+| **Multiple execution tiers** | Interpreter, bytecode VM, LLVM native compilation | Interactive execution, automatic VM execution of eligible functions, and native compilation of whole programs (structs, devices, machines, monitors) to executables or firmware. |
 | **Editor tooling** | VS Code extension, `tulpa lsp` | Diagnostics, unit-mismatch detection, undefined-name suggestions, hover, completions, symbols, and go-to-definition. Neovim and Helix setups are in [`editors/`](editors/README.md). |
 
 ## The architectural distinction
@@ -137,7 +137,7 @@ ecosystems.
 | State-based systems | UML Statecharts, SCXML | Native state-machine syntax and runtime |
 | Reactive programming | ReactiveX, Lustre | Signals, derived values, reactive rules, event-triggered execution |
 | Industrial control | IEC 61131-3, PLC environments | Device abstractions, state-driven logic, PID, timing constraints |
-| Systems compilation | Rust, LLVM-based toolchains | Bytecode execution and LLVM native code generation |
+| Systems compilation | Rust, LLVM-based toolchains | Bytecode execution and LLVM native code generation down to microcontroller firmware |
 | Hardware simulation | Hardware-in-the-loop, digital-twin workflows | Device simulation, record/replay, lock-step co-simulation |
 
 Tulpa does not try to replace every language or framework in these disciplines. It aims to give
@@ -151,14 +151,25 @@ Tulpa has three execution tiers:
 2. **Bytecode VM:** eligible function bodies compile to bytecode on their first call and run
    automatically on a stack VM. In the benchmarks below, hot functions run about 4–5× faster.
    Constructs the VM doesn't cover fall back to the interpreter transparently.
-3. **LLVM native compilation:** `tulpa build` emits textual LLVM IR for the typed numeric subset
-   and compiles it with clang 14+ into an object file or shared library, plus a C header for
-   firmware integration. Unit dimensions are checked at build time. Contracts stay in the
-   generated code as runtime checks.
+3. **LLVM native compilation:** `tulpa build` emits textual LLVM IR for a whole program and
+   compiles it with clang 14+. The output is a standalone executable (`--exe`, targets `sim` and
+   `linux`), a firmware object for a microcontroller (`--target rp2040`, `esp32`, `esp32s3`,
+   `esp32c3`, ...), or a shared library, each with a C header for integration. It compiles:
+   - numbers, booleans, quantities with units, strings, and fixed-size arrays;
+   - structs with invariants, methods and interfaces;
+   - GPIO, I2C, SPI, UART, PWM and Servo devices;
+   - state machines with parameters, guards and global transitions;
+   - `always` monitors, `every!`/`repeat!` loops, `require`/`ensure` contracts;
+   - default and keyword arguments, `print` with f-strings and format specs;
+   - top-level program code, and imported modules.
 
-The interpreter and VM run the whole language. LLVM is the path to native performance and C/C++/Rust
-interoperability for supported numeric workloads. Structs, lists, strings, state machines,
-signals, and device or library calls do not compile to native code yet.
+   Unit dimensions are checked at build time. Contracts, invariants and monitors stay in the
+   generated code as runtime checks. Native output is tested byte for byte against the
+   interpreter on the simulator, and on QEMU Cortex-M0 and RV32IMC.
+
+The interpreter and VM run the whole language. Dicts, closures, `match`, `try`, tasks, signals
+and `when` rules don't compile natively yet. Functions that use them are skipped, and each one
+is reported with the reason. See [Native and embedded targets](docs/embedded.md).
 
 ## Verification and safety model
 
@@ -327,6 +338,8 @@ $T examples/units/main.rav                  # dimensional analysis
 $T verify examples/verify/main.rav          # fuzz every contracted function
 $T --virtual-time examples/timing/main.rav  # debounce + deadlines on a simulated clock
 $T build examples/native/main.rav -o ctl.o  # native object + ctl.h for firmware (needs clang 14+)
+$T build examples/drivers/main.rav --target sim --exe -o drv && ./drv   # whole program, native
+$T new rover --board esp32c3                # ESP-IDF firmware project (also rp2040, esp32s3, linux)
 $T bytecode examples/units/main.rav         # inspect VM compilation
 $T examples/fieldbus/main.rav               # CAN motor controller + BLE battery gauge
 $T graph examples/warehouse_robot/main.rav  # Mermaid state diagrams
@@ -391,7 +404,7 @@ What distinguishes Tulpa is making them cooperate as native parts of one languag
 - Timing constructs express bounded-response requirements.
 - Safety monitors enforce runtime conditions.
 - Recorded hardware sessions become repeatable regression tests.
-- Eligible numeric workloads move from interpretation to native compilation.
+- The same program moves from the interpreter to a native executable or microcontroller firmware.
 
 The result is a programming model for software whose correctness depends on physical dimensions,
 device state, timing, and operational constraints, not just computed output.
@@ -459,7 +472,7 @@ src/host.rs        registry for host-provided native modules (e.g. phone:: in Tu
 stdlib/            std/ library written in Tulpa (rtl, eda, rl, lipm, topics, frame, driver, drivers/)
 src/devices/       GPIO/I2C/SPI/UART/PWM/Servo/PID/CAN/BLE; sim.rs, linux.rs, tape.rs (record/replay)
 examples/          runnable programs with expected.txt (checked by cargo test)
-tests/             Rust tests (run under both tiers) + Tulpa-level tests
+tests/             Rust tests (run under both tiers), Tulpa-level tests, firmware/ QEMU scripts
 editors/           VS Code extension (editors/vscode) + Neovim/Helix setup
 scripts/           release.sh (tarball, .deb, .vsix), deploy.sh, cross_compile.sh
 website/           project website + docs site (GitHub Pages), see website/README.md
