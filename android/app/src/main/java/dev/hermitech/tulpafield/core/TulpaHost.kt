@@ -52,6 +52,8 @@ object TulpaHost {
 
     /** Actuator events shown in the Run console, e.g. "vibrate 200 ms". */
     var onEvent: ((String) -> Unit)? = null
+    /** `cosim` notifications from a program (plot / log), forwarded by the co-sim server. */
+    var onSimNotify: ((String, JSONObject) -> Unit)? = null
 
     fun init(context: Context) {
         app = context.applicationContext
@@ -93,6 +95,7 @@ object TulpaHost {
                 "notify" -> notify(p.optString("title"), p.optString("text"))
                 "keep_awake" -> _keepAwake.value = p.optBoolean("on", true)
                 "gauge" -> gauge(p)
+                "sim_notify" -> onSimNotify?.invoke(p.optString("method"), p.optJSONObject("params") ?: JSONObject())
             }
             ""
         } catch (t: Throwable) {

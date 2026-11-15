@@ -10,6 +10,7 @@
 //! * A REPL session must only be used from the thread that created it (one REPL thread).
 
 pub mod phone;
+pub mod sim;
 
 use jni::objects::{GlobalRef, JClass, JFloatArray, JObject, JObjectArray, JString, JValue};
 use jni::sys::{jboolean, jdouble, jint, jlong, jstring, JNI_VERSION_1_6};
@@ -606,4 +607,194 @@ pub extern "system" fn Java_dev_hermitech_tulpafield_core_TulpaNative_resetSenso
     _: JClass,
 ) {
     phone::reset();
+}
+
+// ---------------------------------------------------------------------------- simulator
+
+fn float_array<'a>(env: &mut JNIEnv<'a>, v: &[f32]) -> jni::sys::jfloatArray {
+    match env.new_float_array(v.len() as i32) {
+        Ok(a) => {
+            let _ = env.set_float_array_region(&a, 0, v);
+            a.into_raw()
+        }
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+/// Loads an MJCF model. Returns `{"handle": n}` or `{"error": "..."}`.
+#[no_mangle]
+pub extern "system" fn Java_dev_hermitech_tulpafield_core_TulpaNative_simLoad(
+    mut env: JNIEnv,
+    _: JClass,
+    path: JString,
+) -> jstring {
+    let path = jstr(&mut env, &path);
+    let r = match sim::Sim::load(&path) {
+        Ok(s) => {
+            s.set_notify(Box::new(|method, params| {
+                let _ = phone::action(
+                    "sim_notify",
+                    serde_json::json!({"method": method, "params": params}),
+                );
+            }));
+            serde_json::json!({"handle": sim::insert(s)})
+        }
+        Err(e) => serde_json::json!({"error": e}),
+    };
+    out(&mut env, &r.to_string())
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_hermitech_tulpafield_core_TulpaNative_simFree(
+    _: JNIEnv,
+    _: JClass,
+    h: jlong,
+) {
+    sim::remove(h as u64);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_hermitech_tulpafield_core_TulpaNative_simInfo(
+    mut env: JNIEnv,
+    _: JClass,
+    h: jlong,
+) -> jstring {
+    let r = sim::get(h as u64).map(|s| {
+        let m = s.model.lock().unwrap_or_else(|e| e.into_inner());
+        let mut i = m.info();
+        let st = m.stat();
+        i["stat"] = serde_json::json!(st);
+        i["nmesh"] = serde_json::json!(m.nmesh());
+        i["path"] = serde_json::json!(m.path);
+        i.to_string()
+    });
+    out_opt(&mut env, r)
+}
+
+/// `[time, steps, clients, playing, then GEOM_STRIDE floats per visible geom]`.
+#[no_mangle]
+pub extern "system" fn Java_dev_hermitech_tulpafield_core_TulpaNative_simFrame<'a>(
+    mut env: JNIEnv<'a>,
+    _: JClass,
+    h: jlong,
+) -> jni::sys::jfloatArray {
+    let Some(s) = sim::get(h as u64) else {
+        return std::ptr::null_mut();
+    };
+    let (t, geoms) = s.frame();
+    let mut v = Vec::with_capacity(geoms.len() + 4);
+    v.push(t as f32);
+    v.push(s.steps.load(Ordering::Relaxed) as f32);
+    v.push(s.clients.load(Ordering::Relaxed) as f32);
+    v.push(if s.playing() { 1.0 } else { 0.0 });
+    v.extend_from_slice(&geoms);
+    float_array(&mut env, &v)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_hermitech_tulpafield_core_TulpaNative_simMesh<'a>(
+    mut env: JNIEnv<'a>,
+    _: JClass,
+    h: jlong,
+    id: jint,
+) -> jni::sys::jfloatArray {
+    let Some(s) = sim::get(h as u64) else {
+        return std::ptr::null_mut();
+    };
+    let v = s
+        .model
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .mesh(id.max(0) as usize);
+    float_array(&mut env, &v)
+}
+
+/// Starts the co-simulation server (idempotent); returns "host:port" or "error: ...".
+#[no_mangle]
+pub extern "system" fn Java_dev_hermitech_tulpafield_core_TulpaNative_simServe(
+    mut env: JNIEnv,
+    _: JClass,
+    h: jlong,
+    lan: jboolean,
+) -> jstring {
+    let r = match sim::get(h as u64) {
+        Some(s) => s
+            .serve(if lan != 0 { "0.0.0.0" } else { "127.0.0.1" })
+            .unwrap_or_else(|e| format!("error: {e}")),
+        None => "error: no model loaded".into(),
+    };
+    out(&mut env, &r)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_hermitech_tulpafield_core_TulpaNative_simControl(
+    mut env: JNIEnv,
+    _: JClass,
+    h: jlong,
+    cmd: JString,
+    arg: jdouble,
+) -> jstring {
+    let cmd = jstr(&mut env, &cmd);
+    let Some(s) = sim::get(h as u64) else {
+        return out(&mut env, "no model loaded");
+    };
+    let r: Result<(), String> = match cmd.as_str() {
+        "play" => {
+            s.set_playing(true);
+            Ok(())
+        }
+        "pause" => {
+            s.set_playing(false);
+            Ok(())
+        }
+        "reset" => {
+            s.reset();
+            Ok(())
+        }
+        "realtime" => {
+            s.set_realtime(arg);
+            Ok(())
+        }
+        "push" => {
+            let m = s.model.lock().unwrap_or_else(|e| e.into_inner());
+            let mass_scale = m.info()["total_mass"].as_f64().unwrap_or(1.0).max(0.1);
+            drop(m);
+            let a = arg.to_radians();
+            s.push(
+                None,
+                [
+                    a.cos() * 15.0 * mass_scale,
+                    a.sin() * 15.0 * mass_scale,
+                    0.0,
+                ],
+                0.15,
+            )
+        }
+        other => Err(format!("unknown command {other}")),
+    };
+    out(&mut env, &r.err().unwrap_or_default())
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_hermitech_tulpafield_core_TulpaNative_setEnv(
+    mut env: JNIEnv,
+    _: JClass,
+    name: JString,
+    value: JString,
+) {
+    let n = jstr(&mut env, &name);
+    if value.is_null() {
+        std::env::remove_var(&n);
+    } else {
+        let v = jstr(&mut env, &value);
+        std::env::set_var(&n, v);
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_hermitech_tulpafield_core_TulpaNative_simVersion(
+    mut env: JNIEnv,
+    _: JClass,
+) -> jstring {
+    out(&mut env, &sim::version())
 }

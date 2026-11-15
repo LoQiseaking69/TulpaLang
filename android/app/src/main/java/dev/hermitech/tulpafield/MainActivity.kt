@@ -35,6 +35,9 @@ class MainActivity : ComponentActivity() {
     private val openDoc = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) vm.import(uri, displayName(uri))
     }
+    private val openModel = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) vm.importModel(uri, displayName(uri))
+    }
     private val locationPerm = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         if (r.values.any { it }) vm.locationGranted() else vm.toast("Location denied — phone::location() will report no fix")
     }
@@ -43,6 +46,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        vm.importModelLauncher = { openModel.launch(arrayOf("text/xml", "application/xml", "*/*")) }
         setContent {
             TulpaTheme {
                 Box(Modifier.fillMaxSize().background(TF.Bg).safeDrawingPadding()) {

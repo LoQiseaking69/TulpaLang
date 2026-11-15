@@ -1,0 +1,80 @@
+# Train Morty's residual balance policy with PPO against random shoves.
+#
+#     python -m tulpa_bridge run workspace/morty/train.rav --model models/morty.xml -- 40
+#
+# Each episode: stand, take one random shove (60–190 N for 0.2 s, any direction, at a random
+# moment), survive up to 4 s. The policy only adds joint offsets on top of the model-based
+# controller, so it starts from a robot that already stands and learns to widen the
+# recoverable region. Weights are saved to weights/morty.*.nn after every update; then run
+# `main.rav … policy` to fly with them.
+
+import "lib/robot"
+import "lib/balance"
+import "lib/policy"
+
+const DT = 0.01
+const SUBSTEPS = 5
+const EPISODE_S = 4.0
+let updates = if len(ARGS) > 0 { int(ARGS[0]) } else { 20 }
+let resume = "resume" in ARGS
+
+nn::seed(2026)
+let sim = cosim::connect()
+let info = sim.info()
+let body = robot.Body(info: info)
+let ctl = balance.Balance()
+let pol = policy.ResidualPolicy(horizon: 1024)
+if resume { try { pol.load("weights/morty"); print("resumed from weights/morty") } catch e { print("no weights to resume") } }
+
+let o = sim.reset("stand")
+body.capture_reference(o)
+let ep = 0
+let ep_return = 0.0
+let ep_len = 0
+let returns = []
+let lengths = []
+let best = -1e9
+
+fn new_episode() {
+    o = sim.reset("stand")
+    ep += 1
+    let ang = nn::uniform() * TAU
+    let mag = 60 + nn::uniform() * 130
+    {at: 0.5 + nn::uniform() * 1.5, force: [mag * cos(ang), mag * sin(ang), 0.0], until: nil}
+}
+
+let push = new_episode()
+for u in 0..updates {
+    while not pol.agent.buffer.full() {
+        let s = robot.sense(body, o)
+        if push.until == nil and s.t >= push.at { sim.apply_force("pelvis", push.force); push.until = s.t + 0.2 }
+        if push.until != nil and s.t >= push.until { sim.apply_force("pelvis", [0.0, 0.0, 0.0]); push.until = 1e9 }
+        let nobs = pol.normalize(robot.observation(body, s))
+        let step = pol.act(nobs)
+        let cmd = ctl.torques(body, s, step.residual, 0.0)
+        o = sim.step(cmd, SUBSTEPS)
+        let s2 = robot.sense(body, o)
+        let r = policy.reward(s2, cmd, step.residual)
+        let done = s2.fallen or s2.t >= EPISODE_S
+        pol.agent.buffer.add(nobs, step, r, s2.fallen)
+        ep_return += r; ep_len += 1
+        if done {
+            returns.push(ep_return); lengths.push(ep_len)
+            tlm::plot("episode_return", ep_return, ep)
+            ep_return = 0.0; ep_len = 0
+            push = new_episode()
+        }
+    }
+    let last = pol.normalize(robot.observation(body, robot.sense(body, o)), false)
+    let st = pol.agent.update(last)
+    let k = min(10, len(returns))
+    let avg = if k > 0 { returns[len(returns) - k..len(returns)].sum() / k } else { 0.0 }
+    let alen = if k > 0 { lengths[len(lengths) - k..len(lengths)].sum() / k * DT } else { 0.0 }
+    print(f"update {u + 1:3}/{updates}  episodes {ep:4}  return(avg10) {avg:7.1f}  survival {alen:4.2f} s  pi {st.pi_loss:+.3f}  v {st.v_loss:.3f}  kl {st.approx_kl:+.4f}  log_std {st.log_std:+.2f}")
+    tlm::plot("avg_return", avg, u)
+    tlm::plot("survival_s", alen, u)
+    pol.save("weights/morty")
+    if avg > best { best = avg; pol.save("weights/morty_best") }
+}
+print(f"saved weights/morty.policy.nn (best avg return {best:.1f})")
+sim.close()

@@ -1,0 +1,96 @@
+# Morty Governor Protocol (MGP) — the byte format between the control computer and the
+# FPGA torque governor. Shared by the RTL model, the behavioural model and the live link.
+#
+#   command  (39 B): 0xA5 | seq | 18 × int16 LE torque [0.01 N·m] | crc8(seq..data)
+#   response (40 B): 0x5A | seq | 18 × int16 LE governed torque | flags | crc8(seq..flags)
+#
+#   flags: bit0 CRC error · bit1 torque clamped · bit2 slew limited · bit3 watchdog tripped
+
+const SYNC_CMD = 0xA5
+const SYNC_RSP = 0x5A
+const N_JOINTS = 18
+const CMD_LEN = 39
+const RSP_LEN = 40
+const SCALE = 100.0            # counts per N·m (or N for the grippers)
+
+const F_CRC = 1
+const F_CLAMP = 2
+const F_SLEW = 4
+const F_WATCHDOG = 8
+
+# Per-actuator limits in counts, in the model's actuator order (legs, arms, grippers).
+const LIMITS = [15000, 20000, 25000, 12000, 8000,  15000, 20000, 25000, 12000, 8000,
+                6000, 6000, 4000,  6000, 6000, 4000,  3000, 3000]
+
+fn slew_limits() { LIMITS }          # max change per packet: one full limit (blocks bang-bang reversals)
+
+fn crc8_step(c, b) {
+    let x = (c ^ b) & 0xFF
+    for _ in 0..8 { x = if x & 0x80 != 0 { ((x << 1) ^ 0x07) & 0xFF } else { (x << 1) & 0xFF } }
+    x
+}
+
+fn crc8(bytes) { bytes.reduce(|c, b| crc8_step(c, b), 0) }
+
+fn clamp_i16(v) { max(-32768, min(32767, v)) }
+
+# Torques in N·m (plain floats or [N*m] quantities) → command packet bytes.
+fn encode_command(seq, torques) {
+    if len(torques) != N_JOINTS { error(f"MGP: need {N_JOINTS} torques, got {len(torques)}") }
+    let counts = torques.map(|t| clamp_i16(int(round((if type(t) == "quantity" { t.si } else { t }) * SCALE))))
+    let body = [seq & 0xFF] + pack::pack(f"<{N_JOINTS}h", counts)
+    [SYNC_CMD] + body + [crc8(body)]
+}
+
+# Response bytes → {seq, torques (N·m floats), flags} or nil if malformed.
+fn decode_response(bytes) {
+    if len(bytes) != RSP_LEN or bytes[0] != SYNC_RSP { return nil }
+    let body = bytes[1..RSP_LEN - 1]
+    if crc8(body) != bytes[RSP_LEN - 1] { return nil }
+    let counts = pack::unpack(f"<{N_JOINTS}h", body[1..1 + 2 * N_JOINTS])
+    {seq: body[0], torques: counts.map(|c| c / SCALE), counts: counts, flags: body[1 + 2 * N_JOINTS]}
+}
+
+fn flag_names(f) {
+    let out = []
+    if f & F_CRC != 0 { out.push("crc") }
+    if f & F_CLAMP != 0 { out.push("clamp") }
+    if f & F_SLEW != 0 { out.push("slew") }
+    if f & F_WATCHDOG != 0 { out.push("watchdog") }
+    out
+}
+
+# Behavioural reference model of the governor datapath (bit-exact with fpga/governor.rav).
+struct GovernorModel {
+    prev = []
+    tripped: bool = false
+    fn init(self) { self.prev = [0; N_JOINTS] }
+    fn trip(self) { self.tripped = true; self.prev = [0; N_JOINTS] }
+    # Returns the 40-byte response for a 39-byte command.
+    fn process(self, cmd) {
+        let flags = 0
+        let seq = if len(cmd) > 1 { cmd[1] } else { 0 }
+        let ok = len(cmd) == CMD_LEN and cmd[0] == SYNC_CMD and crc8(cmd[1..CMD_LEN - 1]) == cmd[CMD_LEN - 1]
+        if self.tripped { flags = flags | F_WATCHDOG }
+        if not ok {
+            flags = flags | F_CRC
+        } else {
+            self.tripped = false
+            let req = pack::unpack(f"<{N_JOINTS}h", cmd[2..2 + 2 * N_JOINTS])
+            let slew = slew_limits()
+            let out = []
+            for i in 0..N_JOINTS {
+                let v = req[i]
+                if v > LIMITS[i] { v = LIMITS[i]; flags = flags | F_CLAMP }
+                if v < -LIMITS[i] { v = -LIMITS[i]; flags = flags | F_CLAMP }
+                let d = v - self.prev[i]
+                if d > slew[i] { v = self.prev[i] + slew[i]; flags = flags | F_SLEW }
+                if d < -slew[i] { v = self.prev[i] - slew[i]; flags = flags | F_SLEW }
+                out.push(v)
+            }
+            self.prev = out
+        }
+        let body = [seq] + pack::pack(f"<{N_JOINTS}h", self.prev) + [flags]
+        [SYNC_RSP] + body + [crc8(body)]
+    }
+}

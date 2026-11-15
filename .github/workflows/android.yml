@@ -66,14 +66,26 @@ jobs:
         with:
           workspaces: android/native
 
-      - name: "Native bridge: fmt, clippy, host tests (phone module + every bundled example)"
+      - name: Cache MuJoCo builds
+        uses: actions/cache@v4
+        with:
+          path: android/mujoco
+          key: mujoco-4.0.1-${{ runner.os }}-${{ hashFiles('android/ci/build-mujoco.sh') }}
+
+      - name: Build MuJoCo (host + arm64-v8a, armeabi-v7a, x86_64)
+        run: |
+          export ANDROID_NDK_HOME="${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_HOME}"
+          sudo apt-get install -y -qq ninja-build > /dev/null
+          android/ci/build-mujoco.sh
+
+      - name: "Native bridge: fmt, clippy, host tests (phone module, physics + co-sim, every bundled example)"
         working-directory: android/native
         run: |
           cargo fmt --check
           cargo clippy --all-targets -- -D warnings
           cargo test
 
-      - name: Build libtulpa_android.so for arm64-v8a, armeabi-v7a, x86_64
+      - name: Build libtulpa_android.so for arm64-v8a, armeabi-v7a, x86_64 (+ libmujoco.so)
         working-directory: android/native
         run: |
           export ANDROID_NDK_HOME="${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_HOME}"
@@ -81,6 +93,7 @@ jobs:
           cargo install cargo-ndk --locked
           cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 --platform 26 \
             -o ../app/src/main/jniLibs build --release
+          for abi in arm64-v8a armeabi-v7a x86_64; do cp ../mujoco/$abi/lib/libmujoco.so ../app/src/main/jniLibs/$abi/; done
           ls -la ../app/src/main/jniLibs/*
 
       - uses: gradle/actions/setup-gradle@v4

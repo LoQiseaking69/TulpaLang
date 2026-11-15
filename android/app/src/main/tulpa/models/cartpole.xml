@@ -1,0 +1,37 @@
+<mujoco model="cartpole">
+  <!-- Cart on a rail with a free pendulum: the classic balance benchmark. -->
+  <option timestep="0.002" integrator="RK4"/>
+  <visual><global offwidth="1280" offheight="720"/></visual>
+  <default>
+    <joint damping="0.05"/>
+    <geom contype="0" conaffinity="0"/>
+  </default>
+  <worldbody>
+    <light pos="0 -2 4" dir="0 0.4 -1"/>
+    <geom name="floor" type="plane" size="0 0 0.05" rgba="0.12 0.14 0.22 1" contype="1" conaffinity="1"/>
+    <geom name="rail" type="capsule" fromto="-1.6 0 0.6  1.6 0 0.6" size="0.02" rgba="0.55 0.58 0.7 1"/>
+    <geom name="post_l" type="cylinder" fromto="-1.6 0 0 -1.6 0 0.6" size="0.03" rgba="0.3 0.32 0.45 1"/>
+    <geom name="post_r" type="cylinder" fromto="1.6 0 0 1.6 0 0.6" size="0.03" rgba="0.3 0.32 0.45 1"/>
+    <body name="cart" pos="0 0 0.6">
+      <joint name="slider" type="slide" axis="1 0 0" range="-1.5 1.5" limited="true" damping="0.2"/>
+      <geom name="cart" type="box" size="0.18 0.12 0.07" rgba="0.49 0.36 1 1" mass="1"/>
+      <body name="pole" pos="0 -0.15 0">
+        <joint name="hinge" type="hinge" axis="0 1 0" damping="0.01"/>
+        <geom name="pole" type="capsule" fromto="0 0 0 0 0 0.9" size="0.025" rgba="0.25 0.82 1 1" mass="0.12"/>
+        <geom name="tip" type="sphere" pos="0 0 0.9" size="0.06" rgba="1 0.49 0.71 1" mass="0.08"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="push" joint="slider" gear="1" ctrlrange="-30 30" ctrllimited="true"/>
+  </actuator>
+  <sensor>
+    <jointpos name="x" joint="slider"/>
+    <jointpos name="theta" joint="hinge"/>
+    <jointvel name="xdot" joint="slider"/>
+    <jointvel name="thetadot" joint="hinge"/>
+  </sensor>
+  <keyframe>
+    <key name="tilted" qpos="0 0.25"/>
+  </keyframe>
+</mujoco>

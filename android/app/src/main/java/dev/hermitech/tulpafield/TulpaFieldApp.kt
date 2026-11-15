@@ -5,6 +5,7 @@ import android.system.Os
 import dev.hermitech.tulpafield.core.ReplManager
 import dev.hermitech.tulpafield.core.RunManager
 import dev.hermitech.tulpafield.core.SensorBridge
+import dev.hermitech.tulpafield.core.SimManager
 import dev.hermitech.tulpafield.core.Settings
 import dev.hermitech.tulpafield.core.TulpaHost
 import dev.hermitech.tulpafield.core.TulpaNative
@@ -16,6 +17,7 @@ class TulpaFieldApp : Application() {
     lateinit var runner: RunManager; private set
     lateinit var repl: ReplManager; private set
     lateinit var settings: Settings; private set
+    lateinit var sim: SimManager; private set
 
     override fun onCreate() {
         super.onCreate()
@@ -29,5 +31,7 @@ class TulpaFieldApp : Application() {
         sensors = SensorBridge(this)
         runner = RunManager(sensors)
         repl = ReplManager(this, sensors)
+        sim = SimManager(workspace)
+        TulpaHost.onSimNotify = { method, params -> runner.simNotify(method, params) }
     }
 }

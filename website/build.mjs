@@ -187,6 +187,7 @@ ${canonical ? `<link rel="canonical" href="${config.url}/${canonical}">` : ''}
     <nav class="mainnav" aria-label="Main">
       ${link('tulpa.html', 'Tulpa', 'tulpa')}
       ${link('hermisim.html', 'HermiSim', 'hermisim')}
+      ${link('android.html', 'Android', 'android')}
       ${link('docs/index.html', 'Docs', 'docs')}
       ${link('docs/examples.html', 'Examples', 'examples')}
     </nav>
@@ -209,6 +210,7 @@ ${body}
     <div class="footer-cols">
       <div><h4>Tulpa</h4><a href="${root}tulpa.html">Overview</a><a href="${root}docs/language-guide.html">Language guide</a><a href="${root}docs/libraries.html">Libraries</a><a href="${config.tulpa.repo}/releases" target="_blank" rel="noopener">Releases</a></div>
       <div><h4>HermiSim</h4><a href="${root}hermisim.html">Overview</a><a href="${root}docs/hermisim.html">IDE tour</a><a href="${root}docs/morty.html">Morty project</a><a href="${config.hermisim.repo}/releases" target="_blank" rel="noopener">Download</a></div>
+      <div><h4>Tulpa Field</h4><a href="${root}android.html">Overview</a><a href="${root}docs/android.html">Install &amp; use</a><a href="${root}docs/android-sim.html">3D co-simulation</a><a href="${config.android.download}">Download APK</a></div>
       <div><h4>Project</h4><a href="${config.tulpa.repo}" target="_blank" rel="noopener">TulpaLang on GitHub</a><a href="${config.hermisim.repo}" target="_blank" rel="noopener">HermiSim on GitHub</a><a href="${root}docs/roadmap.html">Roadmap</a><a href="${root}docs/contributing.html">Write docs</a></div>
     </div>
   </div>
@@ -234,7 +236,7 @@ function renderFragment(src) {
     const lang = { rav: 'tulpa', sh: 'bash', txt: 'text', json: 'json' }[path.extname(file).slice(1)] || 'text';
     return codeBlock(read(p), lang, title);
   });
-  src = src.replace(/\{\{(tulpa|hermisim)\.(\w+)\}\}/g, (_, a, b) => esc(config[a][b]));
+  src = src.replace(/\{\{(tulpa|hermisim|android)\.(\w+)\}\}/g, (_, a, b) => esc(config[a][b]));
   return { meta, html: src };
 }
 
@@ -309,6 +311,8 @@ export function build() {
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT, { recursive: true });
   copyDir(path.join(SRC, 'assets'), path.join(OUT, 'assets'));
+  // phone screenshots captured by the Android CI emulator run
+  copyDir(path.join(REPO, 'android/docs/screenshots'), path.join(OUT, 'assets/img/android'));
   writeOut('.nojekyll', '');
 
   const search = [];

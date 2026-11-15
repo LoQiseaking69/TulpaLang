@@ -1,0 +1,75 @@
+# Unit tests for Morty's pure logic — no simulator needed.
+#     tulpa test workspace/morty/tests/morty_test.rav      (or Test ▸ Run Tests in HermiSim)
+
+import "../fpga/protocol"
+import "../lib/robot"
+import "../lib/balance"
+import "std/lipm"
+import "std/frame"
+
+define_test!(mgp_roundtrip_and_crc, {
+    let gov = protocol.GovernorModel()
+    let torques = range(18).map(|i| (i - 9) * 1.5)
+    let rsp = protocol.decode_response(gov.process(protocol.encode_command(5, torques)))
+    assert rsp != nil
+    assert_eq!(rsp.seq, 5)
+    assert_eq!(rsp.flags, 0)
+    for i in 0..18 { assert abs(rsp.torques[i] - torques[i]) < 0.006 }
+})
+
+define_test!(governor_clamps_and_flags, {
+    let gov = protocol.GovernorModel()
+    let r = protocol.decode_response(gov.process(protocol.encode_command(1, [999.0; 18])))
+    assert r.flags & protocol.F_CLAMP != 0
+    for i in 0..18 { assert r.counts[i] <= protocol.LIMITS[i] }
+    let bad = protocol.encode_command(2, [0.0; 18])
+    bad[7] = bad[7] ^ 1
+    assert protocol.decode_response(gov.process(bad)).flags & protocol.F_CRC != 0
+})
+
+define_test!(governor_watchdog_zeroes_torque, {
+    let gov = protocol.GovernorModel()
+    gov.process(protocol.encode_command(1, [10.0; 18]))
+    gov.trip()
+    let r = protocol.decode_response(gov.process(protocol.encode_command(2, [0.0; 18])))
+    assert r.flags & protocol.F_WATCHDOG != 0
+    assert_eq!(r.counts.sum(), 0)
+})
+
+define_test!(joint_torque_units, {
+    let t = robot.joint_torque(400[N*m/rad], 20[N*m*s/rad], 0.1[rad], 0.0[rad], 0.0[rad/s])
+    assert abs(t.in("N*m") - 40.0) < 1e-9
+    let bad = unwrap_or_default!(robot.joint_torque(400, 20, 0.1, 0.0, 0.0), "rejected")
+    assert_eq!(bad, "rejected")
+})
+
+define_test!(attitude_from_quaternion, {
+    let a = robot.rpy([cos(0.1), sin(0.1), 0.0, 0.0])     # 0.2 rad roll
+    assert abs(a[0] - 0.2) < 1e-9
+    assert abs(a[1]) < 1e-9
+})
+
+fn fake_actuator(n) { {name: n + "_motor", qposadr: 0, dofadr: 0, ctrlrange: [-100, 100]} }
+
+define_test!(balance_steers_ankles_against_capture_error, {
+    let info = {total_mass: 50.0, actuators: ["left_ankle_y", "left_ankle_x", "left_hip_x"].map(fake_actuator)}
+    let body = robot.Body(info: info)
+    body.q_ref = [0.0, 0.0, 0.0]
+    let off = balance.Balance().offsets(body, {err: [0.05, 0.02]})
+    assert off[0] > 0            # falling forward → toes down
+    assert off[1] < 0            # falling left → press the left edge
+    assert off[2] > 0
+})
+
+define_test!(support_margin_signs, {
+    let poly = lipm.support_polygon([[0.0, 0.09], [0.0, -0.09]], 0.11, 0.06)
+    assert lipm.margin([0.0, 0.0], poly) > 0.1
+    assert lipm.margin([0.3, 0.0], poly) < 0
+})
+
+define_test!(frame_resyncs_after_noise, {
+    let d = frame.Decoder()
+    let f = d.feed([3, 1, 4] + frame.encode([0, 1, 2], type: 9) + [7, 7])
+    assert_eq!(len(f), 1)
+    assert_eq!(f[0].payload, [0, 1, 2])
+})

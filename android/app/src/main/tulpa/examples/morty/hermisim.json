@@ -1,0 +1,63 @@
+{
+  "name": "Morty",
+  "description": "Bipedal humanoid control reimagined in TulpaLang: capture-point balance, physics-informed COM model, PPO residual policy, FPGA torque governor (RTL + behavioural), mainboard as code.",
+  "model": "../../models/morty.xml",
+  "entry": "main.rav",
+  "run_configurations": [
+    {
+      "name": "Morty \u2014 balance demo (sim)",
+      "kind": "cosim",
+      "file": "main.rav",
+      "args": [
+        "20"
+      ],
+      "realtime": 1.0
+    },
+    {
+      "name": "Morty \u2014 hard shoves (sim)",
+      "kind": "cosim",
+      "file": "main.rav",
+      "args": [
+        "20",
+        "hard"
+      ],
+      "realtime": 1.0
+    },
+    {
+      "name": "Morty \u2014 with learned policy",
+      "kind": "cosim",
+      "file": "main.rav",
+      "args": [
+        "20",
+        "hard",
+        "policy"
+      ],
+      "realtime": 1.0
+    },
+    {
+      "name": "Train residual policy (PPO)",
+      "kind": "cosim",
+      "file": "train.rav",
+      "args": [
+        "40",
+        "resume"
+      ],
+      "realtime": 0.0
+    },
+    {
+      "name": "FPGA testbench (RTL \u2192 VCD)",
+      "kind": "run",
+      "file": "fpga/testbench.rav"
+    },
+    {
+      "name": "Mainboard ERC / power / BOM",
+      "kind": "run",
+      "file": "board/motherboard.rav"
+    },
+    {
+      "name": "Unit tests",
+      "kind": "test",
+      "file": "tests/morty_test.rav"
+    }
+  ]
+}

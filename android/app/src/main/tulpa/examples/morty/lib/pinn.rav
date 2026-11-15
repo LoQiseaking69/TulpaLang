@@ -1,0 +1,96 @@
+# Physics-informed neural network for Morty's centre-of-mass dynamics.
+#
+# The original Morty "PINN" pushed control outputs toward zero. This one earns the name:
+# it learns horizontal COM acceleration a = f(x − c, v, p − c, z) from experience, and its
+# loss carries the Linear Inverted Pendulum law as a physics prior,
+#
+#     L = MSE(f, a_measured)                        data term (finite-differenced COM velocity)
+#       + λ · MSE(f, ω²(x − p))   on the samples     physics term at observed states
+#       + λ · MSE(f, ω²(x − p))   on collocation     physics term at random unvisited states
+#
+# so it generalises like the LIPM where data is thin and corrects it (arm swing, ankle
+# compliance, contact slip) where data is rich. `forecast()` rolls it forward to predict
+# the capture-point margin 0.3 s ahead — Morty's early warning of a fall.
+
+import "std/lipm"
+
+struct Pinn {
+    hidden = [64, 64]
+    lr: float = 2e-3
+    lam: float = 0.5
+    capacity: int = 2048
+    net = nil
+    opt = nil
+    feats = []
+    targets = []
+    prev_vel = nil
+    prev_t = nil
+    steps: int = 0
+    last_loss = [0.0, 0.0]
+    fn init(self) {
+        self.net = nn::MLP([7] + self.hidden + [2], "tanh")
+        self.opt = nn::Adam(self.net.params(), self.lr)
+        self.opt.clip_grad(1.0)
+    }
+    # feature vector: [x−c (2), v (2), p−c (2), z]
+    fn features(self, com, vel, zmp, centre, z) {
+        [com[0] - centre[0], com[1] - centre[1], vel[0], vel[1], zmp[0] - centre[0], zmp[1] - centre[1], z]
+    }
+    fn lipm_accel(self, f) {
+        let w2 = 9.81 / f[6]
+        [w2 * (f[0] - f[4]), w2 * (f[1] - f[5])]
+    }
+    # Record one sample from consecutive sensed states.
+    fn observe(self, s) {
+        if self.prev_vel != nil and s.t > self.prev_t {
+            let dt = s.t - self.prev_t
+            let a = [(s.com_vel[0] - self.prev_vel[0]) / dt, (s.com_vel[1] - self.prev_vel[1]) / dt]
+            if abs(a[0]) < 30 and abs(a[1]) < 30 and not s.fallen {
+                self.feats.push(self.features(s.com, s.com_vel, s.zmp, s.centre, s.z))
+                self.targets.push(a)
+                if len(self.feats) > self.capacity { self.feats.pop(0); self.targets.pop(0) }
+            }
+        }
+        self.prev_vel = s.com_vel
+        self.prev_t = s.t
+    }
+    fn train(self, iters = 1, batch = 64) {
+        let n = len(self.feats)
+        if n < batch { return nil }
+        for _ in 0..iters {
+            let idx = range(batch).map(|_| int(nn::uniform() * n))
+            let F = idx.map(|i| self.feats[i])
+            let X = nn::tensor(F)
+            let A = nn::tensor(idx.map(|i| self.targets[i]))
+            let P = nn::tensor(F.map(|f| self.lipm_accel(f)))
+            # collocation states: random but physically plausible
+            let C = range(batch / 2).map(|_| [nn::gauss(0, 0.05), nn::gauss(0, 0.05), nn::gauss(0, 0.3), nn::gauss(0, 0.3),
+                                               nn::gauss(0, 0.05), nn::gauss(0, 0.05), 0.75 + 0.15 * nn::uniform()])
+            let XC = nn::tensor(C)
+            let PC = nn::tensor(C.map(|f| self.lipm_accel(f)))
+            let pred = self.net.forward(X)
+            let data = nn::mse(pred, A)
+            let phys = nn::mse(pred, P) + nn::mse(self.net.forward(XC), PC)
+            let loss = data + phys * self.lam
+            self.opt.zero_grad(); loss.backward(); self.opt.step()
+            self.last_loss = [data.item(), phys.item()]
+            self.steps += 1
+        }
+        self.last_loss
+    }
+    fn predict(self, f) { self.net.forward(nn::tensor([f])).flat() }
+    # Integrate the learned dynamics for `horizon` seconds holding the current ZMP;
+    # returns the predicted capture-point margin (m, < 0 means a fall is coming).
+    fn forecast(self, s, horizon = 0.3, dt = 0.05) {
+        let x = [s.com[0], s.com[1]]
+        let v = [s.com_vel[0], s.com_vel[1]]
+        let t = 0.0
+        while t < horizon {
+            let a = self.predict(self.features(x, v, s.zmp, s.centre, s.z))
+            v = [v[0] + a[0] * dt, v[1] + a[1] * dt]
+            x = [x[0] + v[0] * dt, x[1] + v[1] * dt]
+            t += dt
+        }
+        lipm.margin(lipm.capture_xy(x, v, s.z), s.poly)
+    }
+}

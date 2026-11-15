@@ -31,7 +31,7 @@ import org.json.JSONObject
 import java.io.File
 import kotlin.coroutines.resume
 
-enum class Screen { Projects, Code, Run, Repl, Learn, Sensors, Machines, Verify, Bytecode, Settings }
+enum class Screen { Home, Projects, Code, Run, Sim, Repl, Learn, Sensors, Machines, Verify, Bytecode, Settings }
 
 data class EditorState(
     val project: File? = null,
@@ -71,8 +71,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val repl = a.repl
     val sensors = a.sensors
     val settings = a.settings
+    val sim = a.sim
 
-    val screen = MutableStateFlow(if (settings.seenWelcome) Screen.Projects else Screen.Learn)
+    val screen = MutableStateFlow(Screen.Home)
     private val backStack = ArrayDeque<Screen>()
 
     private val _projects = MutableStateFlow<List<Project>>(emptyList())
@@ -92,6 +93,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val bytecode = MutableStateFlow("")
     val verify = MutableStateFlow(VerifyState())
     val guideDoc = MutableStateFlow<String?>(null)     // id of open guide chapter
+    val guideTab = MutableStateFlow<Int?>(null)        // one-shot: 0 library, 1 guide
+    val openExampleId = MutableStateFlow<String?>(null) // one-shot: show this example's page
+    val newProjectRequest = MutableStateFlow(false)
+    /** Set by the activity: opens the system file picker for an MJCF model. */
+    var importModelLauncher: () -> Unit = {}
     val runArgs = MutableStateFlow("")
     val virtualTime = MutableStateFlow(false)
 
@@ -122,6 +128,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Screen.Machines -> refreshMachines()
             Screen.Bytecode -> refreshBytecode()
             Screen.Projects -> refreshProjects()
+            Screen.Sim -> ensureSimModel()
             else -> {}
         }
     }
@@ -418,6 +425,78 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ------------------------------------------------------------------ welcome / navigation helpers
+
+    fun openGuide(id: String?) { guideTab.value = 1; guideDoc.value = id; go(Screen.Learn) }
+    fun openExample(id: String) { guideTab.value = 0; guideDoc.value = null; openExampleId.value = id; go(Screen.Learn) }
+    fun requestNewProject() { newProjectRequest.value = true }
+
+    // ------------------------------------------------------------------ simulation
+
+    /** Loads a model for the Sim tab if none is open: the project's, else the cart-pole. */
+    fun ensureSimModel() {
+        if (sim.state.value.model != null || sim.state.value.loading) return
+        val dir = _editor.value.project
+        val f = dir?.let { sim.modelFor(it) } ?: java.io.File(workspace.models, "cartpole.xml")
+        loadSimModel(f)
+    }
+
+    fun loadSimModel(f: File) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { sim.load(f)?.let { toast("Cannot load ${f.name}: $it") } }
+    }
+
+    fun importModel(uri: Uri, name: String?) {
+        val text = runCatching { getApplication<Application>().contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } }.getOrNull()
+        if (text == null || !text.contains("<mujoco")) { toast("That file is not a MuJoCo MJCF model"); return }
+        val dir = _editor.value.project ?: workspace.createProject("Models", Template.Blank).also { refreshProjects() }
+        var n = (name ?: "model.xml").substringAfterLast('/')
+        if (!n.endsWith(".xml")) n += ".xml"
+        val f = File(dir, n)
+        f.writeText(text)
+        refreshFiles()
+        loadSimModel(f)
+        toast("Imported ${f.name} into ${dir.name}")
+    }
+
+    /** A new project wired to [m]: hermisim.json + a starter controller using its actuators. */
+    fun newCosimProject(m: dev.hermitech.tulpafield.core.SimModel) {
+        val dir = workspace.createProject("${m.name} co-sim", Template.Blank)
+        val bundled = File(m.path).parentFile == workspace.models
+        val rel = if (bundled) "../../models/${File(m.path).name}" else File(m.path).also { it.copyTo(File(dir, it.name), true) }.name
+        File(dir, "hermisim.json").writeText(org.json.JSONObject().put("name", m.name).put("model", rel).put("entry", "main.rav").toString(2))
+        File(dir, "main.rav").writeText("""
+            # Co-simulation with ${m.name}: ${m.actuators} actuators, ${m.joints} joints.
+            # Run this file, then open the Sim tab to watch it in 3D.
+
+            let sim = cosim::connect()
+            let info = sim.info()
+            print(f"{info.model}: {info.nu} actuators, timestep {info.timestep} s")
+            for a in info.actuators { print(" ", a.name, a.ctrlrange) }
+
+            let o = sim.reset()
+            let ctrl = [0.0] * info.nu
+            while o.time < 5.0 {
+                # your controller here: compute ctrl from the observation o
+                o = sim.step(ctrl, 10)
+                tlm::plot("com z", o.com[2])
+            }
+            print(f"done at t = {o.time:.2f} s, com = {o.com}")
+        """.trimIndent() + "\n")
+        refreshProjects()
+        openProject(dir)
+    }
+
+    /** Exports TULPA_COSIM for programs that use cosim::; returns a console note or an error. */
+    private fun prepareCosim(src: String, dir: File): Result<String?> {
+        val remote = settings.prefs.value.remoteCosim.takeIf { it.isNotBlank() }
+        return sim.prepareRun(src, dir, remote).map { addr ->
+            addr?.let {
+                if (remote != null) "co-sim: remote simulator at $it"
+                else "co-sim: ${sim.state.value.model?.name} (MuJoCo, on device) — open the Sim tab to watch in 3D"
+            }
+        }
+    }
+
     // ------------------------------------------------------------------ running
 
     private fun permissionsFor(src: String) {
@@ -433,16 +512,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (runner.state.value.running) { toast("A program is already running — stop it first"); return }
         permissionsFor(s.text.text)
         val args = runArgs.value.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
-        runner.start(s.text.text, f, f.parentFile ?: s.project!!, args, virtualTime.value, title = f.relativeTo(s.project ?: f.parentFile!!).path)
-        go(Screen.Run)
+        val dir = f.parentFile ?: s.project!!
+        val src = s.text.text
+        viewModelScope.launch {
+            val note = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { prepareCosim(src, dir) }
+                .getOrElse { toast(it.message ?: "co-sim failed"); return@launch }
+            runner.start(src, f, dir, args, virtualTime.value, title = f.relativeTo(s.project ?: f.parentFile!!).path, note = note)
+            go(if (note != null && screen.value == Screen.Sim) Screen.Sim else Screen.Run)
+        }
     }
 
     fun runExample(e: Example) {
         if (runner.state.value.running) { toast("A program is already running — stop it first"); return }
         val src = e.main.readText()
         permissionsFor(src)
-        runner.start(src, e.main, e.dir, emptyList(), e.virtualTime, title = e.title)
-        go(Screen.Run)
+        viewModelScope.launch {
+            val note = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { prepareCosim(src, e.dir) }
+                .getOrElse { toast(it.message ?: "co-sim failed"); return@launch }
+            runner.start(src, e.main, e.dir, e.args, e.virtualTime, title = e.title, note = note)
+            go(if (note != null) Screen.Sim else Screen.Run)
+        }
     }
 
     fun runSnippet(code: String, title: String = "snippet") {
@@ -450,8 +539,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val dir = File(getApplication<Application>().filesDir, "scratch").apply { mkdirs() }
         val f = File(dir, "snippet.rav").apply { writeText(code) }
         permissionsFor(code)
-        runner.start(code, f, dir, emptyList(), false, title = title)
-        go(Screen.Run)
+        viewModelScope.launch {
+            val note = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { prepareCosim(code, dir) }
+                .getOrElse { toast(it.message ?: "co-sim failed"); return@launch }
+            runner.start(code, f, dir, emptyList(), false, title = title, note = note)
+            go(Screen.Run)
+        }
     }
 
     fun snippetToProject(code: String, title: String) {

@@ -12,6 +12,7 @@ data class Prefs(
     val lineNumbers: Boolean = true,
     val pairBrackets: Boolean = true,
     val haptics: Boolean = true,
+    val remoteCosim: String = "",
 )
 
 class Settings(context: Context) {
@@ -27,6 +28,7 @@ class Settings(context: Context) {
         lineNumbers = sp.getBoolean("lineNumbers", true),
         pairBrackets = sp.getBoolean("pairBrackets", true),
         haptics = sp.getBoolean("haptics", true),
+        remoteCosim = sp.getString("remoteCosim", "") ?: "",
     )
 
     fun update(f: (Prefs) -> Prefs) {
@@ -36,7 +38,7 @@ class Settings(context: Context) {
             .putInt("fontSize", p.fontSize).putBoolean("autosave", p.autosave)
             .putBoolean("keepScreenOn", p.keepScreenOn).putInt("trials", p.trials)
             .putBoolean("lineNumbers", p.lineNumbers).putBoolean("pairBrackets", p.pairBrackets)
-            .putBoolean("haptics", p.haptics)
+            .putBoolean("haptics", p.haptics).putString("remoteCosim", p.remoteCosim)
             .apply()
     }
 
