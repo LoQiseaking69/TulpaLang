@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 
 package dev.hermitech.tulpafield.ui
 
@@ -32,7 +32,8 @@ fun MainScreen(vm: AppViewModel, onImport: () -> Unit, onExit: () -> Unit) {
     BackHandler { if (!vm.back()) onExit() }
 
     val menu: @Composable () -> Unit = { ToolsMenu(vm) }
-    val isTab = TABS.any { it.screen == screen }
+    val imeOpen = WindowInsets.isImeVisible
+    val isTab = TABS.any { it.screen == screen } && !imeOpen
 
     Scaffold(
         bottomBar = {

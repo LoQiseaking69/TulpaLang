@@ -109,7 +109,12 @@ fun ReplScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
             }
             Row(Modifier.fillMaxWidth().background(TF.Surface2).padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(when { st.prompt != null -> st.prompt!!.ifBlank { "?" }; st.continuation -> "…"; else -> "›" }, style = style.copy(color = TF.Violet), modifier = Modifier.padding(end = 8.dp))
-                BasicTextField(input, { input = it }, Modifier.weight(1f).semantics { contentDescription = "REPL input" }, textStyle = style, cursorBrush = SolidColor(TF.Cyan),
+                BasicTextField(input, { nv ->
+                    // Enter (soft or hardware) at the end of the line submits; pasted multi-line text is kept
+                    if (nv.text.length == input.text.length + 1 && nv.text.endsWith("\n") && nv.text.dropLast(1) == input.text) {
+                        input = TextFieldValue(input.text); submit()
+                    } else input = nv
+                }, Modifier.weight(1f).semantics { contentDescription = "REPL input" }, textStyle = style, cursorBrush = SolidColor(TF.Cyan),
                     visualTransformation = TulpaTransformation(emptyList()),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { submit() }), maxLines = 6)
