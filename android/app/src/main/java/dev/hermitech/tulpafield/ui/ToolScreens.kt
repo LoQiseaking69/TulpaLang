@@ -130,7 +130,7 @@ fun MachinesScreen(vm: AppViewModel) {
     val clip = LocalClipboardManager.current
     Scaffold(topBar = { ToolBar("Machines", ed.file?.name, vm) { IconButton(onClick = { vm.refreshMachines() }) { Icon(Icons.Default.Refresh, "Refresh") } } }) { pad ->
         if (graphs.isEmpty()) {
-            EmptyState(Modifier.padding(pad), Icons.Default.Hub, "No machines here", "This file doesn't declare a `machine`. Try the State machine template or the Shake alarm example.")
+            EmptyState(Modifier.padding(pad), Icons.Default.Hub, "No machines here", "This file doesn't declare a machine. Try the State machine template or the Shake alarm example.")
             return@Scaffold
         }
         LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -265,7 +265,7 @@ fun VerifyScreen(vm: AppViewModel) {
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (ed.file == null) { Text("Open a file first.", color = TF.Dim); return@Column }
             if (tab == 0) {
-                Text("Fuzzes every function with an `ensure` or a return type using ${prefs.trials} trials per function, shrinking failures to a minimal counterexample.", color = TF.Dim, fontSize = 13.sp)
+                Text("Fuzzes every function with an ensure clause or a return type using ${prefs.trials} trials per function, shrinking failures to a minimal counterexample.", color = TF.Dim, fontSize = 13.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (st.running) {
                         CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp); Spacer(Modifier.width(12.dp))
@@ -296,7 +296,7 @@ fun VerifyScreen(vm: AppViewModel) {
                     }
                 }
             } else {
-                Text("Runs every `define_test!` block in the file.", color = TF.Dim, fontSize = 13.sp)
+                Text("Runs every define_test! block in the file.", color = TF.Dim, fontSize = 13.sp)
                 if (st.testsRunning) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
                 else Button(onClick = { vm.runTests() }) { Icon(Icons.Default.Science, null); Spacer(Modifier.width(6.dp)); Text("Run tests") }
                 st.tests?.let { t ->

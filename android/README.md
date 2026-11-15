@@ -1,5 +1,20 @@
 # Tulpa Field — TulpaLang IDE for Android
 
+<p align="center">
+  <img src="docs/screenshots/editor.jpg" width="24%" alt="Editor with syntax colouring and the symbol bar">
+  <img src="docs/screenshots/run.jpg" width="24%" alt="Run screen: live gauges and plots from the phone's sensors">
+  <img src="docs/screenshots/machines.jpg" width="24%" alt="Machine inspector">
+  <img src="docs/screenshots/verify.jpg" width="24%" alt="Contract verification">
+</p>
+<p align="center">
+  <img src="docs/screenshots/guide.jpg" width="24%" alt="In-app guide with runnable code blocks">
+  <img src="docs/screenshots/library.jpg" width="24%" alt="Example library">
+  <img src="docs/screenshots/repl.jpg" width="24%" alt="REPL">
+  <img src="docs/screenshots/sensors.jpg" width="24%" alt="Live sensor readings">
+</p>
+<p align="center"><sub>Editor · live gauges & plots · machine inspector · verify — guide · library · REPL · sensors.
+Captured by CI on an Android 14 emulator (<code>android/ci/smoke.sh</code>).</sub></p>
+
 A pocket IDE for TulpaLang that runs the **entire Tulpa runtime on the phone** (interpreter,
 bytecode VM, units, contracts, machines, signals, `std/` libraries) and turns the handset itself
 into a device you can program.
@@ -25,6 +40,9 @@ android/
     src/main/tulpa/examples/   phone-specific examples (bundled with ../../examples)
     src/main/tulpa/guide/      in-app guide chapters (bundled with ../../docs)
     src/main/assets/           catalog.json (library index) and guide.json (guide index)
+  ci/smoke.sh      emulator smoke test: launches the app, runs code, captures the screenshots
+  docs/screenshots/
+  VERSION          bump on main to publish a signed release
 ```
 
 The Gradle build copies `examples/`, `docs/` and `stdlib/` from the repository into the APK, so the

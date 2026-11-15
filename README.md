@@ -244,6 +244,13 @@ larger robotics and simulation environment:
 
 ## Tulpa Field (Android)
 
+<p align="center">
+  <a href="android/README.md"><img src="android/docs/screenshots/editor.jpg" width="23%" alt="Tulpa Field editor"></a>
+  <a href="android/README.md"><img src="android/docs/screenshots/run.jpg" width="23%" alt="Live gauges and plots from the phone's sensors"></a>
+  <a href="android/README.md"><img src="android/docs/screenshots/machines.jpg" width="23%" alt="State-machine inspector"></a>
+  <a href="android/README.md"><img src="android/docs/screenshots/guide.jpg" width="23%" alt="In-app guide with runnable code"></a>
+</p>
+
 [`android/`](android/README.md) is **Tulpa Field**, a pocket IDE that runs the whole Tulpa runtime
 on the phone, offline. It turns the handset into a device you can program:
 
@@ -255,7 +262,8 @@ on the phone, offline. It turns the handset into a device you can program:
 - a REPL, a tappable state-machine inspector, and one-tap contract verification and tests
 - 28 runnable examples and an in-app guide whose code blocks run with one tap
 
-The APK is built by CI and attached to `android-v*` releases. Other hosts can embed the runtime the
+The APK is built by CI and attached to `android-v*` releases. Screenshots, features and build
+instructions are in the [Tulpa Field README](android/README.md). Other hosts can embed the runtime the
 same way through `tulpa::embed` (run/REPL/analysis API) and `tulpa::host` (host-provided modules).
 
 ## Install
