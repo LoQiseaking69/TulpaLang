@@ -22,6 +22,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -107,7 +109,7 @@ fun ReplScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
             }
             Row(Modifier.fillMaxWidth().background(TF.Surface2).padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(when { st.prompt != null -> st.prompt!!.ifBlank { "?" }; st.continuation -> "…"; else -> "›" }, style = style.copy(color = TF.Violet), modifier = Modifier.padding(end = 8.dp))
-                BasicTextField(input, { input = it }, Modifier.weight(1f), textStyle = style, cursorBrush = SolidColor(TF.Cyan),
+                BasicTextField(input, { input = it }, Modifier.weight(1f).semantics { contentDescription = "REPL input" }, textStyle = style, cursorBrush = SolidColor(TF.Cyan),
                     visualTransformation = TulpaTransformation(emptyList()),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { submit() }), maxLines = 6)
