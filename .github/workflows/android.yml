@@ -116,7 +116,9 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk "dist/TulpaField-${TULPA_FIELD_VERSION#android-v}.apk"
           ls -la dist
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          "$APKSIGNER" verify --print-certs dist/*.apk | grep -E "Signer #1 certificate (DN|SHA-256)"
+          "$APKSIGNER" verify --print-certs dist/*.apk > dist/signature.txt
+          grep -iE "DN:|SHA-256" dist/signature.txt || cat dist/signature.txt
+          rm dist/signature.txt
 
       - uses: actions/upload-artifact@v4
         with:
