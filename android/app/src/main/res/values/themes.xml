@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.TulpaField" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/tf_bg</item>
+        <item name="android:statusBarColor">@color/tf_bg</item>
+        <item name="android:navigationBarColor">@color/tf_bg</item>
+    </style>
+</resources>

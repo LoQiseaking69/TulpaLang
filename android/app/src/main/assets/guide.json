@@ -1,0 +1,14 @@
+[
+ {"id":"welcome","title":"Welcome to Tulpa Field","section":"Tulpa Field","asset":"guide/field/01-welcome.md"},
+ {"id":"editor","title":"The editor","section":"Tulpa Field","asset":"guide/field/02-editor.md"},
+ {"id":"running","title":"Running, plots & gauges","section":"Tulpa Field","asset":"guide/field/03-running.md"},
+ {"id":"phone","title":"Your phone as a device: phone::","section":"Tulpa Field","asset":"guide/field/04-phone.md"},
+ {"id":"machines","title":"Machine inspector","section":"Tulpa Field","asset":"guide/field/05-machines.md"},
+ {"id":"verify","title":"Verify: contracts & tests","section":"Tulpa Field","asset":"guide/field/06-verify.md"},
+ {"id":"repl","title":"The REPL","section":"Tulpa Field","asset":"guide/field/07-repl.md"},
+ {"id":"projects","title":"Projects, files & sharing","section":"Tulpa Field","asset":"guide/field/08-projects.md"},
+ {"id":"lang-quick","title":"Tulpa in 10 minutes","section":"Language","asset":"guide/field/10-quick.md"},
+ {"id":"language","title":"Language guide","section":"Reference","asset":"guide/reference/language_guide.md"},
+ {"id":"libraries","title":"Libraries","section":"Reference","asset":"guide/reference/libraries.md"},
+ {"id":"devices","title":"Device integration","section":"Reference","asset":"guide/reference/device_integration.md"}
+]

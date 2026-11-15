@@ -474,7 +474,9 @@ impl Compiler {
                 };
             }
             Expr::Path(m, n, _) => {
-                let v = crate::builtins::path(m, n).ok_or(())?;
+                let v = crate::builtins::path(m, n)
+                    .or_else(|| crate::host::lookup(m, n))
+                    .ok_or(())?;
                 let k = self.konst(v);
                 self.emit(Op::Const(k));
             }
@@ -720,6 +722,12 @@ impl Interpreter {
                     }
                 }
                 Op::Jump(t) => {
+                    if (t as usize) <= pc {
+                        // backward jump = loop iteration: honour the host's Stop button
+                        if let Err(e) = self.check_cancel() {
+                            fail!(e);
+                        }
+                    }
                     pc = t as usize;
                     continue;
                 }

@@ -1,0 +1,19 @@
+# Light meter with an automatic torch.
+# The torch switches on when it has been dark (< 10 lux) for 2 seconds, off again when bright.
+
+let lux = signal(0.0)
+let torch_on = false
+
+when lux.get() < 10.0 for 2[s] {
+    if not torch_on { print("dark → torch on"); phone::torch(true); torch_on = true }
+}
+when lux.get() > 40.0 for 1[s] {
+    if torch_on { print("bright → torch off"); phone::torch(false); torch_on = false }
+}
+
+every!(100[ms], 900, {
+    lux.set(phone::light())
+    phone::gauge("light (lux)", lux.get(), 0, 1000)
+    tlm::plot("lux", lux.get())
+})
+phone::torch(false)

@@ -1,0 +1,22 @@
+# Free-fall detector: |a| ≈ 0 means the phone is falling.
+# A drop shows up as < 2 m/s² for at least 80 ms, followed by an impact spike.
+# (Drop it onto a bed or sofa!)
+
+let g = signal(9.81[m/s^2])
+let drops = 0
+
+fn magnitude(a) { sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]) }
+
+when g.get() < 2[m/s^2] for 80[ms] {
+    drops += 1
+    print(f"free fall #{drops}!")
+    phone::notify("Tulpa Field", f"Drop #{drops} detected")
+    phone::vibrate(400[ms])
+}
+
+every!(10[ms], 6000, {
+    let a = phone::accel()
+    g.set(magnitude(a))
+    tlm::plot("|a|", g.get().in("m/s^2"))
+})
+print(f"{drops} drop(s) detected")

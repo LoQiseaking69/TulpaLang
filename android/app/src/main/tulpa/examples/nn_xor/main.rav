@@ -1,0 +1,18 @@
+# nn:: — a tiny neural network learns XOR with reverse-mode autodiff, on the phone.
+
+nn::seed(3)
+let net = nn::MLP([2, 8, 1], "tanh")
+let opt = nn::Adam(net.params(), 0.05)
+let x = nn::tensor([[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]])
+let y = nn::tensor([[0.0], [1.0], [1.0], [0.0]])
+
+for epoch in 0..400 {
+    let loss = (net.forward(x) - y).square().mean()
+    opt.zero_grad(); loss.backward(); opt.step()
+    if epoch % 50 == 0 {
+        print(f"epoch {epoch:3}  loss {loss.item():.5f}")
+        tlm::plot("loss", loss.item())
+    }
+}
+let p = net.forward(x).flat()
+for k in 0..4 { print(x.row(k), "→", round(p[k] * 100) / 100) }

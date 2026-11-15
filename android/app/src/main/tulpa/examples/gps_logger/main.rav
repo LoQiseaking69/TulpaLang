@@ -1,0 +1,30 @@
+# GPS track logger with dimensional analysis.
+# Enable Location on the Sensors screen, then walk. Distance uses the haversine formula with
+# real units; the track is written to track.csv in this project's folder.
+
+const R_EARTH = 6371000[m]
+
+fn haversine(a, b) -> [m] {
+    let la1 = a.lat.in("rad"); let la2 = b.lat.in("rad")
+    let dla = la2 - la1
+    let dlo = (b.lon - a.lon).in("rad")
+    let h = sin(dla / 2) ** 2 + cos(la1) * cos(la2) * sin(dlo / 2) ** 2
+    2 * R_EARTH * asin(sqrt(h))
+}
+
+write_file("track.csv", "t_s,lat_deg,lon_deg,alt_m,speed_mps\n")
+let start = millis()
+let prev = nil
+let total = 0[m]
+every!(2[s], 300, {
+    let p = phone::location()
+    if p == nil { print("waiting for a GPS fix…") } else {
+        if prev != nil { total = total + haversine(prev, p) }
+        prev = p
+        let t = (millis() - start) / 1000
+        append_file("track.csv", f"{t:.1f},{p.lat.in(\"deg\"):.6f},{p.lon.in(\"deg\"):.6f},{p.alt.in(\"m\"):.1f},{p.speed.in(\"m/s\"):.2f}\n")
+        phone::gauge("distance", total, 0[m], 1000[m])
+        phone::gauge("speed", p.speed.to("km/h"), 0, 10)
+        print(f"{total.in(\"m\"):7.1f} m   ±{p.accuracy.in(\"m\"):.0f} m")
+    }
+})

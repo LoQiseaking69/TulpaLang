@@ -1,0 +1,27 @@
+# Cycle-accurate hardware in Tulpa: a 4-bit counter with a clock-enable from a ÷3 divider.
+# Prints an ASCII waveform and writes counter.vcd (share it to GTKWave or HermiSim).
+import "std/rtl"
+
+let sim = rtl.Sim(period_ns: 10)
+let div = sim.add(rtl.Divider("div", 3, sim))
+let q = sim.reg("count", 4)
+
+struct Counter {
+    q
+    en
+    fn comb(self) {}
+    fn seq(self) { if self.en.high() { self.q.d(self.q.value + 1) } }
+}
+sim.add(Counter(q, div.tick))
+sim.trace("counter.vcd")
+
+let tick_row = "tick  "
+let count_row = "count "
+for _ in 0..24 {
+    sim.step()
+    tick_row = tick_row + (if div.tick.high() { "▔" } else { "▁" })
+    count_row = count_row + f"{q.value:x}"
+}
+sim.close()
+print(tick_row); print(count_row)
+print(f"{sim.cycle} cycles = {sim.time_ns()} ns simulated; waveform in counter.vcd")

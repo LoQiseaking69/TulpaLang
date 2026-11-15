@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tulpa mark: a beveled "T" inside a violet orbit ring (safe zone: central 66dp) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- orbit ring, back half -->
+    <path android:pathData="M24,62 C18,50 34,36 58,33 C78,31 92,37 88,47" android:strokeWidth="3.2"
+        android:strokeLineCap="round" android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient android:type="linear" android:startX="20" android:startY="60" android:endX="90" android:endY="40"
+                android:startColor="#3B2BBF" android:endColor="#8E7BFF" />
+        </aapt:attr>
+    </path>
+    <!-- T crossbar -->
+    <path android:pathData="M33,37 L77,37 L73,46 L59,46 L59,47 L49,47 L49,46 L37,46 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="33" android:startY="37" android:endX="77" android:endY="47"
+                android:startColor="#FFFFFF" android:endColor="#C9C3FF" />
+        </aapt:attr>
+    </path>
+    <!-- T stem with a violet bevel -->
+    <path android:pathData="M49,47 L59,47 L59,74 L54,80 L49,74 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="49" android:startY="47" android:endX="59" android:endY="80"
+                android:startColor="#F2F0FF" android:endColor="#7C5CFF" />
+        </aapt:attr>
+    </path>
+    <path android:fillColor="#5B3DF5" android:fillAlpha="0.85"
+        android:pathData="M54,47 L59,47 L59,74 L54,80 Z" />
+    <!-- orbit ring, front half (passes in front of the stem) -->
+    <path android:pathData="M88,47 C84,58 66,68 46,70 C32,71 24,67 24,62" android:strokeWidth="3.6"
+        android:strokeLineCap="round" android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient android:type="linear" android:startX="88" android:startY="47" android:endX="24" android:endY="64"
+                android:startColor="#B3A6FF" android:endColor="#5B3DF5" />
+        </aapt:attr>
+    </path>
+    <!-- spark -->
+    <path android:fillColor="#E9E5FF" android:pathData="M86,44 l1.2,2.6 2.6,1.2 -2.6,1.2 -1.2,2.6 -1.2,-2.6 -2.6,-1.2 2.6,-1.2z" />
+</vector>

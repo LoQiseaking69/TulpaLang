@@ -1,0 +1,21 @@
+# Bubble level: the accelerometer as an inclinometer.
+# Lay the phone on a surface. It buzzes once when the surface is level to within 0.5°.
+
+fn angles(a) {
+    # pitch/roll from the gravity vector, in degrees
+    let pitch = atan2(a[1].in("m/s^2"), a[2].in("m/s^2")) * 180 / PI
+    let roll = atan2(-a[0].in("m/s^2"), a[2].in("m/s^2")) * 180 / PI
+    [quantity(pitch, "deg"), quantity(roll, "deg")]
+}
+
+let was_level = false
+every!(100[ms], 600, {
+    let pr = angles(phone::accel())
+    phone::gauge("pitch", pr[0], -10[deg], 10[deg])
+    phone::gauge("roll", pr[1], -10[deg], 10[deg])
+    tlm::plot("pitch", pr[0].in("deg"))
+    tlm::plot("roll", pr[1].in("deg"))
+    let level = abs(pr[0].in("deg")) < 0.5 and abs(pr[1].in("deg")) < 0.5
+    if level and not was_level { phone::vibrate(60[ms]); print("level ✓") }
+    was_level = level
+})

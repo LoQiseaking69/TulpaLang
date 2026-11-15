@@ -1,0 +1,22 @@
+[package]
+name = "tulpa_android"
+version = "1.0.0"
+edition = "2021"
+description = "JNI bridge between the Tulpa language runtime and the Tulpa Field Android IDE"
+license = "BSD-3-Clause"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+tulpa = { path = "../.." }
+jni = "0.21"
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "unwind"
