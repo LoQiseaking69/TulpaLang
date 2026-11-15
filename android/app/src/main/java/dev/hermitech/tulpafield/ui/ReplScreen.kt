@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -72,7 +73,7 @@ fun ReplScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
                     IconButton(onClick = { more = true }) { Icon(Icons.Default.MoreVert, "More") }
                     DropdownMenu(more, { more = false }) {
                         DropdownMenuItem(text = { Text("Load ${ed.file?.name ?: "file"}") }, enabled = ed.file != null, leadingIcon = { Icon(Icons.Default.UploadFile, null) }, onClick = { more = false; vm.repl.load(ed.text.text, ed.file!!.name) })
-                        DropdownMenuItem(text = { Text("Discard unfinished entry") }, enabled = st.continuation, leadingIcon = { Icon(Icons.Default.Backspace, null) }, onClick = { more = false; vm.repl.cancelEntry() })
+                        DropdownMenuItem(text = { Text("Discard unfinished entry") }, enabled = st.continuation, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Backspace, null) }, onClick = { more = false; vm.repl.cancelEntry() })
                         DropdownMenuItem(text = { Text("Clear screen") }, leadingIcon = { Icon(Icons.Default.ClearAll, null) }, onClick = { more = false; vm.repl.clearScreen() })
                         DropdownMenuItem(text = { Text("Reset session") }, leadingIcon = { Icon(Icons.Default.RestartAlt, null) }, onClick = { more = false; vm.repl.reset() })
                     }

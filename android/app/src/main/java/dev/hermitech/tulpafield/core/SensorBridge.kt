@@ -91,7 +91,7 @@ class SensorBridge(private val context: Context) : SensorEventListener {
         for ((t, _) in types) {
             sm.getDefaultSensor(t)?.let { sm.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
         }
-        context.registerReceiver(battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let { battery.onReceive(context, it) }
+        ContextCompat.registerReceiver(context, battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)?.let { battery.onReceive(context, it) }
         if (locationOn) startLocation()
     }
 

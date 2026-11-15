@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
@@ -31,7 +32,7 @@ import dev.hermitech.tulpafield.core.Example
 
 private val CATEGORY_ICON = mapOf(
     "Start here" to Icons.Default.RocketLaunch, "Phone sensors" to Icons.Default.Sensors, "Robotics" to Icons.Default.PrecisionManufacturing,
-    "Timing & reactive" to Icons.Default.Timer, "Verification" to Icons.Default.Verified, "Libraries" to Icons.Default.LibraryBooks,
+    "Timing & reactive" to Icons.Default.Timer, "Verification" to Icons.Default.Verified, "Libraries" to Icons.AutoMirrored.Filled.LibraryBooks,
     "Native" to Icons.Default.Memory, "More" to Icons.Default.MoreHoriz,
 )
 
@@ -153,7 +154,7 @@ private fun GuideIndex(vm: AppViewModel) {
             items(docs, key = { it.id }) { d ->
                 ListItem(
                     headlineContent = { Text(d.title) },
-                    leadingContent = { Icon(if (section == "Reference") Icons.Default.Article else Icons.AutoMirrored.Filled.MenuBook, null, tint = TF.Cyan) },
+                    leadingContent = { Icon(if (section == "Reference") Icons.AutoMirrored.Filled.Article else Icons.AutoMirrored.Filled.MenuBook, null, tint = TF.Cyan) },
                     trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = TF.Dim) },
                     modifier = Modifier.clickable { vm.guideDoc.value = d.id },
                     colors = ListItemDefaults.colors(containerColor = TF.Bg),

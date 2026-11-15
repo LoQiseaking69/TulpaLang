@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -84,7 +85,7 @@ fun RunScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
                         IconButton(onClick = { runMenu = true }) { Icon(Icons.Default.Tune, "Run options") }
                         DropdownMenu(runMenu, { runMenu = false }) {
                             DropdownMenuItem(text = { Text("Virtual time") }, leadingIcon = { Checkbox(vt, null) }, onClick = { vm.virtualTime.value = !vt })
-                            DropdownMenuItem(text = { Text(if (args.isBlank()) "Run with arguments…" else "Arguments: $args") }, leadingIcon = { Icon(Icons.Default.Input, null) }, onClick = { runMenu = false; argsDialog = true })
+                            DropdownMenuItem(text = { Text(if (args.isBlank()) "Run with arguments…" else "Arguments: $args") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.Input, null) }, onClick = { runMenu = false; argsDialog = true })
                             DropdownMenuItem(text = { Text("Clear console") }, leadingIcon = { Icon(Icons.Default.ClearAll, null) }, enabled = !st.running, onClick = { runMenu = false; vm.runner.clear() })
                             DropdownMenuItem(text = { Text("Share output") }, leadingIcon = { Icon(Icons.Default.Share, null) }, onClick = {
                                 runMenu = false; vm.share(st.console.joinToString("\n") { it.text }, "Tulpa output")
@@ -108,7 +109,7 @@ fun RunScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
             }
             if (st.plots.isNotEmpty()) {
                 Row(Modifier.fillMaxWidth().clickable { showPlots = !showPlots }.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.ShowChart, null, tint = TF.Cyan, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.ShowChart, null, tint = TF.Cyan, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Live plots (${st.plots.size})", style = MaterialTheme.typography.labelLarge, color = TF.Dim, modifier = Modifier.weight(1f))
                     Icon(if (showPlots) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, tint = TF.Dim)

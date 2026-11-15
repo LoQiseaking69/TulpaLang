@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
@@ -95,11 +96,11 @@ fun EditorScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
                             st.files.forEach { f ->
                                 DropdownMenuItem(
                                     text = { Text(f.relativeTo(st.project!!).path, fontFamily = TF.Mono, fontSize = 13.sp) },
-                                    leadingIcon = { Icon(if (f.extension == "rav") Icons.Default.Description else Icons.Default.InsertDriveFile, null, tint = if (f == st.file) TF.Cyan else TF.Dim) },
+                                    leadingIcon = { Icon(if (f.extension == "rav") Icons.Default.Description else Icons.AutoMirrored.Filled.InsertDriveFile, null, tint = if (f == st.file) TF.Cyan else TF.Dim) },
                                     onClick = { fileMenu = false; vm.openFile(f) })
                             }
                             HorizontalDivider()
-                            DropdownMenuItem(text = { Text("New file…") }, leadingIcon = { Icon(Icons.Default.NoteAdd, null) }, onClick = { fileMenu = false; dialog = "newfile" })
+                            DropdownMenuItem(text = { Text("New file…") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.NoteAdd, null) }, onClick = { fileMenu = false; dialog = "newfile" })
                             DropdownMenuItem(text = { Text("Rename file…") }, leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, null) }, onClick = { fileMenu = false; dialog = "rename" })
                             DropdownMenuItem(text = { Text("Share file") }, leadingIcon = { Icon(Icons.Default.Share, null) }, onClick = { fileMenu = false; vm.save(true); vm.shareFile(st.file!!) })
                             DropdownMenuItem(text = { Text("Delete file") }, leadingIcon = { Icon(Icons.Default.Delete, null, tint = TF.Err) }, onClick = { fileMenu = false; dialog = "delete" })

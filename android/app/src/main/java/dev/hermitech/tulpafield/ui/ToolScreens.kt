@@ -199,7 +199,7 @@ private fun MachineCanvas(g: MachineGraph, onTap: (Int) -> Unit) {
                 continue
             }
             val b = pos[t.to] ?: continue
-            val k = pairCount.merge(t.from to t.to, 1, Int::plus)!! - 1
+            val k = pairCount.merge(t.from to t.to, 1) { x, y -> x + y }!! - 1
             val reverse = g.transitions.any { it.from == t.to && it.to == t.from && !it.global }
             val bend = (if (reverse) 40f else 0f) + k * 22f
             arrow(a, b, nodeR, bend, if (t.guard != null) TF.Warn else TF.Cyan)
