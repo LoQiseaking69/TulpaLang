@@ -42,7 +42,7 @@ jobs:
         with:
           workspaces: android/native
 
-      - name: Native bridge — fmt, clippy, host tests (phone:: module + every bundled example)
+      - name: "Native bridge: fmt, clippy, host tests (phone module + every bundled example)"
         working-directory: android/native
         run: |
           cargo fmt --check
