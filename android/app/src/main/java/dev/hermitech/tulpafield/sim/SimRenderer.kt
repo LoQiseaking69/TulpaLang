@@ -35,7 +35,7 @@ class OrbitCamera {
     fun frame(center: FloatArray, ext: Float) {
         extent = max(ext, 0.05f)
         tx = center[0]; ty = center[1]; tz = center[2]
-        distance = extent * 2.4f
+        distance = extent * 1.7f
         azimuth = 135f; elevation = 20f
     }
 

@@ -186,13 +186,13 @@ fun InputRow(prompt: String, onSend: (String) -> Unit, onEof: (() -> Unit)?) {
 
 @Composable
 private fun GaugeCard(g: Gauge) {
-    Surface(shape = RoundedCornerShape(14.dp), color = TF.Surface2, modifier = Modifier.width(156.dp)) {
+    Surface(shape = RoundedCornerShape(14.dp), color = TF.Surface2, modifier = Modifier.widthIn(min = 156.dp, max = 240.dp)) {
         Column(Modifier.padding(12.dp)) {
             Text(g.name, style = MaterialTheme.typography.labelMedium, color = TF.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(fmt(g.value.toFloat()), fontSize = 28.sp, fontWeight = FontWeight.Bold, fontFamily = TF.Mono, color = TF.Text)
+                Text(fmt(g.value.toFloat()), fontSize = 26.sp, fontWeight = FontWeight.Bold, fontFamily = TF.Mono, color = TF.Text, maxLines = 1, softWrap = false)
                 Spacer(Modifier.width(4.dp))
-                Text(g.unit, color = TF.Unit, fontSize = 13.sp, modifier = Modifier.padding(bottom = 4.dp))
+                Text(g.unit, color = TF.Unit, fontSize = 13.sp, maxLines = 1, softWrap = false, modifier = Modifier.padding(bottom = 4.dp))
             }
             if (g.min != null && g.max != null && g.max > g.min) {
                 val frac = ((g.value - g.min) / (g.max - g.min)).toFloat().coerceIn(0f, 1f)
