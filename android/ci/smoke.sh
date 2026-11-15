@@ -68,13 +68,18 @@ alive
 # ---- showcase screenshots for the README (never fail the run) ----
 hidekb() { adb shell dumpsys input_method | grep -q "mInputShown=true" && adb shell input keyevent 111; sleep 1; }
 search() { tap "Learn"; sleep 2; tap "Library"; sleep 1; tap "Search 28 examples" || tap "Search"; sleep 1; adb shell input text "$1"; sleep 1; hidekb; }
-search bubble; tap "Bubble level"; sleep 2; tap "Run"; sleep 8; shot 10-run-gauges
+search bubble; tap "Bubble level"; sleep 2
+# rock the emulated phone so the gauges and plots move
+( for k in $(seq 0 40); do
+    x=$(python3 -c "import math;print(round(4*math.sin($k/3),2))"); z=$(python3 -c "import math;print(round(9.0+0.6*math.cos($k/3),2))")
+    adb emu sensor set acceleration "$x:3.2:$z" >/dev/null 2>&1; sleep 0.25; done ) &
+tap "Run"; sleep 9; shot 10-run-gauges; wait
 tap "Stop"; sleep 2
 search shake; tap "Shake alarm machine"; sleep 2; tap "Open as project"; sleep 4; hidekb; shot 11-editor
-tap "Instruments"; sleep 1; tap "Machines"; sleep 4; shot 12-machines
+tap "More"; sleep 1; tap "Machines"; sleep 4; shot 12-machines
 adb shell input keyevent 4; sleep 1
 search contracts; tap "Contracts + check()"; sleep 2; tap "Open as project"; sleep 3; hidekb
-tap "Instruments"; sleep 1; tap "Verify & tests"; sleep 2; tap "Check contracts"; sleep 6; shot 13-verify
+tap "More"; sleep 1; tap "Verify & tests"; sleep 2; tap "Check contracts"; sleep 6; shot 13-verify
 adb shell input keyevent 4; sleep 1
 tap "REPL"; sleep 2; hidekb; shot 14-repl
 alive
