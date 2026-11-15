@@ -49,15 +49,14 @@ cargo install cargo-ndk
 (cd android && gradle assembleDebug)      # or open android/ in Android Studio
 ```
 
-### Release signing
+### Releases and signing
 
-Without secrets the release APK is signed with the CI debug key. For a stable signature, create a
-keystore once and add four repository secrets:
+Releases are signed with the same HermiTech release keystore as the other Android apps, read
+from four repository secrets: `KEYSTORE_BASE64` (the `.jks` file, base64), `KEYSTORE_PASSWORD`,
+`KEY_ALIAS` and `KEY_PASSWORD`. The workflow verifies the APK with `apksigner` and prints the
+certificate fingerprint in the log.
 
-```sh
-keytool -genkeypair -v -keystore release.jks -alias tulpafield -keyalg RSA -keysize 4096 -validity 10000
-base64 -w0 release.jks   # → TULPA_FIELD_KEYSTORE
-```
-
-`TULPA_FIELD_KEYSTORE_PASSWORD`, `TULPA_FIELD_KEY_ALIAS` (e.g. `tulpafield`) and
-`TULPA_FIELD_KEY_PASSWORD` complete the set.
+To ship a release, bump `android/VERSION` on main: CI builds, signs, runs the emulator smoke test
+and publishes `android-v<version>` with the APK attached. A tag push `android-v1.2.3` or a manual
+run with *publish* works too. Without the keystore secrets the APK is still built (debug-signed, as
+a workflow artifact) but nothing is published, so an unsigned build never reaches the Releases page.
