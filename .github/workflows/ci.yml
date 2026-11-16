@@ -82,7 +82,8 @@ jobs:
           git -C /tmp/pico-sdk submodule update --init --depth 1 lib/tinyusb
           tulpa new /tmp/blinky --board rp2040
           cd /tmp/blinky
-          PICO_SDK_PATH=/tmp/pico-sdk cmake -B build -G Ninja
+          export PICO_SDK_PATH=/tmp/pico-sdk
+          cmake -B build -G Ninja
           cmake --build build
           ls -l build/blinky.uf2
           # a program outside the static subset: the same project builds it onto the Tulpa VM

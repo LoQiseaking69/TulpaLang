@@ -122,11 +122,12 @@ fn microcontroller_builds_fall_back_to_the_vm() {
             "-o",
             obj.to_str().unwrap(),
         ]);
+        assert!(err.contains("dynamic tier"), "{target}: {err}");
+        if err.contains("No available targets are compatible") {
+            continue; // this clang (Apple's) has no backend for the board's CPU
+        }
         assert_eq!(code, 0, "{target}: {err}");
-        assert!(
-            err.contains("dynamic tier") && err.contains("tulpa_dyn.c"),
-            "{target}: {err}"
-        );
+        assert!(err.contains("tulpa_dyn.c"), "{target}: {err}");
         assert!(obj.exists());
     }
     // a program inside the static subset still compiles to native code
@@ -140,8 +141,11 @@ fn microcontroller_builds_fall_back_to_the_vm() {
         "-o",
         obj.to_str().unwrap(),
     ]);
-    assert_eq!(code, 0, "{err}");
     assert!(!err.contains("dynamic tier"), "{err}");
+    assert!(
+        code == 0 || err.contains("No available targets are compatible"),
+        "{err}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
