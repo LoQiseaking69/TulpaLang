@@ -87,7 +87,7 @@ Embedded builds default to `-Os -ffunction-sections`. Pass `-O0` to `-O3` to ove
 - `from "std/drivers/mpu6050" import Mpu6050` and module aliases are flattened into one
   compilation unit
 
-**Not native (yet)**
+**Outside the static subset**
 - dicts
 - closures and lambdas
 - `try` / `catch`
@@ -96,9 +96,94 @@ Embedded builds default to `-Os -ffunction-sections`. Pass `-O0` to `-O3` to ove
 - `match` with list patterns
 - string building beyond printing
 
-Every function that is skipped is listed with the reason. Firmware builds need the top-level
-program itself to compile. On hosted targets (`sim`, `linux`, or no `--target`), `--exe` falls
-back to a [bundle](#the-whole-language-in-one-executable) when it does not.
+Every function that is skipped is listed with the reason. A program whose top level uses these
+still deploys everywhere:
+
+- on a microcontroller target, `tulpa build` puts the whole program on the
+  [Tulpa VM for firmware](#the-whole-language-on-a-microcontroller);
+- on hosted targets (`sim`, `linux`, or no `--target`), `--exe` falls back to a
+  [bundle](#the-whole-language-in-one-executable).
+
+## The whole language on a microcontroller
+
+```
+tulpa build examples/firmware_vm/main.rav --target rp2040 -o app.o
+  <program> is outside the static native subset (...)
+  dynamic tier: 3 module(s), 4197 nodes, 98089 bytes of T-code; runs on the Tulpa VM (tulpa_dyn.c)
+```
+
+When a firmware build's top-level program does not fit the static compiler, Tulpa compiles it
+to T-code, a compact tree form of the program, and the object file carries that instead of
+machine code. `tulpa_dyn.c`, the Tulpa VM for firmware, runs it. The VM is portable C11 with no
+dependencies beyond the C library; `tulpa new` and `tulpa runtime` write it next to
+`tulpa_rt.c`, the project templates already compile it, and the linker drops it from firmware
+that does not need it (a static blinker for the Pico stays at 48 KB).
+
+Everything in the language runs there: dicts, lists and strings (UTF-8), closures, `try` /
+`catch`, `match` with every pattern, structs with invariants and operator overloading,
+interfaces, state machines, signals, `when` / `always` / `after … within` rules, tasks,
+macros, contracts, units of measure (including units built from strings at run time),
+modules, the devices, `pack::` and `json::`, and the Tulpa-source standard library:
+`std/plan`, `std/link`, `std/frame`, `std/driver` and its drivers, `std/world`,
+`std/verify`, `std/lipm`, `std/topics`, `std/rtl`, and `std/emu` in builds for the simulated
+board.
+
+**Same behaviour, checked.** The VM is tested against the interpreter: the programs in
+`tests/dyn/` and the examples must print the same output from both, on the host and under QEMU
+as Cortex-M0 code with the RP2040's 256 KB of RAM and as RV32IMC (the ESP32-C3's instruction
+set). `tulpa build --target sim --exe --dynamic app.rav -o app` builds any program onto the VM
+on your computer, so you can run exactly what the board will run.
+
+**Cost.**
+
+| | Cortex-M0, `-Os` |
+|---|---|
+| VM code (`tulpa_dyn.c`) | 107 KB of flash |
+| Whole firmware with the C library's float formatting and maths | about 200 KB of flash plus the program |
+| Program | about 23 bytes of flash per syntax node (`std/plan` is 64 KB, `std/link` 28 KB); it is read in place and never copied to RAM |
+| Fixed RAM | 38 KB (a 2048-slot value stack; `-DTULPA_DYN_STACK=N` changes it) |
+| Heap | what the program's live objects need; garbage is collected at calls and loop iterations |
+
+A Pico (2 MB flash, 264 KB RAM) runs a program that imports `std/plan` and `std/link` with room
+to spare. It executes at roughly the speed of the desktop bytecode VM relative to the same
+CPU, which is far slower than static native code: put a control loop that has to run at
+kilohertz rates in a program that fits the static subset.
+
+**Tuning** (compile definitions for `tulpa_dyn.c`):
+
+| Definition | Default on a microcontroller | Meaning |
+|---|---|---|
+| `TULPA_DYN_STACK` | 2048 | value-stack slots, 16 bytes each |
+| `TULPA_DYN_C_STACK` | 24576 (44000 in the Pico and ESP-IDF templates) | bytes of C stack the VM may use; past it a call fails with a catchable `stack overflow` error instead of corrupting memory. A nested Tulpa call costs about 600 bytes, so 24 KB allows about 40 levels. Give the thread a little more than this (the templates set `PICO_STACK_SIZE` and `CONFIG_ESP_MAIN_TASK_STACK_SIZE` to 48 KB) |
+| `TULPA_DYN_GC_BYTES` | 12288 | allocation between garbage collections, at least |
+| `TULPA_DYN_DEPTH` | 2500 | nested Tulpa calls (on a microcontroller the C stack runs out first) |
+
+**What stays on the host.** A build stops with an error naming the line when a program uses:
+
+- `nn::`, `cosim::`, `phone::`, the fieldbus modules (`BLE::`, `CAN::`, Modbus) and their
+  `sim::` counterparts, `json::load` / `json::save`;
+- `sim::` hooks in a build for real hardware. `sim::gpio_input`, `gpio_level`, `i2c_set`,
+  `i2c_get`, `spi_respond`, `uart_feed`, `advance` and `backend` exist on the simulated board.
+
+These fail at run time with a catchable error: `input()`, `read_file()` / `write_file()` /
+`append_file()`, and `check()` (contract fuzzing belongs to `tulpa test` and `tulpa deploy`,
+which run before the firmware is built). `define_test!` blocks are skipped, `dbg!` is silent,
+and `tlm::` calls do nothing.
+
+Other differences from the interpreter:
+
+- A program is either compiled statically or run on the VM, as a whole. Mixing the two in one
+  firmware image is not supported.
+- The clock counts whole microseconds, where the interpreter's virtual clock is a float, so a
+  timestamp printed after hundreds of 1 ms sleeps can differ by a millisecond.
+- An uncaught error prints `tulpa: runtime error at line N: …` and calls `tulpa_hal_panic`.
+- Runaway recursion ends in `stack overflow` or `value stack overflow` at a depth set by the
+  board's memory, not at the interpreter's 2500 calls.
+- `I2C::scan()` returns an empty list on the simulated board.
+
+**Tulpa Link.** The VM contains a full Tulpa Link node (discovery, typed topics, reliable and
+latched delivery, services, parameters), so `import "std/link"` works in firmware. See
+[Tulpa Link on a microcontroller](link.md#on-a-microcontroller).
 
 ## The whole language in one executable
 
@@ -118,7 +203,7 @@ Which path to use:
 | Target | Program fits the native subset | Program uses dynamic features |
 |---|---|---|
 | Desktop, Raspberry Pi, other Linux | `tulpa build --exe` (static native code) | `tulpa bundle`, or `tulpa build --exe`, which falls back to a bundle |
-| RP2040, ESP32, Cortex-M, RISC-V | `tulpa build --target <board>` | Split the program: the real-time part as firmware, the rest in a bundle on a Linux board |
+| RP2040, ESP32, Cortex-M, RISC-V | `tulpa build --target <board>` (static native code) | the same command: the program runs on the [Tulpa VM for firmware](#the-whole-language-on-a-microcontroller) |
 
 `tulpa deploy` runs the whole path for a `tulpa new` project: prove, check on the simulator,
 build with the board SDK, flash. See [Simulation and verification](simulation.md).

@@ -29,9 +29,9 @@ Release packages are built by the `release` workflow on every `v*` tag and attac
 | VS Code | `tulpa-lang-<version>.vsix` | `code --install-extension tulpa-lang-<version>.vsix` |
 
 > [!NOTE]
-> The latest release is **v3.4.0**: autonomy (`std/plan`), Tulpa Link middleware, `tulpa prove`,
-> the physics and chip-emulation libraries, bundles and `tulpa deploy`, on top of the Driver
-> SDK and the embedded backend.
+> The latest release is **v3.5.0**: the whole language on microcontrollers (the Tulpa VM for
+> firmware) and Tulpa Link nodes in firmware, on top of autonomy (`std/plan`), Tulpa Link,
+> `tulpa prove`, the physics and chip-emulation libraries, bundles and `tulpa deploy`.
 
 ## Build Tulpa from source
 

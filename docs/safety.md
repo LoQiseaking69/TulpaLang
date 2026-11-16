@@ -11,7 +11,7 @@ Tulpa has four kinds of safety boundary in the language, and three ways to check
 
 | Check | When | Covers |
 |---|---|---|
-| At run time | every run: interpreter, bundles and native firmware | the inputs that occur |
+| At run time | every run: interpreter, bundles, native firmware and the firmware VM | the inputs that occur |
 | `tulpa verify` | on demand; random tests with shrinking | the inputs it generates |
 | `tulpa prove` | on demand; static | **all** inputs the `require` clauses allow |
 

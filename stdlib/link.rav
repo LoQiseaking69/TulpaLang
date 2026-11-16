@@ -173,11 +173,15 @@ struct Node {
     fn close(self) { tlink::close(self.h); self.closed = true }
 }
 
-# Joins the network. transport: "sim" or "udp" (default: $TULPA_LINK, else "sim").
+# Joins the network. transport: "sim", "udp", or on a microcontroller "uart" (default:
+# $TULPA_LINK, else "sim"; firmware on a networked board defaults to "udp").
 # peers: extra IP addresses to announce to, for networks without broadcast.
-fn node(name, domain = 0, transport = nil, peers = []) {
+# port, baud: the serial port of a "uart" node; `tulpa link bridge <port>` on the computer at
+# the other end of the cable joins it to the UDP domain.
+fn node(name, domain = 0, transport = nil, peers = [], port = nil, baud = 115200) {
     let opts = {domain: domain, peers: peers}
     if transport != nil { opts.transport = transport }
+    if port != nil { opts.port = port; opts.baud = baud }
     let n = Node(h: tlink::node(name, opts), name: name)
     _nodes.push(n)
     n

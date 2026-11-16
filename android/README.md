@@ -38,7 +38,8 @@ What sets it apart from HermiSim (the desktop studio):
 | **REPL** | persistent session with history, load-file, interrupt and reset |
 | **Driver SDK (Tulpa 3.3)** | `interface`/`impl` with conformance checks, the `std/driver` interfaces and the MPU-6050 / PCA9685 / MCP3008 drivers on the simulated bus; *Your phone as an Imu* implements the same `Imu` interface on the handset's sensors. Firmware builds for RP2040/ESP32 run on a computer (`tulpa build --target`) |
 | **Autonomy, middleware, simulation (Tulpa 3.4)** | `std/plan` (behavior trees, planning, missions), `std/link` on a simulated network, `std/world` physics with `std/emu` emulated chips behind the real drivers. `tulpa prove`, bundles and firmware builds run on a computer |
-| **Learn** | 35 runnable examples (16 for the phone, plus cart-pole and Morty co-simulation) and an in-app guide whose code blocks run with one tap, plus the full language reference |
+| **Phone to microcontroller (Tulpa 3.5)** | The programs you write on the phone run unchanged on a Pico or an ESP32: on a computer, `tulpa build --target <board>` compiles them natively or puts the whole language on the Tulpa VM for firmware. The *whole language on a microcontroller* example is the same file in both places |
+| **Learn** | 36 runnable examples (16 for the phone, plus cart-pole and Morty co-simulation) and an in-app guide whose code blocks run with one tap, plus the full language reference |
 
 ## Layout
 

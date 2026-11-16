@@ -1,0 +1,7 @@
+let VERSION = "1.2"
+let _private = 1
+fn double(x) { x * 2 }
+fn triple(x) { x * 3 + _private - 1 }
+struct Counter { n: int = 0
+    fn bump(self) { self.n += 1; self.n }
+}

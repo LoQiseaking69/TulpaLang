@@ -115,6 +115,14 @@ physics and emulated chips behind the real drivers. Try **Autonomy**, **Tulpa Li
 **Rover** in the Library. Proving contracts (`tulpa prove`) and building firmware run on a
 computer.
 
+## From the phone to a microcontroller
+
+Everything you run here also runs on a Pico or an ESP32. On a computer, `tulpa build --target
+rp2040 app.rav` compiles a program to native code when it fits the static compiler, and
+otherwise puts the whole program (dicts, closures, `try`, `std/plan`, `std/link`) on the Tulpa
+VM for firmware. Try **The whole language on a microcontroller** in the Library: the file you
+run on the phone is the file you flash.
+
 ## Next
 
 Open the **Language guide** for the full reference, or browse the **Library**.

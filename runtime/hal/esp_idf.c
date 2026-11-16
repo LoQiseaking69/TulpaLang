@@ -14,7 +14,7 @@
  * Bus pins default to common dev-kit pins per chip and are set at build time, e.g.
  * -DTULPA_I2C0_SDA=21 -DTULPA_I2C0_SCL=22 (target_compile_definitions in main/CMakeLists.txt).
  *
- * Part of Tulpa (BSD 3-Clause). */
+ * Part of Tulpa (Business Source License 1.1; see LICENSE). */
 #include "tulpa_hal.h"
 
 #include <stdio.h>

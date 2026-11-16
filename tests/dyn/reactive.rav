@@ -1,0 +1,67 @@
+# signals, rules, state machines, timing
+let temp = signal(20.0, 4)
+let limit = signal(30.0)
+let headroom = derive(|| limit.get() - temp.get())
+let log = []
+temp.subscribe(|new, old| log.push(f"{old}->{new}"))
+when temp.value > limit.value { log.push("HOT") } else { log.push("ok again") }
+temp.set(25.0); temp.set(35.0); temp.value = 36.0; temp.update(|v| v - 10)
+print(log, temp.get(), temp.prev, temp.history(), headroom.get(), headroom.value, temp.min(), temp.max(), temp.avg(2), temp)
+try { headroom.set(1) } catch e { print(e) }
+let fan = false
+let speed = signal(0)
+always speed.value <= 100 else { log.push("clamped"); speed.set(100) }
+speed.set(150)
+print(speed.value, log.last())
+let pressure = 1
+try { always pressure < 5; pressure = 9 } catch e { print(e) }
+pressure = 1
+machine Door(name, opens = 0, pokes = 0) {
+    on reset => Closed { log.push("reset") }
+    state Closed {
+        enter { log.push(f"{name} closed") }
+        on open => Open
+        on lock(code) if code == 1234 => Locked
+        on lock(code) => Closed { log.push(f"bad code {code}") }
+    }
+    state Open {
+        enter { opens += 1 }
+        exit { log.push("leaving open") }
+        on close => Closed
+        on poke { pokes += 1 }
+    }
+    state Locked { on unlock(code) if code == 1234 => Closed }
+}
+let door = Door("front")
+print(door, door.state, door.open(), door.open(), door.poke(), door.pokes, door.opens, door.events(), door.can("close"), door.can("lock", 1))
+print(door.close(), door.lock(1), door.state, door.lock(1234), door.is("Locked"), door.unlock(1), door.send("unlock", 1234), door.history)
+door.open(); door.reset()
+print(door.state, door.opens, log.slice(-4, len(log)), type(door), type(Door), Door.states())
+print(Door.mermaid())
+door.opens = 10
+try { door.fly() } catch e { print(e) }
+try { door.lock() } catch e { print(e) }
+door.restart()
+print(door.history, door.opens)
+let alarms = 0
+when door.state == "Open" { alarms += 1 }
+door.open(); door.close(); door.open()
+print(alarms)
+let level = 0
+let held = []
+when level > 5 for 30[ms] { held.push(millis()) }
+let t0 = millis()
+level = 9
+sleep(20[ms]); level = 0; sleep(20[ms]); level = 9; sleep(50[ms])
+print(len(held), held[0] - t0 >= 70, millis() - t0)
+let request = false
+let done = false
+let missed = []
+after request within 40[ms] ensure done else { missed.push(f"late") }
+request = true; sleep(20[ms]); done = true; sleep(40[ms])
+request = false; done = false; sleep(5[ms])
+request = true; sleep(60[ms])
+print(missed)
+let beats = 0
+let n = every!(20[ms], 4, { beats += 1 })
+print(n, beats, millis() - t0)

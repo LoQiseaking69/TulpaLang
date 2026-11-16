@@ -496,7 +496,7 @@ fn build_exe_falls_back_to_a_bundle_for_dynamic_programs() {
         String::from_utf8_lossy(&run.stdout),
         "{\"a\": 1, \"b\": [2, 3]}\n"
     );
-    // microcontroller targets cannot host the interpreter: still an error there
+    // since 3.5 a microcontroller target takes the same program: it runs on the firmware VM
     let (code, _, err) = tulpa(&[
         "build",
         f.to_str().unwrap(),
@@ -505,7 +505,8 @@ fn build_exe_falls_back_to_a_bundle_for_dynamic_programs() {
         "-o",
         d.join("x.o").to_str().unwrap(),
     ]);
-    assert_ne!(code, 0, "{err}");
+    assert_eq!(code, 0, "{err}");
+    assert!(err.contains("dynamic tier"), "{err}");
 }
 
 #[test]

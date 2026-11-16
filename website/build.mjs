@@ -214,7 +214,7 @@ ${body}
       <div><h4>Project</h4><a href="${config.tulpa.repo}" target="_blank" rel="noopener">TulpaLang on GitHub</a><a href="${config.hermisim.repo}" target="_blank" rel="noopener">HermiSim on GitHub</a><a href="${root}docs/roadmap.html">Roadmap</a><a href="${root}docs/contributing.html">Write docs</a></div>
     </div>
   </div>
-  <div class="footer-legal">Both projects are released under the BSD 3-Clause license. © ${new Date().getFullYear()} ${esc(config.org)}.</div>
+  <div class="footer-legal">Both projects are source-available under the Business Source License 1.1: free for development, evaluation, education and research; commercial production use is licensed by HermiTech LLC. © ${new Date().getFullYear()} ${esc(config.org)}.</div>
 </footer>
 <div class="search" hidden data-search>
   <div class="search-panel" role="dialog" aria-modal="true" aria-label="Search documentation">

@@ -43,7 +43,7 @@ mkdir -p "$STAGE/lib/tulpa/drivers" && cp stdlib/drivers/*.rav "$STAGE/lib/tulpa
 cp -r runtime "$STAGE/share/tulpa/"   # C runtime + HAL ports (also embedded in the binary: tulpa runtime)
 cp -r examples editors "$STAGE/share/tulpa/"
 rm -rf "$STAGE/share/tulpa/editors/vscode/node_modules" "$STAGE/share/tulpa/editors/vscode/out" "$STAGE"/share/tulpa/editors/vscode/*.vsix
-cp README.md LICENSE "$STAGE/share/doc/tulpa/"
+cp README.md LICENSE LICENSING.md "$STAGE/share/doc/tulpa/"
 cp docs/*.md "$STAGE/share/doc/tulpa/"
 cat > "$STAGE/install.sh" <<'INSTALL'
 #!/usr/bin/env sh

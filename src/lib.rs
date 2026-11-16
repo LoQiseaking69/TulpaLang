@@ -11,6 +11,7 @@ pub mod ast;
 pub mod builtins;
 pub mod bundle;
 pub mod devices;
+pub mod dyncode;
 pub mod embed;
 pub mod ext;
 pub mod host;

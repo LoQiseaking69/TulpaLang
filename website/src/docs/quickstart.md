@@ -6,7 +6,7 @@ fuzz its contracts, and then open it in HermiSim.
 
 ## 1. Hello, physical world
 
-Create `conveyor.rav`. Every snippet on this page was run against Tulpa 3.4 and the output shown is real.
+Create `conveyor.rav`. Every snippet on this page was run against Tulpa 3.5 and the output shown is real.
 
 ```tulpa
 const BELT_SPEED = 0.25[m/s]

@@ -11,8 +11,11 @@
 | **Tulpa 3.3** | Interfaces and the Driver SDK (`std/driver`, MPU-6050 / PCA9685 / MCP3008 drivers); native compilation of structs, devices, state machines, `always` monitors and `every!` loops; standalone executables; embedded targets for RP2040, ESP32, ESP32-S2/S3/C3/C6 and generic Cortex-M / RISC-V, with `tulpa new` firmware projects. |
 | **HermiSim 2.0** | The Tulpa IDE: LSP editor, lock-step MuJoCo co-simulation, telemetry, waveform / machine / BOM viewers, Tulpa terminal, headless CLI, Windows installer and the Morty project. |
 | **Tulpa 3.4** | Autonomy (`std/plan`: behavior trees, GOAP, HTN, missions); Tulpa Link middleware (`std/link`); static proofs (`tulpa prove`); deterministic physics and emulated chips (`std/world`, `std/emu`); exhaustive exploration (`std/verify`); native `match`; standalone bundles and `tulpa deploy`. |
+| **Tulpa 3.5** | The whole language on microcontrollers: the Tulpa VM for firmware, used automatically by `tulpa build --target <board>` for programs outside the static subset; a Tulpa Link node in firmware over UDP and UART, with `tulpa link bridge`; `pack::` and `json::` in firmware. Licensed under the Business Source License 1.1. |
 | **HermiSim 2.1** | Tulpa 3.3 workflows: Run Natively, Build Firmware for Board…, New Firmware Project…, `native`/`firmware` run kinds, Driver SDK highlighting and docs. |
 | **HermiSim 2.2** | Proofs dock, Deploy Project to Board, Bundle, a Tulpa Link Network dock, and the bundled Autonomy lab project. |
+| **HermiSim 2.3** | Tulpa 3.5: firmware builds report the tier they used (static native code or the Tulpa VM), a Link Bridge action for boards on a serial port, and the Firmware VM lab project. |
+| **Tulpa Field 1.4** | The Tulpa 3.5 runtime, with a guide and example for running the whole language on a microcontroller. |
 | **Tulpa Field 1.3** | The Tulpa 3.4 runtime on Android: planning, Tulpa Link, physics and chip emulation, with new examples and guides. |
 | **Tulpa Field 1.2** | The Tulpa 3.3 runtime on Android with the Driver SDK, and *Your phone as an Imu*: `std/driver`'s `Imu` interface implemented on the phone's sensors. |
 
@@ -20,7 +23,7 @@
 
 - CAN-FD and ISO-TP (UDS diagnostics) on top of the CAN layer.
 - BLE peripheral (GATT server) mode, so a Raspberry Pi can act as a sensor.
-- Native dicts, closures and `try` in firmware builds, and a Tulpa Link node for microcontrollers.
+- Static and VM code in one firmware image (a native control loop calling into a VM program).
 - Encryption and authentication for Tulpa Link.
 - More reference drivers (BMP280, VL53L0X, INA219) and an STM32 board-support package.
 - Publishing the VS Code extension to the Marketplace and Open VSX.
@@ -31,8 +34,11 @@
 Being clear about boundaries is part of the design:
 
 - Static native compilation covers structs, devices, state machines, monitors, `match` and timing
-  loops. Dicts, closures, `try`, tasks and signals run on the interpreter or in bundles, not on
-  microcontrollers.
+  loops. Dicts, closures, `try`, tasks and signals run on the interpreter, in bundles, and on
+  microcontrollers on the Tulpa VM for firmware, at interpreter speed. A firmware image is
+  either static native code or a VM program, not a mix.
+- `nn::`, `cosim::`, the fieldbus modules, file access and contract fuzzing run on desktop and
+  Linux targets only.
 - `tulpa prove` works on individual functions over linear arithmetic and treats floats as reals.
 - Contract fuzzing explores test cases. It isn't a mathematical proof of correctness.
 - Runtime safety envelopes detect violations at defined checkpoints. They aren't independent

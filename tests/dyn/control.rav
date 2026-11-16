@@ -1,0 +1,77 @@
+# control flow, patterns, macros, tasks, modules
+fn classify(v) {
+    match v {
+        0 => "zero"
+        1 | 2 | 3 => "small"
+        4..10 => "medium"
+        10..=20 => "large"
+        "hi" => "greeting"
+        [] => "empty list"
+        [x] => f"one item {x}"
+        [first, ..rest] => f"{first} then {len(rest)}"
+        nil => "nothing"
+        true => "yes"
+        n if type(n) == "float" => f"float {n}"
+        other => f"other {other}"
+    }
+}
+for v in [0, 2, 7, 10, 20, 21, "hi", [], [5], [1, 2, 3], nil, true, 2.5, {"k": 1}] { print(classify(v)) }
+let total = 0
+for i in 0..10 { if i % 2 == 0 { continue }; if i > 7 { break }; total += i }
+let n = 0
+while n < 5 invariant n >= 0 { n += 1 }
+let k = 0
+loop { k += 2; if k >= 6 { break } }
+print(total, n, k)
+try { let z = 3; while z > 0 invariant z > 1 { z -= 1 } } catch e { print(e) }
+for i in 0..=2 { for j in 0..3 { if j == 2 { break }; print(i, j) } }
+for ch in "hey" { print(ch) }
+for a, b in [[1, 2], [3, 4]] { print(a + b) }
+let r = if total > 5 { "big" } else { "small" }
+let blockval = if true { let q = 4; q * q }
+print(r, blockval, (1 > 2) or "fallback", nil and 1, 0 or [] or "last", 1 and 2)
+repeat!(3, { n += 10 })
+print(n, vec!(1, 2, 3), format!("{:>4}|{:<4}|", "a", "b"), unwrap_or_default!(nil, 7), unwrap_or_default!([1][9], "dflt"))
+define_macro!(twice, (body) {
+    body
+    body
+})
+define_macro!(pick, (cond, yes, no) {
+    if cond { yes } else { no }
+})
+let m1 = 1; let m2 = 2
+twice!({ m1 += 10 })
+print(m1, m2, pick!(m1 > 5, "hi", 1 / 0))
+fn work(id, n) { let acc = 0; for i in 0..n { acc += i }; f"task {id}: {acc}" }
+let t1 = spawn work(1, 10)
+let t2 = spawn work(2, 100)
+print(t1.done(), await t1, t1.done(), await [t2, 5], await_all([t1]))
+fn failing() { error("task blew up") }
+let t3 = spawn failing()
+try { await t3 } catch e { print(e) }
+try { await t3 } catch e { print(e) }
+let order = []
+let bg = spawn (|| order.push("ran"))()
+try { join_all() } catch e { print("join:", e) }
+let bg2 = spawn (|| order.push("ran again"))()
+join_all()
+print(order)
+import "helper"
+import "helper" as h2
+from "helper" import triple, VERSION
+print(helper.triple(2), h2.double(4), triple(5), VERSION, helper.Counter(3).bump(), keys(helper).sorted())
+try { helper._private } catch e { print(e) }
+let i = 0
+let ticks = every!(10, 5, { i += 1 })
+print(ticks, i)
+let j = 0
+every!(5[ms], { j += 1; if j == 3 { break } })
+print(j, millis() >= 60)
+print(sorted([[2, "b"], [1, "z"], [1, "a"]]), sorted(["pear", "fig", "apple"], |w| len(w)), reversed("abc"))
+let grid = [[0; 3]; 2]
+grid[0][1] = 5
+print(grid, grid[0][1] + 1)
+let nested = {"a": {"b": [1, {"c": "deep"}]}}
+nested.a.b[1].c = "changed"
+nested["a"]["b"][0] += 41
+print(nested, nested.a.b[1].c)

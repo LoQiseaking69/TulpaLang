@@ -1,0 +1,32 @@
+# physical units
+let d = 120[km]
+let t = 1.5[h]
+let v = d / t
+print(d, t, v, v.to("m/s"), v.in("m/s"), v.value, v.unit, v.si, v.dim(), type(v))
+print(3[m] + 20[cm], 1[m] - 1[mm], 2[m] * 3[m], 10[m] / 2[s], 5[m/s] * 2[s], 9[m^2].unit, sqrt(9[m^2]), 2[m] ** 2, -3[N], abs(-3[N]))
+print(1[kg] * 9.81[m/s^2], (10[N] * 2[m]).to("J"), 100[W] * 1[min], 12[V] / 4[A], 5[V] * 2[A], 1[rev], 90[deg].to("rad"), 1[Hz] * 1[s])
+print(3[m] < 400[cm], 1[km] == 1000[m], 2[s] >= 2000[ms], max(1[m], 150[cm]), min([3[s], 200[ms]]), sum([1[m], 2[m]]), sorted([2[m], 50[cm], 1[km]]))
+print(5[m] > 0, 0 < 3[s], 1.5[m] * 2, 3 * 2[s], 6[m] / 2, 10[m] / 5[m], 7[s] % 2[s], round(3.14159[m], 2), 2.5[m].round())
+print(sin(30[deg]), cos(1[rev]), quantity(5, "km"), quantity(2.5, "m/s").to("km/h"), f"{1500[m].to("km")} and {72[km/h].to("m/s"):.1f}", format(3.14159[rad], ".2f"))
+fn kinetic(m: [kg], v: [m/s]) -> [J] { 0.5 * m * v * v }
+print(kinetic(1200[kg], 20[m/s]), kinetic(1[kg], 3.6[km/h]).to("J"))
+let errs = []
+fn attempt(f) { try { f() } catch e { errs.push(e) } }
+attempt(|| 1[m] + 1[s])
+attempt(|| 1[m] < 1[s])
+attempt(|| kinetic(1[m], 1[m/s]))
+attempt(|| kinetic(5, 1[m/s]))
+attempt(|| 1[m].to("s"))
+attempt(|| float(3[m]))
+attempt(|| 2[m] ** 0.5)
+attempt(|| quantity(1, "parsecs_per_jiffy"))
+attempt(|| sqrt(2[m]))
+attempt(|| 1[m] / 0[s])
+for e in errs { print(e) }
+struct Motor { max_speed: [rad/s] = 10[rad/s], torque: [N*m] = 2[N*m]
+    fn power(self) { self.max_speed * self.torque }
+}
+print(Motor().power(), Motor(torque: 500[N*mm]).power())
+let temps = [20.5[K], 300[K]]
+print(temps, temps[1] - temps[0], 1[bar].to("kPa"), 1[A] * 1[s], 3600[s].to("h"))
+print(match 5[m] { x if x > 3[m] => "far", _ => "near" }, {"d": 2[m]}.d * 2, [1[s], 2[s]].map(|x| x.in("ms")))

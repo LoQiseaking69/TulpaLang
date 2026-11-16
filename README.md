@@ -24,14 +24,14 @@ abstractions, and native hardware integration.
 | Language identity | Python-flavoured, expression-oriented programming language |
 | Implementation | Rust |
 | Primary domain | Robotics, mechatronics, embedded systems, physical computing |
-| Execution | Tree-walking interpreter, bytecode VM, LLVM native compilation (host executables and RP2040 / ESP32 / Cortex-M / RISC-V firmware), standalone bundles with the whole language |
+| Execution | Tree-walking interpreter, bytecode VM, LLVM native compilation (host executables and RP2040 / ESP32 / Cortex-M / RISC-V firmware), the Tulpa VM for firmware (the whole language on a microcontroller), standalone bundles |
 | Autonomy | Behavior trees, goal planning (GOAP), task decomposition (HTN), utility decisions, mission orchestration with replanning (`std/plan`) |
 | Middleware | Tulpa Link: broker-less nodes, unit-typed topics, services, parameters, QoS, simulated and UDP transports (`std/link`) |
 | Engineering model | Units, contracts, invariants, state machines, reactive rules, timing constraints |
 | Hardware integration | GPIO, I2C, SPI, UART, PWM, Servo, PID, CAN, Bluetooth LE |
 | Verification | Static proofs of contracts and invariants (`tulpa prove`), runtime contracts, contract fuzzing, safety monitors, exhaustive exploration, deterministic physics and chip emulation, record/replay |
 | Developer tooling | REPL, test runner, LSP, VS Code extension, Mermaid state diagrams, [HermiSim IDE](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer), [Tulpa Field](android/README.md) for Android |
-| License | BSD 3-Clause |
+| License | [Business Source License 1.1](LICENSING.md) (source-available; converts to Apache-2.0 after four years) |
 
 ## A language designed around physical systems
 
@@ -171,13 +171,20 @@ Tulpa has three execution tiers:
    interpreter on the simulator, and on QEMU Cortex-M0 and RV32IMC.
 
 The interpreter and VM run the whole language. Dicts, closures, `try`, tasks, signals and `when`
-rules don't compile to static native code yet. Functions that use them are skipped, and each
-one is reported with the reason.
+rules don't compile to static native code. Functions that use them are skipped, and each one is
+reported with the reason.
 
-**Deploying everything.** `tulpa bundle app.rav -o app` makes a standalone executable that
-carries the runtime, the program and its imports, so the whole language runs on any desktop or
-Linux board with nothing installed. `tulpa build --exe` falls back to a bundle on those targets
-when a program is not fully native. Microcontroller firmware uses the static native compiler.
+**Deploying everything, everywhere.** A program outside the static subset still ships on every
+target:
+
+- **Microcontrollers.** `tulpa build --target rp2040 app.rav` compiles it to T-code and runs it
+  on the Tulpa VM for firmware (`tulpa_dyn.c`, 107 KB of portable C). The whole language runs
+  on a Pico or an ESP32: dicts, closures, `try`, tasks, signals, `std/plan`, `std/link`. The VM
+  is tested against the interpreter under QEMU with the RP2040's memory budget.
+- **Desktops and Linux boards.** `tulpa bundle app.rav -o app` makes a standalone executable
+  that carries the runtime, the program and its imports. `tulpa build --exe` falls back to a
+  bundle on those targets when a program is not fully native.
+
 See [Native and embedded targets](docs/embedded.md).
 
 ## Verification and safety model
@@ -283,6 +290,41 @@ tulpa examples/sim_rover/main.rav          # physics → emulated chips → real
 tulpa bundle examples/autonomy/main.rav -o mission && ./mission
 ```
 
+## The whole language in firmware (3.5)
+
+Before 3.5 a microcontroller could only run programs that fit the static native compiler. Now
+`tulpa build --target <board>` takes any program:
+
+```
+tulpa build --target rp2040 examples/firmware_vm/main.rav -o app.o
+  <program> is outside the static native subset (...)
+  dynamic tier: 3 module(s), 4197 nodes, 98089 bytes of T-code; runs on the Tulpa VM (tulpa_dyn.c)
+```
+
+- **The Tulpa VM for firmware.** A program outside the static subset is compiled to T-code,
+  which stays in flash and is executed in place by `tulpa_dyn.c`: 107 KB of portable C11 with a
+  garbage collector, `try`/`catch`, closures, tasks, signals and reactive rules, structs,
+  state machines, units, contracts, `pack::`, `json::`, and the devices. The project templates
+  build it in, and the linker drops it from firmware that doesn't use it.
+- **Checked against the interpreter.** The conformance programs in `tests/dyn/` and the
+  examples must print the same output on the VM as on the interpreter: on the host, as
+  Cortex-M0 code with the RP2040's 256 KB of RAM under QEMU, and as RV32IMC (the ESP32-C3's
+  instruction set). CI also builds the VM into real Pico SDK and ESP-IDF firmware.
+- **Tulpa Link on the board.** The VM contains a Tulpa Link node written in C that speaks the
+  same wire format as the host. An ESP32 joins the fleet over Wi-Fi; a Pico joins over a UART
+  and `tulpa link bridge /dev/ttyUSB0` on the computer at the other end.
+- **Planning on the board.** `std/plan` runs in firmware, so a behavior tree or a GOAP planner
+  can live on the robot's own microcontroller.
+
+```
+tulpa run --virtual-time examples/firmware_vm/main.rav       # the interpreter
+tulpa build --target sim --exe --dynamic examples/firmware_vm/main.rav -o vm && ./vm   # the firmware VM, on this machine
+tests/firmware/run_qemu_dyn.sh m0 examples/firmware_vm/main.rav                        # the VM as Cortex-M0 firmware
+```
+
+See [Native and embedded targets](docs/embedded.md#the-whole-language-on-a-microcontroller) for
+footprint, tuning, and what stays on the host.
+
 ## Standalone robotics software (3.3)
 
 Tulpa 3.3 compiles whole programs to native code, from the simulator all the way to a
@@ -316,6 +358,7 @@ The [HermiSim](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer) IDE bun
 - live plots
 - native and firmware builds: **Run Natively**, **Build Firmware for Board…** and **New Firmware Project…** (HermiSim 2.1)
 - a **Proofs** dock for `tulpa prove`, **Deploy Project to Board…**, **Bundle Standalone Executable**, a Tulpa Link **Network** dock, and the bundled Autonomy lab project (HermiSim 2.2)
+- firmware builds for any program (static native code or the Tulpa VM, reported in the build output), **Link Bridge to Board…** for a board on a serial port, and the Firmware VM lab project (HermiSim 2.3)
 
 It also has a Windows installer.
 
@@ -348,7 +391,7 @@ on the phone, offline. It turns the handset into a device you can program:
 - a REPL, a tappable state-machine inspector, and one-tap contract verification and tests
 - the Driver SDK: `std/driver` interfaces and the bundled drivers, plus an example that implements `Imu` on the phone's own sensors
 - planning (`std/plan`), Tulpa Link on a simulated network, and physics with emulated chips
-- 35 runnable examples, including the Morty humanoid, and an in-app guide whose code blocks run with one tap
+- 36 runnable examples, including the Morty humanoid, and an in-app guide whose code blocks run with one tap
 
 The signed APK is built by CI and attached to `android-v*` releases; see the
 [Tulpa Field page](https://loqiseaking69.github.io/TulpaLang/android.html) on the website. Screenshots, features and build
@@ -358,7 +401,7 @@ same way through `tulpa::embed` (run/REPL/analysis API) and `tulpa::host` (host-
 ## Install
 
 Download a release package from [Releases](https://github.com/LoQiseaking69/TulpaLang/releases).
-The `release` workflow builds them on every `v*` tag. The latest release is **v3.4.0**.
+The `release` workflow builds them on every `v*` tag. The latest release is **v3.5.0**.
 
 - **Linux** (x86_64, arm64 for Raspberry Pi 3/4/5, armv7): download
   `tulpa-<version>-<target>.tar.gz`, unpack it, and run `./install.sh`, or
@@ -472,13 +515,17 @@ strengthening system-level guarantees, and improving adoption.
 Some important boundaries of its current scope:
 
 - Static native compilation covers structs, devices, state machines, monitors, `match` and
-  timing loops, but not dicts, closures, `try`, tasks or signals. Programs that use those run
-  on the interpreter or ship as bundles, which need a desktop or Linux-class target; they do
-  not run on microcontrollers.
+  timing loops, but not dicts, closures, `try`, tasks or signals. A program that uses those
+  runs on the Tulpa VM for firmware on a microcontroller, at interpreter speed and with about
+  200 KB of flash and 40 KB of RAM for the VM. One firmware image is either static native
+  code or a VM program, not a mix.
+- `nn::`, `cosim::`, the fieldbus modules (BLE, CAN, Modbus), file access and contract fuzzing
+  run on desktop and Linux targets only.
 - `tulpa prove` proves properties of individual functions over linear arithmetic, treating
   floats as real numbers. Non-linear obligations come back unproved, and it does not cover
   timing or whole-system behaviour.
-- Tulpa Link has no encryption or authentication, and native firmware cannot host a node yet.
+- Tulpa Link has no encryption or authentication. A microcontroller without a network stack
+  joins over a UART through `tulpa link bridge` on a computer.
 - `std/world` is a 2-D model for mobile robots. Full rigid-body dynamics come from MuJoCo
   through HermiSim.
 - Contract fuzzing explores test cases; it is not a mathematical proof of correctness.
@@ -529,7 +576,9 @@ src/prove.rs       static prover (tulpa prove)
 src/link.rs        Tulpa Link transport core (tlink::), wrapped by std/link
 src/lower.rs       lowering passes before native codegen (match → if chains)
 src/bundle.rs      standalone executables that carry the runtime and the program
+src/dyncode.rs     T-code: the program image the firmware VM executes
 runtime/           C runtime + HAL ports (sim, linux, pico, esp_idf) and board templates
+runtime/dyn/       the Tulpa VM for firmware (shipped as one file, tulpa_dyn.c)
 src/lsp.rs         language server (tulpa lsp)
 src/units.rs       dimensional analysis (SI base vector, unit parser, conversions)
 src/builtins.rs    standard library, kin:: module, string/list/dict methods, formatting
@@ -582,14 +631,17 @@ differential-tested against the interpreter.
   (`tulpa prove`), deterministic physics and chip emulation (`std/world`, `std/emu`),
   exhaustive exploration (`std/verify`), native `match`, standalone bundles (`tulpa bundle`)
   and `tulpa deploy`.
+- **3.5:** the whole language on microcontrollers: the Tulpa VM for firmware (`tulpa_dyn.c`),
+  which `tulpa build --target <board>` uses for programs outside the static subset; a Tulpa
+  Link node in firmware over UDP (ESP32, Linux) and UART, with `tulpa link bridge`; `pack::`
+  and `json::` in firmware; licensed under the Business Source License 1.1.
 - **Tulpa Field:** the Android IDE, the `phone::` host module, and the `tulpa::embed` /
   `tulpa::host` embedding API.
 
 ### Planned
 - CAN-FD and ISO-TP (UDS diagnostics) on top of the CAN layer.
 - BLE peripheral (GATT server) mode, so a Raspberry Pi can act as a sensor.
-- Native dicts, closures and `try` in firmware builds, and a Tulpa Link node for
-  microcontrollers (UART and UDP).
+- Static and VM code in one firmware image (a native control loop calling into a VM program).
 - Encryption and authentication for Tulpa Link.
 - More reference drivers (BMP280, VL53L0X, INA219) and a board-support package for STM32.
 - Publishing the VS Code extension to the Marketplace and Open VSX.
@@ -597,4 +649,4 @@ differential-tested against the interpreter.
 
 ## License
 
-BSD 3-Clause. See [`LICENSE`](LICENSE).
+Business Source License 1.1 from version 3.5.0: free for development, evaluation, education, research and personal projects; commercial production use needs a license from HermiTech LLC; each version becomes Apache-2.0 four years after its release. See [`LICENSING.md`](LICENSING.md) and [`LICENSE`](LICENSE). Versions up to 3.4.0 remain BSD 3-Clause.

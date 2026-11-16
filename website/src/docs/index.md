@@ -29,7 +29,7 @@ state-machine diagrams, live telemetry plots and a board/BOM viewer.
 | Implementation | Rust | Python, Qt, MuJoCo |
 | Current version | 3.2 | 2.0 |
 | Runs on | Linux (x86_64, arm64, armv7), macOS, Windows | Windows installer; Linux / macOS from source |
-| License | BSD 3-Clause | BSD 3-Clause |
+| License | Business Source License 1.1 | Business Source License 1.1 |
 
 > [!TIP]
 > New here? Read the [quick start](quickstart.md), then skim the

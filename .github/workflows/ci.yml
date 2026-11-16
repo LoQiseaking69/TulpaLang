@@ -62,6 +62,20 @@ jobs:
           for p in examples/drivers/main.rav examples/native/main.rav; do
             tests/firmware/run_qemu_riscv32.sh $p
           done
+      - name: the dynamic tier (Tulpa VM) on Cortex-M0 with the RP2040's RAM matches the interpreter
+        run: |
+          for p in tests/dyn/core.rav tests/dyn/functions.rav tests/dyn/structs.rav tests/dyn/control.rav \
+                   tests/dyn/reactive.rav tests/dyn/units.rav tests/dyn/devices.rav tests/dyn/stdlib.rav \
+                   examples/firmware_vm/main.rav examples/autonomy/main.rav; do
+            tests/firmware/run_qemu_dyn.sh m0 $p
+          done
+      - name: the dynamic tier on RV32IMC (ESP32-C3 ISA) matches the interpreter
+        run: |
+          for p in tests/dyn/core.rav tests/dyn/functions.rav tests/dyn/structs.rav tests/dyn/control.rav \
+                   tests/dyn/reactive.rav tests/dyn/units.rav tests/dyn/devices.rav tests/dyn/stdlib.rav \
+                   examples/firmware_vm/main.rav; do
+            tests/firmware/run_qemu_dyn.sh rv32 $p
+          done
       - name: Pico SDK build of a tulpa new project
         run: |
           git clone --depth 1 --branch 2.1.1 https://github.com/raspberrypi/pico-sdk /tmp/pico-sdk
@@ -71,6 +85,10 @@ jobs:
           PICO_SDK_PATH=/tmp/pico-sdk cmake -B build -G Ninja
           cmake --build build
           ls -l build/blinky.uf2
+          # a program outside the static subset: the same project builds it onto the Tulpa VM
+          cp $GITHUB_WORKSPACE/examples/firmware_vm/main.rav app.rav
+          cmake --build build
+          arm-none-eabi-size build/blinky.elf
 
   esp-idf:
     runs-on: ubuntu-24.04
@@ -90,3 +108,6 @@ jobs:
           export PATH="$PWD/target/release:$PATH"
           tulpa new /tmp/espblink --board esp32c3
           cd /tmp/espblink && idf.py set-target esp32c3 && idf.py build
+          # a program outside the static subset: the same project builds it onto the Tulpa VM
+          cp $GITHUB_WORKSPACE/examples/firmware_vm/main.rav app.rav
+          idf.py build

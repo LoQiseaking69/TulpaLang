@@ -79,7 +79,7 @@ the torch, speech, tones, toasts and notifications. See [the phone:: module](and
 
 ## Learn
 
-The **Library** has 35 runnable examples: the language's own (including the Driver SDK demo, the
+The **Library** has 36 runnable examples: the language's own (including the Driver SDK demo, the
 autonomy mission, the Tulpa Link fleet and the simulated rover), 16 written for the phone (among them *Your phone as
 an Imu*, which implements `std/driver`'s `Imu` interface on the handset's sensors), and two
 co-simulation projects (a cart-pole and the full Morty humanoid). The **Guide** has chapters on

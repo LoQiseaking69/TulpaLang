@@ -12,7 +12,7 @@
  * Pins default to the Pico's usual ones and can be changed at build time, e.g.
  * -DTULPA_I2C1_SDA=2 -DTULPA_I2C1_SCL=3 (see the defines below).
  *
- * Part of Tulpa (BSD 3-Clause). */
+ * Part of Tulpa (Business Source License 1.1; see LICENSE). */
 #include "tulpa_hal.h"
 
 #include <stdio.h>

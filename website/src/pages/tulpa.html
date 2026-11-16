@@ -2,7 +2,7 @@
 <section class="page-hero">
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow"><span class="dot"></span>Tulpa {{tulpa.version}} · BSD 3-Clause</span>
+      <span class="eyebrow"><span class="dot"></span>Tulpa {{tulpa.version}} · source-available (BSL 1.1)</span>
       <h1>A language for software that <span class="grad">touches the world.</span></h1>
       <p class="sub">Tulpa has the accessibility of Python-style scripting, plus systems-oriented execution, engineering-aware abstractions and native hardware integration. It's written in Rust.</p>
       <div class="cta-row">
@@ -91,16 +91,16 @@
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal">
-      <span class="kicker">3.4 · Autonomy, middleware, simulation, proof</span>
+      <span class="kicker">Autonomy, middleware, simulation, proof · on every target since 3.5</span>
       <h2>The whole robot stack, in one language.</h2>
       <p>Reasoning above the control loop, communication between machines, and verification before deployment.</p>
     </div>
     <div class="grid g3">
       <a class="card reveal" href="docs/autonomy.html"><code class="syn" style="margin:0 0 12px">std/plan</code><h3>Autonomous reasoning</h3><p>Behavior trees, GOAP planning, HTN decomposition, utility decisions, and missions with priorities and replanning.</p></a>
-      <a class="card reveal" href="docs/link.html"><code class="syn" style="margin:0 0 12px">std/link</code><h3>Tulpa Link middleware</h3><p>Unit-typed topics, services, parameters, reliable and latched QoS, liveliness. Runs on a deterministic simulated network or UDP.</p></a>
+      <a class="card reveal" href="docs/link.html"><code class="syn" style="margin:0 0 12px">std/link</code><h3>Tulpa Link middleware</h3><p>Unit-typed topics, services, parameters, reliable and latched QoS, liveliness. Runs on a deterministic simulated network, UDP, or a microcontroller's UART through <code>tulpa link bridge</code>.</p></a>
       <a class="card reveal" href="docs/safety.html"><code class="syn" style="margin:0 0 12px">tulpa prove</code><h3>Formal guarantees</h3><p>Contracts, struct and loop invariants, call preconditions and divisors, proved for all inputs or refuted with a counterexample.</p></a>
       <a class="card reveal" href="docs/simulation.html"><code class="syn" style="margin:0 0 12px">std/world · std/emu · std/verify</code><h3>Unified simulation</h3><p>Deterministic physics, emulated chips with fault injection behind your real drivers, and exhaustive exploration of event orders.</p></a>
-      <a class="card reveal" href="docs/embedded.html#the-whole-language-in-one-executable"><code class="syn" style="margin:0 0 12px">tulpa bundle</code><h3>Universal deployment</h3><p>The whole language in one executable on desktops and Linux boards. Static native firmware on microcontrollers, now with <code>match</code>.</p></a>
+      <a class="card reveal" href="docs/embedded.html#the-whole-language-on-a-microcontroller"><code class="syn" style="margin:0 0 12px">tulpa build --target rp2040</code><h3>Universal deployment</h3><p>The whole language on every target. Programs outside the static compiler run on the Tulpa VM for firmware on microcontrollers (107 KB, tested against the interpreter under QEMU) and as one-file bundles on desktops and Linux boards.</p></a>
       <a class="card reveal" href="docs/simulation.html#from-simulation-to-hardware"><code class="syn" style="margin:0 0 12px">tulpa deploy</code><h3>Simulation to hardware</h3><p>Prove, check on the simulator, build with the Pico SDK or ESP-IDF, and flash, in one command.</p></a>
     </div>
   </div>

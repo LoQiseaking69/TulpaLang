@@ -946,6 +946,9 @@ impl Node {
                 let service = r.str()?;
                 let req = r.u64()?;
                 let v = r.value(0)?;
+                if !self.services.contains_key(&service) {
+                    return Ok(()); // for another node behind the same address (a serial bridge)
+                }
                 // requests are retransmitted until answered: handle each one once
                 if let Some((_, pkt)) = self.answered.iter().find(|(k, _)| *k == (id, req)) {
                     let pkt = pkt.clone();
@@ -1260,9 +1263,12 @@ const TABLE: &[(&str, NativeFn)] = &[
                     fnv64(&name) ^ unique.wrapping_mul(0x9e37_79b9_7f4a_7c15),
                 )
             }
+            "uart" | "serial" => {
+                return Err("link: the uart transport is for firmware (tulpa build --target <board>); on this computer use \"udp\" and run `tulpa link bridge <port>` to reach the board".into())
+            }
             other => {
                 return Err(format!(
-                    "link: unknown transport '{other}' (use \"sim\" or \"udp\")"
+                    "link: unknown transport '{other}' (use \"sim\", \"udp\" or, in firmware, \"uart\")"
                 ))
             }
         };
@@ -1516,3 +1522,113 @@ const TABLE: &[(&str, NativeFn)] = &[
         Ok(Value::Nil)
     }),
 ];
+
+// ============================================================================ serial bridge
+
+/// `tulpa link bridge <port>`: joins Tulpa Link nodes on a serial line (a microcontroller
+/// using `transport: "uart"`) to the UDP domain on this host.
+///
+/// Serial frames are `COBS(dest node id: u64 LE, 0 = everyone | packet | crc16 LE)` followed
+/// by a zero byte. Packets from the board go to the UDP peer `dest` names (or to the whole
+/// domain); every packet the bridge receives over UDP goes down the serial line.
+pub fn bridge(port: &str, baud: u32, domain: u16, run_for: Option<f64>) -> Result<(), String> {
+    use crate::stdx::{cobs_decode, cobs_encode, crc16_ccitt};
+    if domain > 200 {
+        return Err("link: UDP domains are 0..=200".into());
+    }
+    let mut serial = crate::devices::open_serial(port, baud)?;
+    let base = PORT_BASE + domain * PORTS_PER_DOMAIN;
+    let (sock, my_port) = (0..PORTS_PER_DOMAIN)
+        .find_map(|k| {
+            UdpSocket::bind(("0.0.0.0", base + k))
+                .ok()
+                .map(|s| (s, base + k))
+        })
+        .ok_or_else(|| {
+            format!(
+                "link: no free UDP port in {base}..{}",
+                base + PORTS_PER_DOMAIN
+            )
+        })?;
+    sock.set_nonblocking(true).map_err(|e| e.to_string())?;
+    let _ = sock.set_broadcast(true);
+    eprintln!(
+        "bridge: {port} @ {baud} baud <-> UDP domain {domain} (port {my_port}); Ctrl-C to stop"
+    );
+    let header_id = |pkt: &[u8]| -> Option<u64> {
+        (pkt.len() >= 14
+            && &pkt[..2] == MAGIC
+            && pkt[2] == VERSION
+            && u16::from_le_bytes([pkt[4], pkt[5]]) == domain)
+            .then(|| u64::from_le_bytes(pkt[6..14].try_into().unwrap()))
+    };
+    let mut serial_side: HashSet<u64> = HashSet::new();
+    let mut udp_side: HashMap<u64, SocketAddr> = HashMap::new();
+    let mut pending: Vec<u8> = Vec::new();
+    let mut buf = [0u8; 65536];
+    let start = std::time::Instant::now();
+    let (mut up, mut down) = (0u64, 0u64);
+    loop {
+        if run_for.is_some_and(|t| start.elapsed().as_secs_f64() >= t) {
+            eprintln!("bridge: {up} packet(s) board -> network, {down} network -> board");
+            return Ok(());
+        }
+        // board -> network
+        let bytes = serial.receive(4096, 2)?;
+        for b in bytes {
+            if b != 0 {
+                if pending.len() < 70000 {
+                    pending.push(b);
+                }
+                continue;
+            }
+            let frame = std::mem::take(&mut pending);
+            let Ok(raw) = cobs_decode(&frame) else {
+                continue;
+            };
+            if raw.len() < 10 {
+                continue;
+            }
+            let (body, crc) = raw.split_at(raw.len() - 2);
+            if crc16_ccitt(body) != u16::from_le_bytes([crc[0], crc[1]]) {
+                continue;
+            }
+            let dest = u64::from_le_bytes(body[..8].try_into().unwrap());
+            let pkt = &body[8..];
+            let Some(id) = header_id(pkt) else { continue };
+            if serial_side.insert(id) {
+                eprintln!("bridge: node {id:016x} joined over {port}");
+            }
+            up += 1;
+            if dest != 0 {
+                if let Some(addr) = udp_side.get(&dest) {
+                    let _ = sock.send_to(pkt, addr);
+                }
+                continue;
+            }
+            for k in 0..PORTS_PER_DOMAIN {
+                let p = base + k;
+                if p != my_port {
+                    let _ = sock.send_to(pkt, ("127.0.0.1", p));
+                }
+                let _ = sock.send_to(pkt, ("255.255.255.255", p));
+            }
+        }
+        // network -> board
+        while let Ok((n, from)) = sock.recv_from(&mut buf) {
+            let pkt = &buf[..n];
+            let Some(id) = header_id(pkt) else { continue };
+            if serial_side.contains(&id) {
+                continue; // our own broadcast, heard again
+            }
+            udp_side.insert(id, from);
+            let mut body = 0u64.to_le_bytes().to_vec();
+            body.extend(pkt);
+            body.extend(crc16_ccitt(&body).to_le_bytes());
+            let mut frame = cobs_encode(&body);
+            frame.push(0);
+            serial.send(&frame)?;
+            down += 1;
+        }
+    }
+}

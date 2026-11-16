@@ -1,0 +1,15 @@
+menu "Tulpa"
+
+    config TULPA_WIFI_SSID
+        string "Wi-Fi network (SSID)"
+        default ""
+        help
+            Set this to join a Wi-Fi network before the Tulpa program starts, so Tulpa Link
+            nodes (import "std/link") can reach the rest of the fleet over UDP. Leave it
+            empty for a program that does not use the network.
+
+    config TULPA_WIFI_PASSWORD
+        string "Wi-Fi password"
+        default ""
+
+endmenu

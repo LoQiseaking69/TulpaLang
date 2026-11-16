@@ -62,6 +62,7 @@ The working directory is the project folder.
 | `bundle` | `tulpa bundle <file> -o <file>-app` |
 | `deploy` | `tulpa deploy <folder of file> [args]`, for example `"args": ["--dry-run"]` |
 | `firmware` | `tulpa build <file> --target <target> -o <file>-<target>.o`, where `target` is a field of the configuration (default `rp2040`) |
+| `vm` | `tulpa build <file> --target sim --exe --dynamic -o <file>-vm`, then runs it: the program on the Tulpa VM for firmware. HermiSim 2.3+ |
 | `cosim` | Loads `model`, starts a co-simulation server, sets `TULPA_COSIM`, then runs `tulpa <file> [args]`. |
 
 > [!TIP]

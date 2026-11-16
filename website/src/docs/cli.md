@@ -16,13 +16,14 @@ Everything in Tulpa goes through one binary, `tulpa`. With no arguments it start
 | `tulpa graph <file>...` | Print Mermaid `stateDiagram-v2` source for every `machine`. |
 | `tulpa bytecode <file>` | Show the VM bytecode generated for each eligible function. |
 | `tulpa emit-llvm <file> [--target T] [-o out.ll]` | Print the LLVM IR for a program. |
-| `tulpa build <file> [--target T] [-o out] [--exe] [--shared] [--sim] [-O0..3]` | Compile natively. Writes an object file plus a C header, a standalone executable (`--exe`, for targets `sim` and `linux`; falls back to a bundle if the program is not fully native), or a shared library. Needs clang 14+. See [Native & embedded targets](embedded.html). |
+| `tulpa build <file> [--target T] [-o out] [--exe] [--shared] [--sim] [--dynamic] [-O0..3]` | Compile natively. Writes an object file plus a C header, a standalone executable (`--exe`, for targets `sim` and `linux`; falls back to a bundle if the program is not fully native), or a shared library. For a microcontroller target, a program outside the static subset is built onto the Tulpa VM for firmware; `--dynamic` forces the VM on any target. Needs clang 14+. See [Native & embedded targets](embedded.html). |
 | `tulpa targets` | List the native targets: `sim`, `linux`, `rp2040`, `esp32`, `esp32s2`, `esp32s3`, `esp32c3`, `esp32c6`, `cortex-m0`, `cortex-m4f`, `riscv32`. |
 | `tulpa new <dir> --board B` | Scaffold a firmware project for a board (Pico SDK, ESP-IDF, or a Linux Makefile). |
 | `tulpa runtime <dir> [--target T]` | Write the C runtime and HAL port, for use in your own build system. |
 | `tulpa bundle <file> [-o out] [--hw] [--runtime BIN]` | Make a standalone executable that carries the runtime, the program and its imports: the whole language, nothing to install. `--runtime` takes a Tulpa binary built for another machine. |
 | `tulpa deploy [dir] [--port P] [--host user@host] [--dry-run] [--no-flash] [--force]` | For a `tulpa new` project: prove, check on the simulator, build with the board SDK, flash. See [Simulation & verification](simulation.html). |
 | `tulpa link graph [--domain N]` / `tulpa link echo <topic>` | List the nodes, topics and services of a live Tulpa Link network, or print a topic's messages. See [Tulpa Link](link.html). |
+| `tulpa link bridge <serial-port> [--baud N] [--domain N]` | Join a microcontroller whose node uses the `"uart"` transport to the UDP domain (Linux). |
 | `tulpa lsp` | Language server over stdio, for editors. |
 
 ## Flags

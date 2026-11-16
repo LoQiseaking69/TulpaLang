@@ -1,9 +1,9 @@
 [package]
 name = "tulpa"
-version = "3.4.0"
+version = "3.5.0"
 edition = "2021"
 description = "Tulpa: a Python-flavoured, Rust-powered scripting language for device integration and robotics"
-license = "BSD-3-Clause"
+license = "BUSL-1.1"
 repository = "https://github.com/LoQiseaking69/TulpaLang"
 
 [lib]

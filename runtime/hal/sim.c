@@ -7,7 +7,7 @@
  * it also runs bare-metal (tests on QEMU build it with -DTULPA_SIM_NO_STDIO and provide
  * tulpa_hal_console_write / tulpa_hal_panic themselves).
  *
- * Part of Tulpa (BSD 3-Clause). */
+ * Part of Tulpa (Business Source License 1.1; see LICENSE). */
 #include "tulpa_hal.h"
 
 #include <string.h>
@@ -170,6 +170,10 @@ int tulpa_hal_uart_read(tulpa_uart_t *u, uint8_t *out, size_t n) {
 int tulpa_hal_uart_available(tulpa_uart_t *u) {
     (void)u;
     return (int)uart_len;
+}
+/* sim::uart_feed: bytes the simulated peer sends to the program */
+void tulpa_sim_uart_feed(const uint8_t *data, size_t n) {
+    for (size_t i = 0; i < n && uart_len < sizeof uart_buf; i++) uart_buf[uart_len++] = data[i];
 }
 
 /* ------------------------------------------------------------------ PWM */

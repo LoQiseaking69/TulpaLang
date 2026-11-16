@@ -1,0 +1,36 @@
+# values, operators, strings, lists, dicts
+print(1 + 2 * 3, 7 / 2, -7 / 2, 7 % 3, -7 % 3, 2 ** 10, 7.0 / 2, 1e3, 0.1 + 0.2, 1.0, 100000000000000000000.0)
+print(5 & 3, 5 | 3, 5 ^ 3, 1 << 4, -16 >> 2, ~5, not true, !false)
+print(1 < 2, "a" < "b", [1, 2] < [1, 3], 1 == 1.0, "x" == "x", [1, [2]] == [1, [2]], {"a": 1} == {"a": 1}, nil == nil)
+print(3 in [1, 2, 3], "ell" in "hello", "k" in {"k": 1}, 5 in 0..5, 5 in 0..=5, 4 not in [1, 2])
+print("abc" + 1, "ab" * 3, [0] * 3, [1] + [2], "tab\tq\"uote", repr("a\nb"), str(nil), str(1.5))
+let s = "Hello, Wörld"
+print(len(s), s.upper(), s.lower(), s[0], s[-1], s[1..4], s.find("W"), s.replace("l", "L"), s.contains("lo"))
+print(s.split(", "), "a b  c".split(), "x".join(["1", "2"]), " pad ".strip(), "7".pad_left(3, "0"), "ab".repeat(2))
+print("a,b,c".split(",").map(|x| x.upper()), "abc".chars(), "l1\nl2".lines(), "12".to_int() + 1, "1.5".to_float())
+print("abc".starts_with("ab"), "abc".ends_with("bc"), "banana".count("an"), "42".is_digit(), "ab".is_alpha())
+let l = [5, 3, 8, 1]
+l.push(9); l.insert(1, 4); l.extend([2, 2])
+print(l, len(l), l.pop(), l.pop(0), l.remove(8), l.index(1), l.count(2), l.first(), l.last(), l.contains(3))
+print(sorted(l), l.sorted(|x| -x), reversed(l), l[1..3], l.slice(1, 3), sum(l), min(l), max(l), l.join("-"))
+l.sort(); l.reverse()
+print(l, l.map(|x| x * 2), l.filter(|x| x % 2 == 0), l.reduce(|a, b| a + b), l.any(|x| x > 8), l.all(|x| x > 0))
+let d = {"b": 2, "a": 1, 3: "three", true: nil}
+d["c"] = [1, 2]; d.z = 26
+print(d, len(d), d.keys(), d.values(), d.items(), d.get("q", "dflt"), d.has("a"), d.remove("b"), d.a, d[3])
+for k, v in {"x": 1, "y": 2} { print(k, v) }
+for k in {"only": 1} { print(k) }
+print(list(0..4), list("hey"), dict([["k", 1]]), range(3), list(range(1, 10, 3)), range(5, 0, -2), [0; 3])
+print(enumerate(["a", "b"]), zip([1, 2], "xy"), any([0, 1]), all([1, 0]), keys({"a": 1}), abs(-3), abs(-2.5))
+print(round(2.567, 2), round(2.5), floor(2.7), ceil(2.1), sqrt(16), pow(2, 8), clamp(15, 0, 10), lerp(0, 10, 0.25), hypot(3, 4))
+print(int("ff", 16), int("0x1f"), int(3.9), float("2.5"), bool([]), bool("x"), type(1), type(1.0), type("s"), type([]), type({}), type(nil), type(print))
+print(hex(255), bin(5), ord("A"), chr(8364), bytes("hi"), decode([104, 105]), int_from_bytes([1, 2]), int_to_bytes(258, 2), int_from_bytes([255, 255], "big", true))
+print(format(3.14159, ".2f"), format(42, "05d"), format(255, "#x"), format("hi", ">5"), format(0.5, ".0%"), format(1234.5, "e"))
+println!("{} {:?} {:>8.3} {:<4}| {:^6} {:08.2} {:+} {:#b} {1} {{}}", 1, "s", 3.14159, "ab", "mid", 2.5, 7, 5)
+print(f"{1 + 1} {s.len()} {l} {d.a} {'q'}", format!("{}-{}", 1, 2))
+print(sin(0), cos(0), atan2(1, 1), degrees(PI), radians(180), math::pi, math::sqrt(2), log(E), log10(1000), exp(0), log(8, 2))
+print(if false { 1 } else { 2 })
+let t = [1, 2, 3]
+let a, b, c = t
+let x, y = [10, 20]
+print(a, b, c, x, y, t.copy() == t, t.hex(), 255.to_hex(), 6.bit(1), 2.5.round(), 3.clamp(0, 2))

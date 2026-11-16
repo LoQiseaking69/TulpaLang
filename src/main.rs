@@ -21,11 +21,14 @@ USAGE:
     tulpa deploy [dir] [--port P] [--host user@host] [--dry-run] [--no-flash] [--force]
                                                   prove, check, build and flash a `tulpa new` project
     tulpa link graph|echo <topic> [--domain N] [--for SECS]   inspect a live Tulpa Link network
+    tulpa link bridge <serial-port> [--baud N] [--domain N]   join a board's UART link node to it
     tulpa graph <file>...                         print Mermaid diagrams of every state machine
     tulpa emit-llvm <file> [--target T] [-o out.ll]  LLVM IR for the program
     tulpa build <file> [--target T] [-o out]      native object + C header (needs clang)
         --target T   sim | linux | rp2040 | esp32 | esp32s3 | esp32c3 | esp32c6 | ... (tulpa targets)
         --exe        link a runnable program (targets sim, linux)
+        --dynamic    run the program on the Tulpa VM for firmware (automatic on microcontroller
+                     targets when the program is outside the static native subset)
         --sim        allow sim::* calls (you link hal_sim.c, e.g. to test firmware in QEMU)
         --shared     shared library (host)
     tulpa new <dir> --board B                     firmware project for a board (rp2040, esp32c3, ...)
@@ -485,12 +488,25 @@ fn link_tool(args: &[String], o: &Opts) -> ExitCode {
     let mut domain = 0u32;
     let mut secs: Option<f64> = None;
     let mut words = Vec::new();
+    let mut baud = 115200u32;
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--domain" => domain = it.next().and_then(|v| v.parse().ok()).unwrap_or(0),
             "--for" => secs = it.next().and_then(|v| v.parse().ok()),
+            "--baud" => baud = it.next().and_then(|v| v.parse().ok()).unwrap_or(115200),
             w => words.push(w.to_string()),
+        }
+    }
+    if let [cmd, port] = words.as_slice() {
+        if cmd == "bridge" {
+            return match tulpa::link::bridge(port, baud, domain as u16, secs) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("tulpa link bridge: {e}");
+                    ExitCode::from(1)
+                }
+            };
         }
     }
     let src = match words
@@ -526,7 +542,7 @@ n.close()"#,
             t = secs.unwrap_or(1e9)
         ),
         _ => {
-            eprintln!("usage: tulpa link graph [--domain N] [--for SECS]\n       tulpa link echo <topic> [--domain N] [--for SECS]");
+            eprintln!("usage: tulpa link graph [--domain N] [--for SECS]\n       tulpa link echo <topic> [--domain N] [--for SECS]\n       tulpa link bridge <serial-port> [--baud N] [--domain N] [--for SECS]   join a board's UART link to the UDP domain");
             return ExitCode::from(2);
         }
     };
@@ -734,12 +750,14 @@ fn native(rest: &[String], build: bool) -> ExitCode {
     let mut shared = false;
     let mut exe = false;
     let mut sim_hal = false;
+    let mut dynamic = false;
     let mut target_name: Option<String> = None;
     let mut opt: Option<String> = None;
     let mut it = rest[1..].iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "-o" => out = it.next().cloned(),
+            "--dynamic" => dynamic = true,
             "--shared" => shared = true,
             "--exe" => exe = true,
             "--sim" => sim_hal = true,
@@ -790,6 +808,7 @@ fn native(rest: &[String], build: bool) -> ExitCode {
         Ok(x) => x,
         Err(c) => return c,
     };
+    let whole = prog.clone();
     let (prog, aliases) = match tulpa::native::flatten_imports(prog, std::path::Path::new(&file)) {
         Ok(x) => x,
         Err(e) => {
@@ -806,7 +825,40 @@ fn native(rest: &[String], build: bool) -> ExitCode {
         sim: sim_hal || target.is_some_and(|t| t.hal == tulpa::native::Hal::Sim),
         module_aliases: aliases,
     };
-    let report = tulpa::llvm::emit_program(&prog, &stem, &opts);
+    let mut report = tulpa::llvm::emit_program(&prog, &stem, &opts);
+    // The dynamic tier: when the program's top level is outside the static native subset and
+    // the target is a microcontroller, the whole program runs on the Tulpa VM for firmware.
+    let top_failed = report.skipped.iter().any(|(n, _)| n == "<program>");
+    let use_dyn = !shared && (dynamic || (top_failed && target.is_some_and(|t| t.embedded)));
+    if use_dyn {
+        let p = match tulpa::dyncode::serialize(
+            &whole,
+            std::path::Path::new(&file),
+            opts.sim || target.is_none(),
+        ) {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("tulpa: {file}: {e}");
+                return ExitCode::from(1);
+            }
+        };
+        if !dynamic {
+            for (name, why) in report.skipped.iter().filter(|(n, _)| n == "<program>") {
+                eprintln!("  {name} is outside the static native subset ({why})");
+            }
+        }
+        eprintln!(
+            "  dynamic tier: {} module(s), {} nodes, {} bytes of T-code; runs on the Tulpa VM (tulpa_dyn.c)",
+            p.modules,
+            p.nodes,
+            p.bytes.len()
+        );
+        report.ir = tulpa::dyncode::emit_ll(&p, &stem);
+        report.compiled.clear();
+        report.skipped.clear();
+        report.has_entry = true;
+        report.needs_runtime = true;
+    }
     for (name, sig) in &report.compiled {
         let ps: Vec<String> = sig
             .params
@@ -849,7 +901,7 @@ fn native(rest: &[String], build: bool) -> ExitCode {
         eprintln!("tulpa: --exe needs the program's top-level code to compile natively (see 'skipped <program>' above)");
         return ExitCode::from(1);
     }
-    if report.compiled.is_empty() {
+    if report.compiled.is_empty() && !use_dyn {
         eprintln!("tulpa: nothing in {file} fits the native subset");
         return ExitCode::from(1);
     }
@@ -886,8 +938,13 @@ fn native(rest: &[String], build: bool) -> ExitCode {
         stem.to_uppercase()
             .replace(|c: char| !c.is_ascii_alphanumeric(), "_")
     );
+    let header_text = if use_dyn {
+        format!("#ifndef {guard}\n#define {guard}\n/* This program runs on the Tulpa VM (tulpa_dyn.c); tulpa_entry() starts it. */\n#include \"tulpa_hal.h\"\n#endif\n")
+    } else {
+        report.header(&guard)
+    };
     if let Err(e) =
-        std::fs::write(&ll, &report.ir).and_then(|_| std::fs::write(&header, report.header(&guard)))
+        std::fs::write(&ll, &report.ir).and_then(|_| std::fs::write(&header, header_text))
     {
         eprintln!("tulpa: {e}");
         return ExitCode::from(2);
@@ -970,7 +1027,8 @@ fn native(rest: &[String], build: bool) -> ExitCode {
             if t.embedded {
                 let hal = t.hal.source().map(|(n, _)| n).unwrap_or("your HAL port");
                 eprintln!(
-                    "link it with tulpa_rt.c and {hal} (`tulpa runtime <dir> --target {}` writes them; `tulpa new` scaffolds a whole project)",
+                    "link it with tulpa_rt.c{} and {hal} (`tulpa runtime <dir> --target {}` writes them; `tulpa new` scaffolds a whole project)",
+                    if use_dyn { ", tulpa_dyn.c" } else { "" },
                     t.name
                 );
             }
@@ -980,7 +1038,7 @@ fn native(rest: &[String], build: bool) -> ExitCode {
     // --exe: link with the runtime and the target's HAL into a host program
     let t = target.unwrap();
     let rtdir = std::path::PathBuf::from(format!("{base}.runtime"));
-    let files = match tulpa::native::write_runtime(&rtdir, t.hal) {
+    let files = match tulpa::native::write_runtime(&rtdir, t.hal, use_dyn) {
         Ok(f) => f,
         Err(e) => {
             eprintln!("tulpa: {e}");
@@ -1079,7 +1137,7 @@ fn write_runtime(rest: &[String]) -> ExitCode {
         eprintln!("tulpa: unknown target '{t}'");
         return ExitCode::from(2);
     };
-    match tulpa::native::write_runtime(std::path::Path::new(&dir), target.hal) {
+    match tulpa::native::write_runtime(std::path::Path::new(&dir), target.hal, true) {
         Ok(files) => {
             for f in files {
                 println!("  wrote {}", f.display());

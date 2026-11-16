@@ -1,0 +1,8 @@
+tick 2: Patrol 12.2 V
+tick 3: Patrol 12.0 V
+tick 4: Patrol 11.8 V
+tick 5: Dock   12.2 V
+tick 6: Patrol 12.0 V
+tick 7: Patrol 11.8 V
+tick 8: Dock   12.2 V
+faults: [] | led: 0 | transport: sim

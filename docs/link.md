@@ -136,9 +136,45 @@ Nodes announce every 250 ms. On UDP, a node binds the first free port of
 `7400 + 16 × domain ... + 15` and announces to those ports on localhost, on the broadcast
 address and on each `peers` address. Data is sent directly to matching subscribers.
 
+## On a microcontroller
+
+`import "std/link"` works in firmware. A program that uses it runs on the
+[Tulpa VM for firmware](embedded.md#the-whole-language-on-a-microcontroller), which contains a
+C implementation of the node: the same wire format, discovery, schemas, reliable and latched
+delivery, services and parameters. It is tested against the host implementation in both
+directions (a firmware node and a host node exchanging a reliable topic and a service call).
+
+| Board | Transport | How it reaches the fleet |
+|---|---|---|
+| ESP32 family | `"udp"` (the default) | Wi-Fi. Set the network in `idf.py menuconfig` → Tulpa (`TULPA_WIFI_SSID`, `TULPA_WIFI_PASSWORD`); the project template joins it before the program starts |
+| Raspberry Pi and other Linux boards | `"udp"` (the default) | the board's network |
+| RP2040 and other boards without a network stack | `"uart"` | a serial cable to a computer running `tulpa link bridge` |
+| the simulated board (`--target sim`) | `"sim"` (the default) | the in-process network, with `link.network(latency:, loss:, seed:)` |
+
+```
+# firmware (Pico): a node on UART0
+let node = link.node("rover", transport: "uart", port: "uart0", baud: 115200)
+let speed = node.advertise("/rover/speed", "[m/s]", reliable: true)
+```
+
+```
+# the computer at the other end of the cable
+tulpa link bridge /dev/ttyUSB0 --baud 115200 --domain 0
+tulpa link echo /rover/speed
+```
+
+The bridge is a Linux tool. It forwards every packet from the board to the UDP domain and every
+packet it receives on the domain to the board, so the board's node appears in `tulpa link
+graph` like any other, and topics, services and parameters work in both directions. A serial
+frame is `COBS(destination node id: u64, 0 for everyone | packet | CRC-16/CCITT)` followed by
+a zero byte.
+
+`examples/firmware_vm` is a complete program: a behaviour tree, a state machine and a node,
+which runs on the simulator and on a Pico unchanged.
+
 ## Limits
 
-- A node runs inside a Tulpa program on the interpreter or in a bundle. Native firmware has no
-  Tulpa Link node yet; a microcontroller joins through a gateway process on a Linux board.
+- Statically compiled firmware has no node; a firmware program that imports `std/link` runs on
+  the Tulpa VM (see below).
 - There is no encryption or authentication. Use it on networks you trust.
 - A datagram carries one message, so a message has to fit in 64 KiB.

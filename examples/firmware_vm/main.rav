@@ -1,0 +1,62 @@
+# The whole language on a microcontroller.
+#
+# This program is outside the static native subset (dicts, closures, try/catch, a behaviour
+# tree, a Tulpa Link node), so `tulpa build --target rp2040` runs it on the Tulpa VM for
+# firmware instead of refusing it. The same file runs here on the simulator:
+#
+#   tulpa run --virtual-time examples/firmware_vm/main.rav
+#   tulpa build --target sim --exe --dynamic examples/firmware_vm/main.rav -o vm_demo && ./vm_demo
+#
+# and on a Pico (tulpa new bot --board rp2040, copy this to bot/app.rav, build, flash). On
+# the board the node speaks over UART0; `tulpa link bridge /dev/ttyUSB0` on the computer at
+# the other end of the cable joins it to the fleet (`tulpa link echo /rover/status`).
+import "std/link" as link
+import "std/plan" as plan
+
+let on_board = sim::backend() != "sim"
+let led = GPIO::new(25, "out")
+let node = if on_board { link.node("rover", transport: "uart", port: "uart0") } else { link.node("rover") }
+let status = node.advertise("/rover/status", {"tick": "int", "mode": "str", "battery": "[V]"}, reliable: true)
+let world = {"battery": 12.6[V], "ticks": 0, "faults": []}
+node.serve("/rover/world", |q| world)
+node.param("low_battery", 11.9[V])
+
+machine Mode {
+    state Patrol { on low => Dock; on fault => Halt }
+    state Dock { on charged => Patrol; on fault => Halt }
+    state Halt { }
+}
+let mode = Mode()
+
+# behaviour: react to the battery first, otherwise keep patrolling
+let tree = plan.Selector([
+    plan.Sequence([
+        plan.Condition("battery low", |bb| world.battery < node.params.low_battery),
+        plan.Action("dock", |bb| { mode.send("low"); world.battery += 0.4[V]; true }),
+    ]),
+    plan.Action("patrol", |bb| { mode.send("charged"); world.battery -= 0.2[V]; true }),
+])
+
+# a monitor in the simulator, standing in for the rest of the fleet
+let seen = []
+if not on_board {
+    let base = link.node("base")
+    base.subscribe("/rover/status", {"tick": "int", "mode": "str", "battery": "[V]"}, |m, meta| seen.push(m), reliable: true)
+}
+
+every!(250[ms], {
+    world.ticks += 1
+    led.toggle()
+    try {
+        tree.tick()
+        status.publish({"tick": world.ticks, "mode": mode.state, "battery": world.battery})
+    } catch e {
+        world.faults.push(e)
+        mode.send("fault")
+    }
+    link.spin_all()
+    if not on_board and world.ticks == 8 { break }
+})
+link.spin_for(600[ms])
+for m in seen { print(f"tick {m.tick}: {m.mode:<6} {m.battery:.1f}") }
+print("faults:", world.faults, "| led:", led.read(), "| transport:", node.graph().transport)

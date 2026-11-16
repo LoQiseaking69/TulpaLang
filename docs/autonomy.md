@@ -113,7 +113,10 @@ charging goal preempts the delivery and the delivery is replanned afterwards.
 
 ## Where it runs
 
-`std/plan` uses dicts and closures, so it runs on the interpreter and in bundles (`tulpa
-bundle`): desktops, Raspberry Pi and other Linux boards. On a microcontroller, keep the
-real-time layer (drivers, control loops, state machines, envelopes) in native firmware and
-talk to the planner over [Tulpa Link](link.md) or a UART.
+`std/plan` uses dicts and closures, so it runs on the interpreter, in bundles (`tulpa bundle`)
+on desktops and Linux boards, and on microcontrollers on the
+[Tulpa VM for firmware](embedded.md#the-whole-language-on-a-microcontroller): `tulpa build
+--target rp2040` on a program that imports it produces firmware (`std/plan` adds 64 KB of
+flash). The VM runs at interpreter speed. When the same board also needs a control loop at
+kilohertz rates, put the planner on one board and the loop, compiled statically, on another,
+and connect them with [Tulpa Link](link.md).

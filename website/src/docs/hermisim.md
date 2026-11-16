@@ -62,6 +62,21 @@ With Tulpa 3.4 or newer (HermiSim 2.2):
 - The **Network** dock lists the [Tulpa Link](link.md) nodes on your LAN with their topics and
   services. Pick the domain, then press Refresh or tick auto-refresh.
 
+With Tulpa 3.5 or newer (HermiSim 2.3):
+
+- **Build Firmware for Board…** takes any program. One that fits the static compiler becomes
+  native code; any other is built onto the Tulpa VM for firmware. The build output says which
+  (`dynamic tier: …`). See
+  [the whole language on a microcontroller](embedded.md#the-whole-language-on-a-microcontroller).
+- **Run on the Firmware VM** (Ctrl+Alt+F5) builds the current file onto that same VM for the
+  simulated board and runs it, so you see what the board will do before you flash it.
+- **Link Bridge to Board…** runs `tulpa link bridge` on a serial port (Linux hosts). A board
+  whose Tulpa Link node uses its UART then appears in the **Network** dock. Stop it with
+  **Stop**.
+- The **Firmware VM lab** project on the Welcome page has a rover with a behaviour tree, a
+  state machine and a Tulpa Link node, with run configurations for the interpreter, the
+  firmware VM, and firmware for a Pico and an ESP32-C3.
+
 The Welcome page also opens the **Autonomy lab**, a bundled project with a mission planner, a
 Tulpa Link fleet on a simulated network, a rover simulated through emulated chips, and a file
 of contracts to prove.

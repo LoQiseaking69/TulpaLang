@@ -17,8 +17,11 @@ add_custom_command(
     COMMENT "tulpa build --target rp2040 app.rav"
     VERBATIM)
 
-add_executable(@NAME@ main.c tulpa/tulpa_rt.c tulpa/hal_pico.c ${APP_OBJ})
+add_executable(@NAME@ main.c tulpa/tulpa_rt.c tulpa/tulpa_dyn.c tulpa/hal_pico.c ${APP_OBJ})
 target_include_directories(@NAME@ PRIVATE tulpa ${CMAKE_CURRENT_BINARY_DIR})
+# Programs outside the static native subset run on the Tulpa VM (tulpa_dyn.c), which wants a
+# deeper stack than the SDK's 2 KB default. Unused, the VM is dropped by the linker.
+target_compile_definitions(@NAME@ PRIVATE PICO_STACK_SIZE=0xC000 TULPA_DYN_C_STACK=44000)
 target_link_libraries(@NAME@ pico_stdlib hardware_i2c hardware_spi hardware_pwm hardware_uart)
 pico_enable_stdio_usb(@NAME@ 1)
 pico_enable_stdio_uart(@NAME@ 1)

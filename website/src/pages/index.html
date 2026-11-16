@@ -160,7 +160,7 @@
 <section class="section alt">
   <div class="wrap">
     <div class="section-head reveal">
-      <span class="kicker">New in 3.4 · autonomy, middleware, proof</span>
+      <span class="kicker">Autonomy, middleware, proof · and in 3.5, all of it on a microcontroller</span>
       <h2>Plan it, connect it, simulate it, prove it.</h2>
       <p>The layers above the control loop, and the tools to trust them before anything moves.</p>
     </div>
@@ -177,9 +177,9 @@
       <a class="card reveal" href="docs/simulation.html">
         <h3>Driver-in-the-loop simulation</h3><p>Deterministic physics feeds emulated chips, and your real drivers read them. Faults can be injected.</p>
         <code class="syn">emu.Mpu6050(0x68).fault("offline")</code></a>
-      <a class="card reveal" href="docs/embedded.html#the-whole-language-in-one-executable">
-        <h3>Deploy everything</h3><p>One executable with the whole language for desktops and Linux boards; static firmware for microcontrollers.</p>
-        <code class="syn">tulpa bundle app.rav -o app</code></a>
+      <a class="card reveal" href="docs/embedded.html#the-whole-language-on-a-microcontroller">
+        <h3>Deploy everything, everywhere</h3><p>New in 3.5: the whole language runs on a Pico or an ESP32, on the Tulpa VM for firmware. Dicts, closures, planners and Tulpa Link nodes included.</p>
+        <code class="syn">tulpa build --target rp2040 app.rav</code></a>
       <a class="card reveal" href="docs/simulation.html#from-simulation-to-hardware">
         <h3>Simulation to hardware</h3><p>One command proves, checks on the simulator, builds with the board SDK and flashes.</p>
         <code class="syn">tulpa deploy --port /dev/ttyUSB0</code></a>

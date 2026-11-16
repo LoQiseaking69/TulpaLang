@@ -1,0 +1,70 @@
+# structs, interfaces, operator overloading, invariants
+interface Shape { fn area(self) -> float; fn name(self) }
+interface Solid: Shape { fn volume(self, h) }
+struct Vec2 {
+    x: float = 0.0
+    y: float = 0.0
+    fn op_add(self, o) { Vec2(self.x + o.x, self.y + o.y) }
+    fn op_sub(self, o) { Vec2(self.x - o.x, self.y - o.y) }
+    fn op_mul(self, k) { Vec2(self.x * k, self.y * k) }
+    fn op_eq(self, o) { self.x == o.x and self.y == o.y }
+    fn op_cmp(self, o) { self.len() - o.len() }
+    fn len(self) { sqrt(self.x * self.x + self.y * self.y) }
+    fn to_str(self) { f"<{self.x}, {self.y}>" }
+    fn origin() { Vec2() }
+}
+struct Circle impl Solid {
+    r: float
+    tags: list = []
+    invariant self.r > 0
+    fn area(self) -> float { PI * self.r * self.r }
+    fn name(self) { "circle" }
+    fn volume(self, h) { self.area() * h }
+    fn grow(self, k) { self.r = self.r * k; self }
+}
+struct Account {
+    balance: int = 0
+    log: list = []
+    invariant self.balance >= 0
+    fn init(self) { self.log.push("opened") }
+    fn deposit(self, n) { self.balance += n; self.log.push(n) }
+    fn withdraw(self, n) { self.balance -= n }
+}
+let a = Vec2(1.0, 2.0)
+let b = Vec2(y: 4.0, x: 3.0)
+print(a + b, b - a, a * 3, a == Vec2(1.0, 2.0), a != b, a < b, a >= b, f"{a}", str(a), repr(a), [a, b])
+print(Vec2.origin(), Vec2.fields(), Vec2.name(), type(a), type(Vec2), a.x, b.len())
+a.x = 10.0
+print(a, a.len() > 10)
+let c = Circle(2.0)
+print(round(c.area(), 3), c.name(), round(c.volume(2), 2), implements(c, "Shape"), implements(c, "Solid"), implements(a, "Shape"))
+print(c.grow(2).r, c)
+fn describe(s: Shape) { s.name() }
+print(describe(c))
+try { describe(a) } catch e { print(e) }
+try { Circle(-1.0) } catch e { print(e) }
+try { c.r = -5.0 } catch e { print(e) }
+print(c.r)
+try { c.grow(-1) } catch e { print(e) }
+try { Circle() } catch e { print(e) }
+try { Circle(1.0, [], 3) } catch e { print(e) }
+try { Circle(1.0, nope: 1) } catch e { print(e) }
+try { Circle("big") } catch e { print(e) }
+try { a.zz } catch e { print(e) }
+try { a.nope() } catch e { print(e) }
+let acct = Account()
+acct.deposit(50); acct.withdraw(20)
+print(acct.balance, acct.log)
+try { acct.withdraw(100) } catch e { print(e) }
+print(acct.balance)
+let acct2 = Account(5)
+print(acct2.log, acct.log, acct2.balance)
+struct Node { value, next = nil
+    fn sum(self) { if self.next == nil { self.value } else { self.value + self.next.sum() } }
+}
+let chain = Node(1, Node(2, Node(3)))
+print(chain.sum(), chain.next.next.value, chain)
+try { struct Bad impl Shape { fn area(self) -> float { 1.0 } } } catch e { print(e) }
+try { struct Bad2 impl Nope { } } catch e { print(e) }
+try { struct Bad3 impl Shape { fn area(self, extra) -> float { 1.0 }
+ fn name(self) { 1 } } } catch e { print(e) }

@@ -12,7 +12,7 @@
  * Porting to a new board means implementing the ~20 tulpa_hal_* functions. The device structs
  * are allocated by the generated code, so their layout is fixed; `hw` is free for the port.
  *
- * Part of Tulpa (BSD 3-Clause). */
+ * Part of Tulpa (Business Source License 1.1; see LICENSE). */
 #ifndef TULPA_HAL_H
 #define TULPA_HAL_H
 
@@ -126,6 +126,7 @@ void tulpa_sim_i2c_get(int64_t bus, int64_t addr, int64_t reg, int64_t *out, int
 void tulpa_sim_gpio_input(int64_t pin, int64_t level);
 int64_t tulpa_sim_gpio_level(int64_t pin);
 void tulpa_sim_spi_respond(int64_t bus, int64_t cs, const int64_t *data, int64_t n);
+void tulpa_sim_uart_feed(const uint8_t *data, size_t n);
 
 /* ------------------------------------------------------------------ board HAL (ports implement)
  * Return 0 (or a non-negative value where noted) on success and a negative number on failure;

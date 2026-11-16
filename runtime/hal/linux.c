@@ -8,7 +8,7 @@
  *   UART   the port path, e.g. "/dev/ttyAMA0" or "/dev/ttyUSB0" (raw 8N1)
  *   PWM    /sys/class/pwm/pwmchip<chip>/pwm<channel>
  *
- * Part of Tulpa (BSD 3-Clause). */
+ * Part of Tulpa (Business Source License 1.1; see LICENSE). */
 #define _GNU_SOURCE
 #include "tulpa_hal.h"
 

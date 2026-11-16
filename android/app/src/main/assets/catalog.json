@@ -51,7 +51,7 @@
  },
  {
   "id": "morty",
-  "title": "Morty — humanoid balance (3D co-sim)",
+  "title": "Morty \u2014 humanoid balance (3D co-sim)",
   "category": "Simulation",
   "summary": "The full Morty stack from HermiSim: capture-point balance, PINN, FPGA governor link and a behaviour machine, driving an 18-actuator humanoid.",
   "tags": [
@@ -90,7 +90,7 @@
   "id": "altimeter",
   "title": "Barometric altimeter",
   "category": "Phone sensors",
-  "summary": "Altitude change from the pressure sensor — walk up the stairs.",
+  "summary": "Altitude change from the pressure sensor \u2014 walk up the stairs.",
   "tags": [
    "phone",
    "pressure",
@@ -124,7 +124,7 @@
   "id": "shake_machine",
   "title": "Shake alarm machine",
   "category": "Phone sensors",
-  "summary": "A state machine driven by motion: Idle → Alarm → Cooldown.",
+  "summary": "A state machine driven by motion: Idle \u2192 Alarm \u2192 Cooldown.",
   "tags": [
    "phone",
    "machines"
@@ -134,7 +134,7 @@
   "id": "tilt_guard",
   "title": "Tilt guard (always)",
   "category": "Phone sensors",
-  "summary": "A safety envelope on a real sensor: tip past 60° and the monitor fires.",
+  "summary": "A safety envelope on a real sensor: tip past 60\u00b0 and the monitor fires.",
   "tags": [
    "phone",
    "always",
@@ -275,6 +275,19 @@
   ]
  },
  {
+  "id": "firmware_vm",
+  "title": "The whole language on a microcontroller",
+  "category": "Robotics",
+  "summary": "A behavior tree, a state machine and a Tulpa Link node in one program that runs here and, unchanged, as Pico firmware on the Tulpa VM (`tulpa build --target rp2040` on a computer).",
+  "tags": [
+   "firmware",
+   "rp2040",
+   "std/plan",
+   "std/link",
+   "vm"
+  ]
+ },
+ {
   "id": "timing",
   "title": "Timing rules",
   "category": "Timing & reactive",
@@ -348,7 +361,7 @@
   "id": "nn_xor",
   "title": "Neural net learns XOR",
   "category": "Libraries",
-  "summary": "Reverse-mode autodiff with nn:: — trained on the phone.",
+  "summary": "Reverse-mode autodiff with nn:: \u2014 trained on the phone.",
   "tags": [
    "nn"
   ]
@@ -357,7 +370,7 @@
   "id": "modules",
   "title": "Modules & imports",
   "category": "Libraries",
-  "summary": "import and from … import across project files.",
+  "summary": "import and from \u2026 import across project files.",
   "tags": [
    "modules"
   ]

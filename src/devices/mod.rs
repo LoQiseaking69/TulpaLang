@@ -870,6 +870,16 @@ fn linux_uart(port: &str, baud: u32) -> Result<Box<dyn UartIo>, String> {
     Ok(Box::new(linux::LinuxUart::open(port, baud)?))
 }
 
+/// Opens a serial port for tools that talk to a board directly (`tulpa link bridge`).
+#[cfg(target_os = "linux")]
+pub fn open_serial(port: &str, baud: u32) -> Result<Box<dyn UartIo>, String> {
+    linux_uart(port, baud)
+}
+#[cfg(not(target_os = "linux"))]
+pub fn open_serial(_: &str, _: u32) -> Result<Box<dyn UartIo>, String> {
+    Err("serial ports are only supported on Linux hosts".into())
+}
+
 #[cfg(not(target_os = "linux"))]
 fn unsupported<T>() -> Result<T, String> {
     Err(

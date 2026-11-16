@@ -1,0 +1,51 @@
+# standard library modules and the extended natives
+import "std/plan" as plan
+import "std/link" as link
+import "std/frame" as frame
+import "std/driver"
+import "std/drivers/mpu6050" as mpu
+print(pack::pack("<HBf", 513, 7, 1.5), pack::pack(">h?x", [-2, true]), pack::unpack("<HBf", [1, 2, 7, 0, 0, 192, 63]), pack::calcsize("<2I4xd"))
+print(pack::crc16("123456789"), pack::crc32("123456789"), pack::cobs_encode([1, 0, 2, 0]), pack::cobs_decode([2, 1, 2, 2, 1]), pack::to_f32s(pack::f32s([1.5, -2.0])))
+try { pack::pack("<B", 300) } catch e { print(e) }
+try { pack::unpack("<H", [1]) } catch e { print(e) }
+try { pack::pack("<z", 1) } catch e { print(e) }
+let doc = {"name": "rover", "pos": [1, 2.5, -3], "ok": true, "none": nil, "nested": {"b": 1, "a": "q\"uote\n"}, "speed": 2[m/s]}
+let text = json::encode(doc)
+print(text)
+print(json::encode([1, {"k": []}, {}], true))
+let back = json::decode(text)
+print(back, back.nested.a, back.pos[1], json::decode("[1e3, 12345678901234567890, -0.5, \"\\u00e9\\n\", true, null]"))
+try { json::decode("{bad") } catch e { print(e.starts_with("json::decode")) }
+print(tlm::enabled(), tlm::plot("x", 1))
+# Tulpa Link on the simulated network: topics, schemas, reliable + latched delivery, services
+link.network(latency: 2[ms], loss: 0.2, seed: 11)
+let rover = link.node("rover")
+let base = link.node("base")
+let speed = rover.advertise("/speed", "[m/s]", reliable: true)
+let map = rover.advertise("/map", {"w": "int", "cells": ["int"]}, latched: true)
+let got = []
+base.subscribe("/speed", "[km/h]", |v, meta| got.push(v), reliable: true)
+rover.serve("/add", |q| q.a + q.b)
+rover.param("limit", 2[m/s])
+map.publish({"w": 2, "cells": [1, 0, 0, 1]})
+link.spin_for(600[ms])
+for i in 1..=8 { speed.publish(i * 0.5[m/s]); link.spin_for(5[ms]) }
+link.spin_for(400[ms])
+print(len(got), got[0], got[-1], got == sorted(got))
+let late = link.node("late")
+let seen_map = []
+late.subscribe("/map", {"w": "int", "cells": ["int"]}, |m, meta| seen_map.push(m))
+link.spin_for(600[ms])
+print(seen_map)
+print(base.call("/add", {"a": 2, "b": 40}), base.get_param("rover", "limit"), base.set_param("rover", "limit", 1[m/s]), base.get_param("rover", "limit"))
+try { speed.publish(3[s]) } catch e { print(e) }
+try { rover.advertise("/speed", "int") } catch e { print(e) }
+try { base.call("/missing", 1, timeout: 50[ms]) } catch e { print(e) }
+let g = base.graph()
+print(g.transport, g.nodes.map(|n| n.name).sorted(), g.topics.map(|t| [t.kind, t.topic, t.schema]))
+late.close(); link.spin_for(100[ms])
+print(rover.graph().nodes.map(|n| n.name).sorted())
+let f = frame.encode([1, 2, 3], 7)
+let dec = frame.Decoder()
+let frames = dec.feed(f[0..5]) + dec.feed(f[5..len(f)]) + dec.feed([0, 9, 9, 0])
+print(f, frames.map(|x| [x.type, x.seq, x.payload]), dec.stats())

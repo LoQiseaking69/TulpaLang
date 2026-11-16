@@ -26,6 +26,12 @@ learning controllers, wire protocols, hardware models and board design. HermiSim
 | `std/driver` | Tulpa | Driver SDK: `Driver`/`Imu`/`Thermometer`/`Rangefinder`/`Adc`/`PwmController` interfaces, bit helpers, `Regmap` (3.3) |
 | `std/drivers/*` | Tulpa | MPU-6050 IMU, PCA9685 PWM/servo, MCP3008 ADC drivers; compile natively for RP2040/ESP32 (3.3) |
 
+`pack::` and `json::encode` / `json::decode` are also built into the
+[Tulpa VM for firmware](embedded.md#the-whole-language-on-a-microcontroller), so framing and
+configuration code runs on a microcontroller. `nn::`, `cosim::` and `json::load` / `save` need a
+desktop or Linux target. In firmware, `json::decode` reports an invalid document by character
+position.
+
 ## Library search path
 
 `import "std/rtl"` (or just `import "rtl"` when there's no local file of that name) is

@@ -1,0 +1,46 @@
+# devices against the simulated board
+sim::virtual_time(true)
+let led = GPIO::new(13, "out")
+let button = GPIO::new(4, "in")
+led.on(); print(led.read(), led.is_high(), led, led.pin(), led.direction())
+led.toggle(); led.write(1); led.set_low(); print(led.read(), led.toggle(), led.value())
+led.blink(3, 10)
+print(button.read())
+let presses = 0
+when button.is_high() { presses += 1 }
+sim::gpio_input(4, 1); sim::gpio_input(4, 0); sim::gpio_input(4, true)
+print(presses, button.is_low(), sim::gpio_level(13))
+try { button.write(1) } catch e { print(e) }
+button.set_direction("out"); button.write(1); print(button.read(), button)
+try { GPIO::new(2, "sideways") } catch e { print(e) }
+let imu = I2C::new(1, 0x68)
+sim::i2c_set(0x68, 0x75, [0x71])
+sim::i2c_set(0x68, 0x3B, [0x12, 0x34, 0xFF, 0x80])
+print(imu.read_reg(0x75), imu.read_regs(0x3B, 4), imu.read_u16(0x3B), imu.read_u16(0x3B, "little"), imu.read_i16(0x3D), hex(imu.address()), imu.bus(), imu)
+imu.write_reg(0x6B, 0x00); imu.write_reg(0x1C, [1, 2]); print(imu.update_reg(0x6B, 0x0F, 0x05), sim::i2c_get(0x68, 0x6B), sim::i2c_get(0x68, 0x1C, 2))
+imu.write([0x3B]); print(imu.read(2), imu.write_read([0x75], 1))
+try { I2C::new(1, 0x99) } catch e { print(e) }
+let flash = SPI::new(0, 1)
+sim::spi_respond(0, 1, [0xEF, 0x40, 0x18])
+print(flash.transfer([0x9F, 0, 0]), flash.transfer([1, 2, 3]), flash.read(2), flash)
+flash.set_speed(1000000); flash.set_mode(3)
+try { flash.set_mode(7) } catch e { print(e) }
+let pwm = PWM::new(0, 2)
+pwm.frequency(50[Hz]); pwm.duty(0.25); pwm.enable()
+print(pwm.state(), pwm)
+pwm.pulse(1500[us]); print(pwm.state().duty_ns); pwm.period(10[ms]); pwm.disable(); print(pwm.state())
+try { pwm.duty(1.5) } catch e { print(e) }
+let servo = Servo::new(0, 1)
+print(servo.angle(), servo)
+servo.angle(90[deg]); print(servo.angle(), servo.pulse_us(), servo)
+servo.move_to(45); servo.write(0.5[rad]); print(round(servo.pulse_us(), 1)); servo.center(); print(servo.angle()); servo.detach(); print(servo)
+let pid = PID::new(2.0, 0.5, 0.1)
+pid.set_limits(-10, 10)
+let out = []
+let pos = 0.0
+for i in 0..5 { let u = pid.update(10.0, pos, 0.1); pos += u * 0.1; out.push(round(u, 3)) }
+print(out, round(pid.integral(), 3), pid)
+pid.reset(); pid.set_gains(1, 0, 0); print(pid.update(1, 0, 0.1))
+print(kin::velocity(2, 3, 4), kin::position(0, 5, 2, 3), round(kin::range(10, 45), 3), kin::fk2(1, 1, 0, 90), kin::ik2(1, 1, 1, 1).map(|a| round(a, 2)))
+try { kin::ik2(1, 1, 5, 5) } catch e { print(e) }
+let before = millis(); sim::advance(250[ms]); print(millis() - before, sim::backend(), time::millis() == millis())

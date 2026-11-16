@@ -6,7 +6,7 @@
  *
  * Needs a C99 libc with snprintf/strtod and libm (newlib, picolibc, glibc, musl all work).
  *
- * Part of Tulpa (BSD 3-Clause). */
+ * Part of Tulpa (Business Source License 1.1; see LICENSE). */
 #include "tulpa_hal.h"
 
 #include <math.h>

@@ -3,7 +3,7 @@ name = "tulpa_android"
 version = "1.0.0"
 edition = "2021"
 description = "JNI bridge between the Tulpa language runtime and the Tulpa Field Android IDE"
-license = "BSD-3-Clause"
+license = "BUSL-1.1"
 publish = false
 
 [lib]

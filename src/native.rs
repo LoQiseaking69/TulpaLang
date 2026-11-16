@@ -12,6 +12,19 @@ use std::path::{Path, PathBuf};
 /// The C runtime, embedded so a single `tulpa` binary can scaffold and build firmware.
 pub const HAL_H: &str = include_str!("../runtime/tulpa_hal.h");
 pub const RT_C: &str = include_str!("../runtime/tulpa_rt.c");
+/// The Tulpa VM for firmware (the dynamic tier), as one C file.
+pub const DYN_C: &str = concat!(
+    include_str!("../runtime/dyn/dyn.h"),
+    include_str!("../runtime/dyn/core.c"),
+    include_str!("../runtime/dyn/eval.c"),
+    include_str!("../runtime/dyn/exec.c"),
+    include_str!("../runtime/dyn/builtins.c"),
+    include_str!("../runtime/dyn/methods.c"),
+    include_str!("../runtime/dyn/devices.c"),
+    include_str!("../runtime/dyn/link.c"),
+    include_str!("../runtime/dyn/stdx.c"),
+    include_str!("../runtime/dyn/table.c"),
+);
 pub const HAL_SIM: &str = include_str!("../runtime/hal/sim.c");
 pub const HAL_LINUX: &str = include_str!("../runtime/hal/linux.c");
 pub const HAL_PICO: &str = include_str!("../runtime/hal/pico.c");
@@ -23,6 +36,7 @@ const T_PICO_MAIN: &str = include_str!("../runtime/templates/rp2040/main.c");
 const T_ESP_CMAKE: &str = include_str!("../runtime/templates/esp_idf/CMakeLists.txt");
 const T_ESP_MAIN_CMAKE: &str = include_str!("../runtime/templates/esp_idf/main/CMakeLists.txt");
 const T_ESP_MAIN: &str = include_str!("../runtime/templates/esp_idf/main/main.c");
+const T_ESP_KCONFIG: &str = include_str!("../runtime/templates/esp_idf/main/Kconfig.projbuild");
 const T_ESP_SDKCONFIG: &str = include_str!("../runtime/templates/esp_idf/sdkconfig.defaults");
 const T_LINUX_MAKE: &str = include_str!("../runtime/templates/linux/Makefile");
 
@@ -198,10 +212,14 @@ pub fn target(name: &str) -> Option<&'static Target> {
         .find(|t| t.name == name || (name == "pico" && t.name == "rp2040"))
 }
 
-/// Writes tulpa_hal.h, tulpa_rt.c and (if any) the target's HAL port into `dir`.
-pub fn write_runtime(dir: &Path, hal: Hal) -> std::io::Result<Vec<PathBuf>> {
+/// Writes tulpa_hal.h, tulpa_rt.c and (if any) the target's HAL port into `dir`; with
+/// `dynamic`, also tulpa_dyn.c, the VM that runs programs outside the static native subset.
+pub fn write_runtime(dir: &Path, hal: Hal, dynamic: bool) -> std::io::Result<Vec<PathBuf>> {
     std::fs::create_dir_all(dir)?;
     let mut files = vec![("tulpa_hal.h", HAL_H), ("tulpa_rt.c", RT_C)];
+    if dynamic {
+        files.push(("tulpa_dyn.c", DYN_C));
+    }
     match hal.source() {
         Some(src) => files.push(src),
         None => {
@@ -285,6 +303,7 @@ pub fn new_project(dir: &Path, board: &str) -> Result<Vec<PathBuf>, String> {
             put("main.c", fill(T_PICO_MAIN))?;
             put("tulpa/tulpa_hal.h", HAL_H.into())?;
             put("tulpa/tulpa_rt.c", RT_C.into())?;
+            put("tulpa/tulpa_dyn.c", DYN_C.into())?;
             put("tulpa/hal_pico.c", HAL_PICO.into())?;
         }
         Hal::EspIdf => {
@@ -293,8 +312,10 @@ pub fn new_project(dir: &Path, board: &str) -> Result<Vec<PathBuf>, String> {
             put("sdkconfig.defaults", fill(T_ESP_SDKCONFIG))?;
             put("main/CMakeLists.txt", fill(T_ESP_MAIN_CMAKE))?;
             put("main/main.c", fill(T_ESP_MAIN))?;
+            put("main/Kconfig.projbuild", T_ESP_KCONFIG.into())?;
             put("main/tulpa/tulpa_hal.h", HAL_H.into())?;
             put("main/tulpa/tulpa_rt.c", RT_C.into())?;
+            put("main/tulpa/tulpa_dyn.c", DYN_C.into())?;
             put("main/tulpa/hal_esp_idf.c", HAL_ESP_IDF.into())?;
         }
         Hal::Linux | Hal::Sim => {

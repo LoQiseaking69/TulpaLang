@@ -484,9 +484,10 @@ Timing logic then runs deterministically and fast in tests. `sim::gpio_input`, `
    - The generated code works in SI doubles. At the C boundary, values pass in the declared unit.
    - Native `print` shows SI units unless the value is printed through `.to("unit")`.
 
-   Dicts, closures, `try`, tasks, signals and `when` rules stay on the interpreter. To ship a
-   program that uses them, `tulpa bundle` makes a standalone executable that carries the whole
-   language, and `tulpa build --exe` falls back to one on desktop and Linux targets.
+   Dicts, closures, `try`, tasks, signals and `when` rules are outside the static compiler.
+   A program that uses them still ships: on a microcontroller target `tulpa build` runs it on
+   the Tulpa VM for firmware, and on desktop and Linux targets `tulpa bundle` (or `tulpa build
+   --exe`, which falls back to it) makes a standalone executable with the whole language.
    Functions that are skipped are listed with the reason. The full list of targets, the runtime
    layers and the HAL porting guide are in [Native and embedded targets](embedded.md).
 
@@ -536,13 +537,14 @@ tulpa check file.rav ...     syntax check only
 tulpa ast file.rav           dump the AST
 tulpa                        REPL (:log, :reset, :quit)
 tulpa verify file.rav        fuzz contracted functions (--trials=N)
-tulpa build file.rav -o x.o  native object + header (--target T, --exe, --shared, -O0..3)
+tulpa build file.rav -o x.o  native object + header (--target T, --exe, --shared, --dynamic, -O0..3)
 tulpa new dir --board B      firmware project (rp2040, esp32, esp32c3, linux, ...)
 tulpa runtime dir --target T C runtime + HAL port; tulpa targets lists targets
 tulpa prove [--strict] file  statically prove contracts, invariants, divisors; counterexamples
 tulpa bundle file -o out     standalone executable with the whole language
 tulpa deploy [dir]           prove, check, build and flash a `tulpa new` project
 tulpa link graph|echo topic  inspect a live Tulpa Link (UDP) network
+tulpa link bridge port       join a board's UART link node to the UDP network
 tulpa bytecode file.rav      VM bytecode per function
 tulpa lsp                    language server over stdio
 --virtual-time / --no-vm     simulated clock / interpreter only
