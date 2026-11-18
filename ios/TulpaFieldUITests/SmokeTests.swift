@@ -97,7 +97,11 @@ final class SmokeTests: XCTestCase {
     }
 
     func test5_Sensors() {
-        wait(el("instruments"), 15, "instruments menu").tap()
+        tab("Home")
+        sleep(1)
+        shot("08a-home-returning")
+        let menu = wait(el("instruments"), 15, "instruments menu")
+        if menu.isHittable { menu.tap() } else { menu.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)).tap() }
         wait(app.buttons["Sensors"], 5, "Sensors item").tap()
         wait(el("sensors-screen"), 10, "sensors screen")
         sleep(2)
