@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds MuJoCo as a static library for iOS devices and the (arm64) iOS Simulator, installing
-# into ios/mujoco/<iphoneos|iphonesimulator>/{include,lib/libmujoco.a}. libmujoco.a bundles
-# MuJoCo's third-party dependencies (qhull, tinyxml2, ccd, lodepng, ...). Re-runs are no-ops when
+# into ios/mujoco/<iphoneos|iphonesimulator>/{include,lib/libmujoco.a,lib/libmujoco_deps.a}; the
+# latter bundles MuJoCo's third-party dependencies (qhull, tinyxml2, ccd, miniz, ...). Re-runs are no-ops when
 # the outputs exist. Needs macOS with Xcode, CMake and Ninja.
 set -euo pipefail
 VERSION="${MUJOCO_VERSION:-4.0.1}"
@@ -29,6 +29,10 @@ s = cm.read_text()
 a = "  add_library(mujoco SHARED ${MUJOCO_RESOURCE_FILES})"
 assert a in s, "add_library(mujoco SHARED) not found"
 s = s.replace(a, "  add_library(mujoco STATIC ${MUJOCO_RESOURCE_FILES})  # TULPA_FIELD_IOS_PATCH", 1)
+# a static mujoco cannot be exported without its (non-exported) dependencies: skip install rules
+b = "if(NOT EMSCRIPTEN AND NOT (APPLE AND MUJOCO_BUILD_MACOS_FRAMEWORKS))"
+assert b in s, "install() guard not found"
+s = s.replace(b, "if(NOT IOS AND NOT EMSCRIPTEN AND NOT (APPLE AND MUJOCO_BUILD_MACOS_FRAMEWORKS))", 1)
 cm.write_text(s)
 mm = root / "cmake" / "MujocoMacOS.cmake"
 t = mm.read_text()
@@ -39,7 +43,7 @@ PY
 
 build() {  # sdk
   local sdk="$1"
-  if [ -f "$OUT/$sdk/include/mujoco/mujoco.h" ] && [ -f "$OUT/$sdk/lib/libmujoco.a" ]; then
+  if [ -f "$OUT/$sdk/include/mujoco/mujoco.h" ] && [ -f "$OUT/$sdk/lib/libmujoco_deps.a" ]; then
     echo "MuJoCo $VERSION for $sdk: cached"; return
   fi
   echo "::group::MuJoCo $VERSION for $sdk"
@@ -56,12 +60,15 @@ build() {  # sdk
   cmake --build "$b" --target mujoco -j"$JOBS"
   rm -rf "$OUT/$sdk"; mkdir -p "$OUT/$sdk/include" "$OUT/$sdk/lib"
   cp -r "$SRC/include/mujoco" "$OUT/$sdk/include/"
-  # one archive with MuJoCo and every static dependency it was linked against
+  # libmujoco.a is MuJoCo itself (the app force-loads it so its self-registering decoders stay);
+  # libmujoco_deps.a bundles the static dependencies (linked normally: MuJoCo compiles parts of
+  # some of them, e.g. tinyobjloader, into its own objects, so force-loading them would clash).
+  cp "$b/lib/libmujoco.a" "$OUT/$sdk/lib/libmujoco.a"
   local libs=()
-  while IFS= read -r f; do libs+=("$f"); done < <(find "$b" -name '*.a' \
+  while IFS= read -r f; do libs+=("$f"); done < <(find "$b" -name '*.a' ! -name 'libmujoco.a' \
     ! -path '*/googletest*' ! -path '*/benchmark*' ! -path '*/abseil*' | sort)
   printf '  %s\n' "${libs[@]}"
-  libtool -static -no_warning_for_no_symbols -o "$OUT/$sdk/lib/libmujoco.a" "${libs[@]}"
+  libtool -static -no_warning_for_no_symbols -o "$OUT/$sdk/lib/libmujoco_deps.a" "${libs[@]}"
   echo "::endgroup::"
   ls -la "$OUT/$sdk/lib"
 }

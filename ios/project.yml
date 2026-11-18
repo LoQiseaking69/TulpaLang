@@ -35,8 +35,8 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_OBJC_BRIDGING_HEADER: TulpaField/Sources/TulpaField-Bridging-Header.h
         HEADER_SEARCH_PATHS: $(PROJECT_DIR)/native/include
-        LIBRARY_SEARCH_PATHS: $(PROJECT_DIR)/build/lib/$(PLATFORM_NAME)
-        OTHER_LDFLAGS: -ltulpa_ios -force_load $(PROJECT_DIR)/mujoco/$(PLATFORM_NAME)/lib/libmujoco.a -lc++ -lresolv -framework Security -framework CoreFoundation -framework SystemConfiguration
+        LIBRARY_SEARCH_PATHS: $(PROJECT_DIR)/build/lib/$(PLATFORM_NAME) $(PROJECT_DIR)/mujoco/$(PLATFORM_NAME)/lib
+        OTHER_LDFLAGS: -ltulpa_ios -force_load $(PROJECT_DIR)/mujoco/$(PLATFORM_NAME)/lib/libmujoco.a -lmujoco_deps -lc++ -lresolv -framework Security -framework CoreFoundation -framework SystemConfiguration
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         EXCLUDED_ARCHS[sdk=iphonesimulator*]: x86_64
         ARCHS: arm64
