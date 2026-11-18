@@ -27,7 +27,16 @@ or the language:
 4. assembles the release APK and verifies its signature;
 5. boots an Android 14 emulator, launches the app, runs a guide snippet, an example, the REPL and
    both co-simulation examples, and captures screenshots;
-6. publishes `android-v<version>` with the APK when `android/VERSION` changed on `main`.
+6. in a parallel macOS job, builds MuJoCo and the Rust bridge (`ios/native`) as static libraries
+   for iOS devices and the simulator, generates the Xcode project with XcodeGen, runs the XCUITest
+   smoke suite on an iPhone simulator (guide, library, editor, REPL, sensors, cart-pole co-sim),
+   then archives a Release build and packages an ad-hoc signed `TulpaField-<version>.ipa` plus an
+   AltStore/SideStore source;
+7. publishes `field-v<version>` with the APK and the IPA when `android/VERSION` changed on `main`
+   (releases up to 1.3.0 were Android-only `android-v<version>`).
+
+The iOS steps are scripts in `ios/ci/` and run the same way on any Mac; see
+[ios/README.md](https://github.com/LoQiseaking69/TulpaLang/blob/main/ios/README.md).
 
 ## Building locally
 

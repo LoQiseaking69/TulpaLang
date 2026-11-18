@@ -1,13 +1,14 @@
-<!--{"title": "Tulpa Field for Android", "active": "android", "description": "Tulpa Field: the TulpaLang IDE for Android. The whole Tulpa runtime on your phone, phone sensors as a programmable device, MuJoCo physics with 3D co-simulation, a REPL and runnable examples.", "search": "Tulpa Field Android app APK download phone sensors MuJoCo 3D co-simulation REPL mobile IDE"}-->
+<!--{"title": "Tulpa Field for Android and iOS", "active": "android", "description": "Tulpa Field: the TulpaLang IDE for Android and iOS. The whole Tulpa runtime on your phone, phone sensors as a programmable device, MuJoCo physics with 3D co-simulation, a REPL and runnable examples.", "search": "Tulpa Field Android iOS iPhone iPad app APK IPA AltStore SideStore download phone sensors MuJoCo 3D co-simulation REPL mobile IDE"}-->
 <section class="page-hero">
   <div class="wrap hero-grid">
     <div>
       <img src="assets/img/hermisim-mark.svg" alt="" width="64" height="64" style="border-radius:14px">
-      <span class="eyebrow" style="margin-top:18px"><span class="dot"></span>Tulpa Field {{android.version}} · Android 8.0+ · signed APK</span>
+      <span class="eyebrow" style="margin-top:18px"><span class="dot"></span>Tulpa Field {{android.version}} · Android 8.0+ · iOS 16+</span>
       <h1>Tulpa in your pocket. <span class="grad">Real sensors, real physics.</span></h1>
       <p class="sub">The whole Tulpa runtime runs on the phone, offline. Program the handset's own sensors and actuators, drive a MuJoCo robot and watch it in 3D, and learn from 35 runnable examples.</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="{{android.download}}">Download APK</a>
+        <a class="btn btn-primary" href="#install-ios">iPhone &amp; iPad (IPA)</a>
         <a class="btn" href="docs/android.html">Install &amp; tour</a>
         <a class="btn" href="{{android.releases}}" target="_blank" rel="noopener">All releases</a>
       </div>
@@ -86,10 +87,21 @@
         <p style="margin-top:6px"><a class="btn btn-primary" href="{{android.download}}">Download {{android.version}}</a></p>
         <p class="fingerprint" style="margin-top:14px">Signed by HermiTech LLC. Certificate SHA-256:<br>{{android.cert}}</p>
       </div>
+      <div class="card reveal" id="install-ios">
+        <h3>iPhone &amp; iPad (IPA)</h3>
+        <p>No Apple Developer account needed: sideload the IPA with a free Apple ID.</p>
+        <ol class="steps">
+          <li><strong>Install</strong> <a href="https://altstore.io" target="_blank" rel="noopener">AltStore</a> or <a href="https://sidestore.io" target="_blank" rel="noopener">SideStore</a> (or use <a href="https://sideloadly.io" target="_blank" rel="noopener">Sideloadly</a> on a computer).</li>
+          <li><strong>Add the source</strong> <code>{{ios.source}}</code>, or open <code>{{ios.ipa}}</code> in the app.</li>
+          <li><strong>Trust</strong> your Apple ID under Settings › General › VPN &amp; Device Management and turn on Developer Mode. AltStore/SideStore refresh the 7-day signature for you.</li>
+        </ol>
+        <p style="margin-top:6px"><a class="btn btn-primary" href="{{ios.download}}">Download IPA {{ios.version}}</a> <a class="btn" href="{{ios.readme}}" target="_blank" rel="noopener">iOS guide</a></p>
+        <p style="margin-top:10px">iOS 16 or newer on an arm64 device with Metal. TrollStore installs the IPA directly on the iOS versions it supports.</p>
+      </div>
       <div class="card reveal">
         <h3>Requirements &amp; building</h3>
         <p>Android 8.0 (API 26) or newer on arm64, armv7 or x86_64, with OpenGL ES 3.0. No network access is needed, except for an optional remote co-simulator.</p>
-        <p style="margin-top:10px">CI builds the Rust runtime and MuJoCo with the NDK, assembles the app, runs an emulator smoke test, and publishes a signed release whenever <code>android/VERSION</code> changes.</p>
+        <p style="margin-top:10px">CI builds the Rust runtime and MuJoCo for Android (NDK) and iOS (Xcode), assembles both apps, runs an emulator and a simulator smoke test, and publishes one release with the signed APK and the IPA whenever <code>android/VERSION</code> changes.</p>
         <p style="margin-top:16px"><a class="btn" href="docs/android-build.html">Build from source</a></p>
       </div>
     </div>

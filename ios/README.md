@@ -15,6 +15,16 @@ machines, `std/` libraries), the same `phone::` host module on the device's sens
 | **Instruments** | sensors, machine inspector, verify & tests, bytecode, settings |
 | **`phone::`** | accelerometer, gyro, magnetometer, orientation, barometer/altitude, proximity, battery, steps and GPS; haptics, torch, speech, tones and notifications |
 
+<p>
+  <img src="docs/screenshots/home.png" width="19%" alt="Home">
+  <img src="docs/screenshots/editor.png" width="19%" alt="Editor">
+  <img src="docs/screenshots/repl.png" width="19%" alt="REPL">
+  <img src="docs/screenshots/sensors.png" width="19%" alt="Phone sensors">
+  <img src="docs/screenshots/cosim.png" width="19%" alt="MuJoCo cart-pole co-simulation">
+</p>
+
+Screenshots come from the CI simulator smoke test (iPhone, iOS 18).
+
 ## Install (no Apple Developer account)
 
 Each `field-v*` [release](https://github.com/LoQiseaking69/TulpaLang/releases?q=field) carries
