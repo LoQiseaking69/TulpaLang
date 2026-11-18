@@ -1,0 +1,10 @@
+native/target/
+mujoco/
+.mujoco-src/
+.mujoco-build/
+build/
+TulpaField.xcodeproj/
+TulpaField/Generated/
+DerivedData/
+dist/
+TulpaField/Info.plist

@@ -1,0 +1,24 @@
+[package]
+name = "tulpa_ios"
+version = "1.0.0"
+edition = "2021"
+description = "C ABI bridge between the Tulpa language runtime and the Tulpa Field iOS IDE"
+license = "BUSL-1.1"
+publish = false
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+tulpa = { path = "../.." }
+serde_json = "1"
+
+[build-dependencies]
+cc = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"
+panic = "unwind"
