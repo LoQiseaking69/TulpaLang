@@ -21,7 +21,7 @@ A pocket IDE for TulpaLang that runs the **entire Tulpa runtime on the phone** (
 bytecode VM, units, contracts, machines, signals, interfaces and the Driver SDK, `std/` libraries), turns the handset itself
 into a device you can program, and carries **MuJoCo** for 3D co-simulation.
 
-**Download:** the signed APK is attached to each [`android-v*` release](https://github.com/LoQiseaking69/TulpaLang/releases?q=android).
+**Download:** the signed APK is attached to each [`field-v*` release](https://github.com/LoQiseaking69/TulpaLang/releases?q=field) (earlier: [`android-v*`](https://github.com/LoQiseaking69/TulpaLang/releases?q=android)), next to the iOS IPA — see [Tulpa Field for iOS](../ios/README.md).
 Site: [loqiseaking69.github.io/TulpaLang/android.html](https://loqiseaking69.github.io/TulpaLang/android.html).
 
 What sets it apart from HermiSim (the desktop studio):

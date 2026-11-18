@@ -1,6 +1,6 @@
 # Tulpa Field: install & tour
 
-**Tulpa Field** is the TulpaLang IDE for Android. It runs the whole Tulpa runtime on the phone,
+**Tulpa Field** is the TulpaLang IDE for Android and iOS. It runs the whole Tulpa runtime on the phone,
 offline: the interpreter and bytecode VM, units, contracts, state machines, signals and timing
 rules, and the `std/` libraries. It adds three things the desktop can't give you: the phone's own
 sensors as a programmable device, MuJoCo physics with a 3D view in your pocket, and a touch-first
@@ -8,8 +8,10 @@ editor.
 
 ## Install
 
+### Android
+
 1. On your phone, download the APK from the [Tulpa Field page](../android.html) or from the
-   [releases list](https://github.com/LoQiseaking69/TulpaLang/releases?q=android).
+   [releases list](https://github.com/LoQiseaking69/TulpaLang/releases?q=field).
 2. Open it. Android asks once to allow installs from your browser or file manager.
 3. Install, then open **Tulpa Field**. Later releases install over the top.
 
@@ -21,6 +23,24 @@ BC:21:75:A5:1D:B6:56:42:10:25:82:4C:2F:8A:0D:20:DD:48:9F:06:76:4A:DD:BB:18:30:26
 ```
 
 **Requirements:** Android 8.0 (API 26) or newer, arm64 / armv7 / x86_64, OpenGL ES 3.0.
+
+### iPhone and iPad
+
+Every release also carries `TulpaField-<version>.ipa`. No Apple Developer account is needed: the
+IPA is ad-hoc signed, and a sideloading tool re-signs it with your free Apple ID.
+
+1. Install [AltStore](https://altstore.io) or [SideStore](https://sidestore.io), or use
+   [Sideloadly](https://sideloadly.io) on a computer.
+2. In AltStore/SideStore, add the source
+   `https://github.com/LoQiseaking69/TulpaLang/releases/download/field-v<version>/altstore-source.json`,
+   or open the downloaded IPA in the app. In Sideloadly, drag the IPA in and sign in.
+3. Trust your Apple ID under Settings › General › VPN & Device Management, and turn on Developer
+   Mode when iOS asks.
+
+Apple limits free Apple IDs to 3 sideloaded apps, and the signature lasts 7 days; AltStore and
+SideStore refresh it in the background. TrollStore installs the IPA permanently on the iOS versions
+it supports. **Requirements:** iOS 16 or newer, arm64, Metal. Details and building from source:
+[ios/README.md](https://github.com/LoQiseaking69/TulpaLang/blob/main/ios/README.md).
 
 ## The tabs
 

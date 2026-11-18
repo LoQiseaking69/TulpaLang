@@ -1,34 +1,40 @@
-name: Android (Tulpa Field)
+name: Tulpa Field (Android + iOS)
 
 on:
   push:
     branches: [main]
-    tags: ["android-v*"]
-    paths: ["android/**", "src/**", "stdlib/**", "examples/**", "docs/**", "Cargo.toml", ".github/workflows/android.yml"]
+    tags: ["field-v*", "android-v*"]
+    paths: ["android/**", "ios/**", "src/**", "stdlib/**", "examples/**", "docs/**", "Cargo.toml", ".github/workflows/android.yml"]
   pull_request:
-    paths: ["android/**", "src/**", "stdlib/**", "examples/**", "docs/**", "Cargo.toml", ".github/workflows/android.yml"]
+    paths: ["android/**", "ios/**", "src/**", "stdlib/**", "examples/**", "docs/**", "Cargo.toml", ".github/workflows/android.yml"]
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publish the APK as a GitHub release (tag android-v<version>)"
+        description: "Publish the APK and IPA as a GitHub release (tag field-v<version>)"
         type: boolean
         default: false
       version:
-        description: "Version for a published build, e.g. 1.0.0"
-        default: "1.0.0"
+        description: "Version for a published build (default: android/VERSION)"
+        default: ""
 
 permissions:
   contents: write
 
 concurrency:
-  group: android-${{ github.ref }}
+  group: field-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  apk:
+  version:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      release: ${{ steps.ver.outputs.release }}
+      build: ${{ steps.ver.outputs.build }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Version
         id: ver
@@ -39,18 +45,30 @@ jobs:
         run: |
           base="$(tr -d ' \n' < android/VERSION)"
           v="$base"; release=false
-          if [[ "$GITHUB_REF" == refs/tags/android-v* ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/field-v* ]]; then
+            v="${GITHUB_REF#refs/tags/field-v}"; release=true
+          elif [[ "$GITHUB_REF" == refs/tags/android-v* ]]; then
             v="${GITHUB_REF#refs/tags/android-v}"; release=true
           elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             v="${INPUT_VERSION:-$base}"; [ "$INPUT_PUBLISH" = true ] && release=true
           elif [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/main ] && \
-               ! gh release view "android-v$base" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+               ! gh release view "field-v$base" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             release=true   # android/VERSION bumped on main and not yet released
           fi
-          echo "TULPA_FIELD_VERSION=$v" >> "$GITHUB_ENV"
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "build=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
           echo "Tulpa Field $v (release=$release)"
+
+  apk:
+    needs: version
+    runs-on: ubuntu-latest
+    outputs:
+      signed: ${{ steps.sign.outputs.signed }}
+    env:
+      TULPA_FIELD_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
@@ -182,25 +200,116 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: smoke-screenshots
+          name: smoke-screenshots-android
           path: smoke/
 
-      - name: Publish release
-        if: steps.ver.outputs.release == 'true' && steps.sign.outputs.signed == 'true'
+  ipa:
+    needs: version
+    runs-on: macos-15
+    env:
+      TULPA_FIELD_VERSION: ${{ needs.version.outputs.version }}
+      TF_BUILD: ${{ needs.version.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          brew install xcodegen ninja > /dev/null
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)" || true
+          xcodebuild -version
+          xcodegen --version
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ios/native
+
+      - name: Cache MuJoCo builds
+        uses: actions/cache@v4
+        with:
+          path: ios/mujoco
+          key: mujoco-4.0.1-ios-${{ hashFiles('ios/ci/build-mujoco.sh') }}
+
+      - name: Build MuJoCo (iphoneos + iphonesimulator, static)
+        run: ios/ci/build-mujoco.sh
+
+      - name: Build libtulpa_ios.a (device + simulator)
+        run: ios/ci/build-native.sh
+
+      - name: Generate the Xcode project
+        run: |
+          ios/ci/sync-assets.sh
+          ios/ci/gen-project.sh
+
+      - name: "Simulator smoke test (XCUITest: guide, library, editor, REPL, sensors, MuJoCo co-sim)"
+        run: ios/ci/smoke.sh smoke-ios
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-screenshots-ios
+          path: |
+            smoke-ios/
+            ios/build/smoke.log
+
+      - name: Archive and package the IPA (unsigned build, ad-hoc signature)
+        run: ios/ci/package-ipa.sh
+
+      - name: AltStore / SideStore source
+        run: ios/ci/altstore-source.sh "dist/TulpaField-$TULPA_FIELD_VERSION.ipa" "field-v$TULPA_FIELD_VERSION" dist/altstore-source.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TulpaField-ipa
+          path: |
+            dist/*.ipa
+            dist/*.sha256
+            dist/altstore-source.json
+
+  release:
+    needs: [version, apk, ipa]
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a release-signed APK
+        if: needs.apk.outputs.signed != 'true'
+        run: |
+          echo "::error::Release field-v${{ needs.version.outputs.version }} was not published: add the KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD secrets to this repository, then re-run."
+          exit 1
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - run: ls -la dist
+
+      - name: Publish release (APK + IPA)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: android-v${{ steps.ver.outputs.version }}
-          name: Tulpa Field ${{ env.TULPA_FIELD_VERSION }}
+          tag_name: field-v${{ needs.version.outputs.version }}
+          name: Tulpa Field ${{ needs.version.outputs.version }}
           target_commitish: ${{ github.sha }}
-          files: dist/*.apk
+          make_latest: false
+          files: |
+            dist/*.apk
+            dist/*.ipa
+            dist/*.sha256
+            dist/altstore-source.json
           body: |
-            **Tulpa Field** — the TulpaLang IDE for Android.
+            **Tulpa Field** — the TulpaLang IDE for Android and iOS.
 
-            Download the APK below and open it on your phone (allow "install unknown apps" for your browser or file manager once).
+            ### Android
+            Download `TulpaField-${{ needs.version.outputs.version }}.apk` and open it on your phone (allow "install unknown apps" for your browser or file manager once).
             Requires Android 8.0+ on arm64, armv7 or x86_64. Signed with the HermiTech release key.
 
-      - name: Release skipped (unsigned)
-        if: steps.ver.outputs.release == 'true' && steps.sign.outputs.signed != 'true'
-        run: |
-          echo "::error::Release android-v${{ steps.ver.outputs.version }} was not published: add the KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD secrets to this repository, then re-run."
-          exit 1
+            ### iPhone / iPad
+            Download `TulpaField-${{ needs.version.outputs.version }}.ipa` and sideload it with a free Apple ID — no developer account needed:
+            - **AltStore** or **SideStore**: add the source `https://github.com/${{ github.repository }}/releases/download/field-v${{ needs.version.outputs.version }}/altstore-source.json`, or open the IPA in the app. They refresh the 7-day signature for you.
+            - **Sideloadly** (Windows/macOS): drag the IPA in and sign with your Apple ID.
+            - **TrollStore** (supported iOS versions): install the IPA directly, no re-signing.
+
+            Requires iOS 16+ on an arm64 device. The IPA is ad-hoc signed; your sideloading tool re-signs it with your Apple ID. See [ios/README.md](https://github.com/${{ github.repository }}/blob/main/ios/README.md).

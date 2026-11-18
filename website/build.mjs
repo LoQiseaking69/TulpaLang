@@ -236,7 +236,7 @@ function renderFragment(src) {
     const lang = { rav: 'tulpa', sh: 'bash', txt: 'text', json: 'json' }[path.extname(file).slice(1)] || 'text';
     return codeBlock(read(p), lang, title);
   });
-  src = src.replace(/\{\{(tulpa|hermisim|android)\.(\w+)\}\}/g, (_, a, b) => esc(config[a][b]));
+  src = src.replace(/\{\{(tulpa|hermisim|android|ios)\.(\w+)\}\}/g, (_, a, b) => esc(config[a][b]));
   return { meta, html: src };
 }
 
