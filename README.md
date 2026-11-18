@@ -30,7 +30,7 @@ abstractions, and native hardware integration.
 | Engineering model | Units, contracts, invariants, state machines, reactive rules, timing constraints |
 | Hardware integration | GPIO, I2C, SPI, UART, PWM, Servo, PID, CAN, Bluetooth LE |
 | Verification | Static proofs of contracts and invariants (`tulpa prove`), runtime contracts, contract fuzzing, safety monitors, exhaustive exploration, deterministic physics and chip emulation, record/replay |
-| Developer tooling | REPL, test runner, LSP, VS Code extension, Mermaid state diagrams, [HermiSim IDE](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer), [Tulpa Field](android/README.md) for Android |
+| Developer tooling | REPL, test runner, LSP, VS Code extension, Mermaid state diagrams, [HermiSim IDE](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer), [Tulpa Field](android/README.md) for Android and [iOS](ios/README.md) |
 | License | [Business Source License 1.1](LICENSING.md) (source-available; converts to Apache-2.0 after four years) |
 
 ## A language designed around physical systems
@@ -370,7 +370,7 @@ larger robotics and simulation environment:
 - an RTL torque governor
 - the mainboard as code
 
-## Tulpa Field (Android)
+## Tulpa Field (Android and iOS)
 
 <p align="center">
   <a href="android/README.md"><img src="android/docs/screenshots/home.jpg" width="23%" alt="Tulpa Field welcome page"></a>
@@ -379,8 +379,8 @@ larger robotics and simulation environment:
   <a href="android/README.md"><img src="android/docs/screenshots/run.jpg" width="23%" alt="Live gauges and plots from the phone's sensors"></a>
 </p>
 
-[`android/`](android/README.md) is **Tulpa Field**, a pocket IDE that runs the whole Tulpa runtime
-on the phone, offline. It turns the handset into a device you can program:
+[`android/`](android/README.md) and [`ios/`](ios/README.md) are **Tulpa Field**, a pocket IDE that runs the whole Tulpa runtime
+on the phone, offline, on Android and on iPhone/iPad. It turns the handset into a device you can program:
 
 - the `phone::` module reads the accelerometer, gyro, magnetometer, orientation, light, barometer,
   proximity, battery, steps and GPS as unit-checked quantities, and drives vibration, the torch,
@@ -393,7 +393,9 @@ on the phone, offline. It turns the handset into a device you can program:
 - planning (`std/plan`), Tulpa Link on a simulated network, and physics with emulated chips
 - 36 runnable examples, including the Morty humanoid, and an in-app guide whose code blocks run with one tap
 
-The signed APK is built by CI and attached to `android-v*` releases; see the
+The signed APK and the iOS IPA are built by CI and attached together to `field-v*` releases (older
+Android-only builds are `android-v*`). The IPA installs without an Apple Developer account through
+AltStore, SideStore or Sideloadly with a free Apple ID ([iOS README](ios/README.md)). See the
 [Tulpa Field page](https://loqiseaking69.github.io/TulpaLang/android.html) on the website. Screenshots, features and build
 instructions are in the [Tulpa Field README](android/README.md). Other hosts can embed the runtime the
 same way through `tulpa::embed` (run/REPL/analysis API) and `tulpa::host` (host-provided modules).
@@ -594,6 +596,7 @@ editors/           VS Code extension (editors/vscode) + Neovim/Helix setup
 scripts/           release.sh (tarball, .deb, .vsix), deploy.sh, cross_compile.sh
 website/           project website + docs site (GitHub Pages), see website/README.md
 android/           Tulpa Field, the Android IDE (Rust JNI bridge + Kotlin/Compose app)
+ios/               Tulpa Field for iOS (Rust C-ABI bridge + SwiftUI/Metal app)
 ```
 
 ## Performance
