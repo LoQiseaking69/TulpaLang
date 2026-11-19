@@ -1,12 +1,12 @@
 {
   "title": "Tulpa & HermiSim",
   "tagline": "Code the physical world",
-  "description": "Tulpa is a Python-flavoured, Rust-powered programming language for robotics, embedded systems and physical computing. HermiSim is its simulation suite and IDE, and Tulpa Field brings both to Android.",
+  "description": "Tulpa is a Python-flavoured, Rust-powered programming language for robotics, embedded systems and physical computing. HermiSim is its simulation suite and IDE, and Tulpa Field brings both to Android and iOS.",
   "url": "https://loqiseaking69.github.io/TulpaLang",
   "org": "HermiTech",
   "tulpa": {
-    "version": "3.4.0",
-    "release": "v3.4.0",
+    "version": "3.5.0",
+    "release": "v3.5.0",
     "repo": "https://github.com/LoQiseaking69/TulpaLang"
   },
   "hermisim": {

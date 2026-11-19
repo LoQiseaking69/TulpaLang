@@ -15,7 +15,7 @@
 | **HermiSim 2.1** | Tulpa 3.3 workflows: Run Natively, Build Firmware for Board…, New Firmware Project…, `native`/`firmware` run kinds, Driver SDK highlighting and docs. |
 | **HermiSim 2.2** | Proofs dock, Deploy Project to Board, Bundle, a Tulpa Link Network dock, and the bundled Autonomy lab project. |
 | **HermiSim 2.3** | Tulpa 3.5: firmware builds report the tier they used (static native code or the Tulpa VM), a Link Bridge action for boards on a serial port, and the Firmware VM lab project. |
-| **Tulpa Field 1.4** | The Tulpa 3.5 runtime, with a guide and example for running the whole language on a microcontroller. |
+| **Tulpa Field 1.5** | Tulpa Field on iPhone and iPad (a SwiftUI app, released as an IPA and an AltStore source) alongside Android, on the Tulpa 3.5 runtime, with a guide and example for running the whole language on a microcontroller. |
 | **Tulpa Field 1.3** | The Tulpa 3.4 runtime on Android: planning, Tulpa Link, physics and chip emulation, with new examples and guides. |
 | **Tulpa Field 1.2** | The Tulpa 3.3 runtime on Android with the Driver SDK, and *Your phone as an Imu*: `std/driver`'s `Imu` interface implemented on the phone's sensors. |
 
