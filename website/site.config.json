@@ -17,18 +17,18 @@
   "editBranch": "main",
   "siteDir": "website",
   "android": {
-    "version": "1.5.0",
-    "tag": "field-v1.5.0",
-    "apk": "TulpaField-1.5.0.apk",
-    "download": "https://github.com/LoQiseaking69/TulpaLang/releases/download/field-v1.5.0/TulpaField-1.5.0.apk",
+    "version": "1.5.1",
+    "tag": "field-v1.5.1",
+    "apk": "TulpaField-1.5.1.apk",
+    "download": "https://github.com/LoQiseaking69/TulpaLang/releases/download/field-v1.5.1/TulpaField-1.5.1.apk",
     "releases": "https://github.com/LoQiseaking69/TulpaLang/releases?q=field",
     "cert": "BC:21:75:A5:1D:B6:56:42:10:25:82:4C:2F:8A:0D:20:DD:48:9F:06:76:4A:DD:BB:18:30:26:39:E3:08:E8:CF"
   },
   "ios": {
-    "version": "1.5.0",
-    "ipa": "TulpaField-1.5.0.ipa",
-    "download": "https://github.com/LoQiseaking69/TulpaLang/releases/download/field-v1.5.0/TulpaField-1.5.0.ipa",
-    "source": "https://github.com/LoQiseaking69/TulpaLang/releases/download/field-v1.5.0/altstore-source.json",
+    "version": "1.5.1",
+    "ipa": "TulpaField-1.5.1.ipa",
+    "download": "https://github.com/LoQiseaking69/TulpaLang/releases/download/field-v1.5.1/TulpaField-1.5.1.ipa",
+    "source": "https://github.com/LoQiseaking69/TulpaLang/releases/download/field-v1.5.1/altstore-source.json",
     "readme": "https://github.com/LoQiseaking69/TulpaLang/blob/main/ios/README.md"
   }
 }
