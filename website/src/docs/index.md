@@ -39,4 +39,4 @@ state-machine diagrams, live telemetry plots and a board/BOM viewer.
 ## Source repositories
 
 - [TulpaLang](https://github.com/LoQiseaking69/TulpaLang): the language, toolchain, standard library and VS Code extension.
-- [HermiSim-DynamicsViewer](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer): the IDE, co-simulator, Windows installer and the Morty project.
+- [.RAV_IDE](https://github.com/LoQiseaking69/.RAV_IDE): the IDE, co-simulator, Windows installer and the Morty project.

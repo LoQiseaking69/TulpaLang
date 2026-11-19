@@ -6,7 +6,7 @@ so on Windows the IDE installer is the quickest way to get both.
 ## .RAV IDE on Windows (recommended)
 
 Download `RAVIDE-Setup-<version>-x64.exe` from
-[.RAV IDE releases](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer/releases).
+[.RAV IDE releases](https://github.com/LoQiseaking69/.RAV_IDE/releases).
 The installer:
 
 - bundles the IDE, MuJoCo and the Tulpa toolchain (`tulpa.exe` + `std/`)
@@ -63,10 +63,10 @@ Clone both repositories side by side. .RAV IDE looks for `../TulpaLang/target/re
 automatically.
 
 ```bash
-git clone https://github.com/LoQiseaking69/HermiSim-DynamicsViewer.git
+git clone https://github.com/LoQiseaking69/.RAV_IDE.git rav-ide
 git clone https://github.com/LoQiseaking69/TulpaLang.git
 (cd TulpaLang && cargo build --release)
-cd HermiSim-DynamicsViewer
+cd rav-ide
 pip install -r requirements.txt
 python main.py                      # the IDE
 python main.py --classic            # the original model viewer

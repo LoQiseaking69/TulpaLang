@@ -2,7 +2,7 @@
 
 This folder is the source of the Tulpa and .RAV IDE website, published with GitHub Pages at
 **https://loqiseaking69.github.io/TulpaLang/**. It holds the landing pages for
-[Tulpa](../README.md) and [.RAV IDE](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer)
+[Tulpa](../README.md) and [.RAV IDE](https://github.com/LoQiseaking69/.RAV_IDE)
 and the documentation site.
 
 It's a small static-site generator (`build.mjs`, under 400 lines) with two dependencies,
