@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { path: HermiSim-DynamicsViewer }
+        with: { path: rav-ide }
       - uses: actions/checkout@v4
         with: { repository: LoQiseaking69/TulpaLang, path: TulpaLang }
       - uses: dtolnay/rust-toolchain@stable
@@ -48,12 +48,12 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -r requirements.txt pytest
-        working-directory: HermiSim-DynamicsViewer
+        working-directory: rav-ide
       - run: |
           python -m tulpa_bridge doctor
           pytest
           python -m tulpa_bridge run workspace/morty/main.rav --model models/morty.xml --timeout 300 -- 10
-        working-directory: HermiSim-DynamicsViewer
+        working-directory: rav-ide
         env: { MUJOCO_GL: egl }
 ```
 
