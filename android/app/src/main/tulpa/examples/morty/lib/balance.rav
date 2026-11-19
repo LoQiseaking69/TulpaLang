@@ -4,7 +4,7 @@
 #   hip strategy    — counter-rotate the hips in the frontal plane
 #   residual        — optional learned joint offsets (rad) from the PPO policy
 #
-# Gains were found by sweeping push recovery in HermiSim (see README). Higher frontal-plane
+# Gains were found by sweeping push recovery in .RAV IDE (see README). Higher frontal-plane
 # gains (|roll| ≥ 4) make the 100 Hz loop chatter — the FPGA governor's slew flags show it.
 
 struct Balance {

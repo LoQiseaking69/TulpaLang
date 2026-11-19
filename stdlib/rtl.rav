@@ -5,7 +5,7 @@
 #   * `sim.reg(name, width)`  — a flip-flop, loaded with `.d(v)` inside `seq()`
 #                               (non-blocking: every register commits together on the edge)
 #   * a module is any struct with `comb(self)` and `seq(self)` methods; `sim.add(m)`
-#   * `sim.trace("out.vcd")` records every signal; open the file in HermiSim's
+#   * `sim.trace("out.vcd")` records every signal; open the file in .RAV IDE's
 #     waveform viewer or GTKWave.
 #
 #   import "std/rtl"

@@ -168,7 +168,7 @@ fun SimScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
                 TextButton(onClick = { picker = false; import() }, modifier = Modifier.padding(horizontal = 12.dp)) {
                     Icon(Icons.Default.FileOpen, null); Spacer(Modifier.width(8.dp)); Text("Import an MJCF model (.xml)…")
                 }
-                Text("Programs pick their model from hermisim.json (\"model\"), else the first MJCF in their folder, else the model open here.",
+                Text("Programs pick their model from ravide.json (\"model\"), else the first MJCF in their folder, else the model open here.",
                     color = TF.Dim, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp))
             }
         }

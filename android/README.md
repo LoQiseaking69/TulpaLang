@@ -24,11 +24,11 @@ into a device you can program, and carries **MuJoCo** for 3D co-simulation.
 **Download:** the signed APK is attached to each [`field-v*` release](https://github.com/LoQiseaking69/TulpaLang/releases?q=field) (earlier: [`android-v*`](https://github.com/LoQiseaking69/TulpaLang/releases?q=android)), next to the iOS IPA — see [Tulpa Field for iOS](../ios/README.md).
 Site: [loqiseaking69.github.io/TulpaLang/android.html](https://loqiseaking69.github.io/TulpaLang/android.html).
 
-What sets it apart from HermiSim (the desktop studio):
+What sets it apart from .RAV IDE (the desktop studio):
 
 | | |
 |---|---|
-| **3D simulation + co-simulation** | MuJoCo 4 on the device with an OpenGL ES 3 view (orbit, pan, pinch, push, reset). `cosim::connect()` programs drive it with HermiSim's protocol, so HermiSim workspaces (`hermisim.json`) run unchanged; or point them at a desktop HermiSim |
+| **3D simulation + co-simulation** | MuJoCo 4 on the device with an OpenGL ES 3 view (orbit, pan, pinch, push, reset). `cosim::connect()` programs drive it with .RAV IDE's protocol, so .RAV IDE workspaces (`ravide.json`) run unchanged; or point them at a desktop .RAV IDE |
 | **Welcome page** | continue the last file, quick starts, highlights and recent projects |
 | **`phone::` host module** | accelerometer, gyro, magnetometer, orientation, tilt, shake, light, barometer/altitude, proximity, battery, steps and GPS as unit-checked quantities; vibration, torch, speech, tones, toasts, notifications as actuators |
 | **Live instruments** | `tlm::plot` charts, `phone::gauge` readouts, `tlm::event` markers and shareable artifacts on the Run screen |

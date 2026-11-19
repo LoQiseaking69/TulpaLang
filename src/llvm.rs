@@ -3205,7 +3205,7 @@ impl<'a> FnGen<'a> {
             }
             ("tlm", "enabled") => Ok(("0".into(), Ty::Bool)),
             ("tlm", _) => {
-                // telemetry is a HermiSim/interpreter feature; on hardware the calls are no-ops
+                // telemetry is a .RAV IDE/interpreter feature; on hardware the calls are no-ops
                 for i in 0..args.len() {
                     if !matches!(args[i], Expr::Str(_)) {
                         self.arg(args, i)?;

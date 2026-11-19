@@ -1,7 +1,7 @@
 # 3D simulation & co-simulation
 
 Tulpa Field carries a full **MuJoCo** physics engine and a 3D viewer. A Tulpa program drives a
-simulated robot through `cosim::`, exactly as it does in HermiSim on the desktop: the same
+simulated robot through `cosim::`, exactly as it does in .RAV IDE on the desktop: the same
 protocol, the same API, the same programs.
 
 ## The Sim tab
@@ -16,7 +16,7 @@ protocol, the same API, the same programs.
 ## Co-simulation in three lines
 
 ```text
-let sim = cosim::connect()       # the phone's MuJoCo model (or a remote HermiSim)
+let sim = cosim::connect()       # the phone's MuJoCo model (or a remote .RAV IDE)
 let o = sim.reset()
 o = sim.step(ctrl, 10)           # apply controls, advance 10 physics steps, observe
 ```
@@ -24,7 +24,7 @@ o = sim.step(ctrl, 10)           # apply controls, advance 10 physics steps, obs
 When you run a program that uses `cosim::`, Tulpa Field loads its model, starts the co-sim
 server on the phone and switches to the Sim tab so you can watch.
 
-**Which model?** In order: the `"model"` in a `hermisim.json` next to the program (HermiSim
+**Which model?** In order: the `"model"` in a `ravide.json` next to the program (.RAV IDE
 workspaces work unchanged), else the first MJCF `.xml` in the program's folder, else the model
 open in the Sim tab.
 
@@ -43,14 +43,14 @@ open in the Sim tab.
 ## Examples
 
 - **Cart-pole balance:** an LQR controller balances a pole and recovers from a shove.
-- **Morty — humanoid balance:** the complete Morty stack from HermiSim, with capture-point
+- **Morty — humanoid balance:** the complete Morty stack from .RAV IDE, with capture-point
   balance, a physics-informed COM model, the FPGA governor link and a behaviour machine,
   driving an 18-actuator humanoid on your phone.
 
 From the Sim tab's ⓘ sheet, **New co-sim project for this model** creates a project with a
-`hermisim.json` and a starter controller that lists the model's actuators.
+`ravide.json` and a starter controller that lists the model's actuators.
 
-## Driving a desktop HermiSim instead
+## Driving a desktop .RAV IDE instead
 
-In **Settings → Co-simulation**, enter `host:port` of a HermiSim co-sim server on your network.
-Programs then drive the desktop model, which renders in HermiSim's 3D view.
+In **Settings → Co-simulation**, enter `host:port` of a .RAV IDE co-sim server on your network.
+Programs then drive the desktop model, which renders in .RAV IDE's 3D view.

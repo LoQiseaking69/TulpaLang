@@ -1,19 +1,19 @@
 # Installation
 
-Tulpa ships as a single binary, `tulpa`, plus the `std/` library. HermiSim bundles that toolchain,
+Tulpa ships as a single binary, `tulpa`, plus the `std/` library. .RAV IDE bundles that toolchain,
 so on Windows the IDE installer is the quickest way to get both.
 
-## HermiSim on Windows (recommended)
+## .RAV IDE on Windows (recommended)
 
-Download `HermiSim-Setup-<version>-x64.exe` from
-[HermiSim releases](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer/releases).
+Download `RAVIDE-Setup-<version>-x64.exe` from
+[.RAV IDE releases](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer/releases).
 The installer:
 
 - bundles the IDE, MuJoCo and the Tulpa toolchain (`tulpa.exe` + `std/`)
 - can add `tulpa` to your `PATH` and associate `.rav` / `.tlp` files
 - installs per user without admin rights, or for all users
 
-Editable projects, including Morty, are copied to `Documents\HermiSim`.
+Editable projects, including Morty, are copied to `Documents\RAV IDE`.
 
 ## Tulpa release packages
 
@@ -25,7 +25,7 @@ Release packages are built by the `release` workflow on every `v*` tag and attac
 | Linux x86_64 / arm64 / armv7 (Raspberry Pi 3/4/5) | `tulpa-<version>-<target>.tar.gz` | unpack, then `./install.sh` or `sudo ./install.sh /usr/local` |
 | Debian / Ubuntu / Raspberry Pi OS | `tulpa_<version>_<arch>.deb` | `sudo apt install ./tulpa_<version>_<arch>.deb` |
 | macOS (Intel / Apple silicon) | `tulpa-<version>-<x86_64\|aarch64>-apple-darwin.tar.gz` | unpack and put `tulpa` on your `PATH` |
-| Windows | HermiSim installer | see above, or build from source |
+| Windows | .RAV IDE installer | see above, or build from source |
 | VS Code | `tulpa-lang-<version>.vsix` | `code --install-extension tulpa-lang-<version>.vsix` |
 
 > [!NOTE]
@@ -57,9 +57,9 @@ Firmware builds also need the board's SDK:
   chips (ESP32, S2, S3) also need Espressif's clang:
   `python $IDF_PATH/tools/idf_tools.py install esp-clang`.
 
-## Run HermiSim from source (Linux, macOS, Windows)
+## Run .RAV IDE from source (Linux, macOS, Windows)
 
-Clone both repositories side by side. HermiSim looks for `../TulpaLang/target/release/tulpa`
+Clone both repositories side by side. .RAV IDE looks for `../TulpaLang/target/release/tulpa`
 automatically.
 
 ```bash
@@ -73,9 +73,9 @@ python main.py --classic            # the original model viewer
 python -m tulpa_bridge doctor       # check the toolchain and MuJoCo
 ```
 
-### Pointing HermiSim at a toolchain
+### Pointing .RAV IDE at a toolchain
 
-HermiSim searches, in order: the path configured under **Settings ▸ Tulpa Toolchain**, the
+.RAV IDE searches, in order: the path configured under **Settings ▸ Tulpa Toolchain**, the
 `TULPA_BIN` environment variable, then `tulpa` on your `PATH` and the bundled / sibling builds.
 Run `python -m tulpa_bridge doctor` to see which one it picked.
 

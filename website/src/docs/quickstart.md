@@ -2,7 +2,7 @@
 
 This walk-through takes about ten minutes. You'll write a small Tulpa program that uses units,
 a contract, a state machine and a safety envelope, run it against the simulated device backend,
-fuzz its contracts, and then open it in HermiSim.
+fuzz its contracts, and then open it in .RAV IDE.
 
 ## 1. Hello, physical world
 
@@ -112,9 +112,9 @@ tulpa verify conveyor.rav
 verified 1 function(s): 1 passed, 0 failed
 ```
 
-## 4. Open it in HermiSim
+## 4. Open it in .RAV IDE
 
-1. Launch HermiSim and use **File ▸ Open** to open the folder containing `conveyor.rav`.
+1. Launch .RAV IDE and use **File ▸ Open** to open the folder containing `conveyor.rav`.
 2. Pick **current file** in the run target box and press **▶ Run**.
 3. Press **Diagram** in the toolbar to see `Sorter` rendered as a state diagram (with a **Mermaid source** tab beside it).
 4. Open the **Tulpa Terminal** and try `$ verify conveyor.rav`.

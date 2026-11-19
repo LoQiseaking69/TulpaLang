@@ -1,5 +1,5 @@
 # Unit tests for Morty's pure logic — no simulator needed.
-#     tulpa test workspace/morty/tests/morty_test.rav      (or Test ▸ Run Tests in HermiSim)
+#     tulpa test workspace/morty/tests/morty_test.rav      (or Test ▸ Run Tests in .RAV IDE)
 
 import "../fpga/protocol"
 import "../lib/robot"

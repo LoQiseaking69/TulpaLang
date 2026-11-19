@@ -46,7 +46,7 @@ struct HomeView: View {
                         highlight("iphone", "Your phone is the device",
                                   "phone:: reads the accelerometer, gyro, compass, barometer and GPS as unit-checked quantities, and drives haptics, the torch and speech.") { vm.openExample("bubble_level") }
                         highlight("cube.transparent", "MuJoCo physics + 3D co-simulation",
-                                  "cosim:: programs drive a MuJoCo model on the phone, the same protocol HermiSim uses. Watch it live in 3D, push it, reset it.") { vm.openExample("cosim_cartpole") }
+                                  "cosim:: programs drive a MuJoCo model on the phone, the same protocol .RAV IDE uses. Watch it live in 3D, push it, reset it.") { vm.openExample("cosim_cartpole") }
                         highlight("point.3.connected.trianglepath.dotted", "State machines you can see",
                                   "Every machine is drawn as a tappable graph; contracts are fuzzed for counterexamples with one tap.") { vm.openExample("shake_machine") }
                         highlight("book", "Learn by running", "30+ runnable examples and a guide whose code blocks run with one tap.") { vm.go(.learn) }

@@ -1,5 +1,5 @@
 # Cycle-accurate hardware in Tulpa: a 4-bit counter with a clock-enable from a ÷3 divider.
-# Prints an ASCII waveform and writes counter.vcd (share it to GTKWave or HermiSim).
+# Prints an ASCII waveform and writes counter.vcd (share it to GTKWave or .RAV IDE).
 import "std/rtl"
 
 let sim = rtl.Sim(period_ns: 10)

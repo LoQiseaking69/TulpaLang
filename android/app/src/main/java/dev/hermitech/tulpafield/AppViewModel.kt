@@ -458,12 +458,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         toast("Imported ${f.name} into ${dir.name}")
     }
 
-    /** A new project wired to [m]: hermisim.json + a starter controller using its actuators. */
+    /** A new project wired to [m]: ravide.json + a starter controller using its actuators. */
     fun newCosimProject(m: dev.hermitech.tulpafield.core.SimModel) {
         val dir = workspace.createProject("${m.name} co-sim", Template.Blank)
         val bundled = File(m.path).parentFile == workspace.models
         val rel = if (bundled) "../../models/${File(m.path).name}" else File(m.path).also { it.copyTo(File(dir, it.name), true) }.name
-        File(dir, "hermisim.json").writeText(org.json.JSONObject().put("name", m.name).put("model", rel).put("entry", "main.rav").toString(2))
+        File(dir, "ravide.json").writeText(org.json.JSONObject().put("name", m.name).put("model", rel).put("entry", "main.rav").toString(2))
         File(dir, "main.rav").writeText("""
             # Co-simulation with ${m.name}: ${m.actuators} actuators, ${m.joints} joints.
             # Run this file, then open the Sim tab to watch it in 3D.

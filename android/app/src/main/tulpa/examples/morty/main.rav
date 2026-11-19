@@ -1,6 +1,6 @@
 # MORTY — bipedal humanoid control, reimagined in TulpaLang.
 #
-# Run from HermiSim (Run ▸ Run in Simulator, model models/morty.xml) or headless:
+# Run from .RAV IDE (Run ▸ Run in Simulator, model models/morty.xml) or headless:
 #     python -m tulpa_bridge run workspace/morty/main.rav --model models/morty.xml -- 12 [hard] [policy] [nogov]
 #   12      seconds of simulated time        hard    add shoves beyond the baseline's limits
 #   policy  add the trained PPO residual     nogov   bypass the FPGA torque governor

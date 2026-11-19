@@ -1,15 +1,15 @@
-<!--{"title": "", "active": "home", "description": "Tulpa is a Python-flavoured, Rust-powered language for robots and hardware, with units, contracts, state machines and safety envelopes built in. HermiSim is its IDE and MuJoCo co-simulator.", "search": "Tulpa HermiSim home units contracts state machines reactive timing safety envelopes co-simulation IDE"}-->
+<!--{"title": "", "active": "home", "description": "Tulpa is a Python-flavoured, Rust-powered language for robots and hardware, with units, contracts, state machines and safety envelopes built in. .RAV IDE is its IDE and MuJoCo co-simulator.", "search": "Tulpa .RAV IDE home units contracts state machines reactive timing safety envelopes co-simulation IDE"}-->
 <section class="hero">
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow"><span class="dot"></span>Tulpa {{tulpa.version}} · HermiSim {{hermisim.version}}</span>
+      <span class="eyebrow"><span class="dot"></span>Tulpa {{tulpa.version}} · .RAV IDE {{hermisim.version}}</span>
       <h1>Code the <span class="grad">physical world.</span></h1>
-      <p class="sub"><strong>Tulpa</strong> is a Python-flavoured, Rust-powered language for robots and hardware. Units, contracts, state machines, timing rules and safety envelopes are part of the language. <strong>HermiSim</strong> is the IDE that runs it against physics.</p>
+      <p class="sub"><strong>Tulpa</strong> is a Python-flavoured, Rust-powered language for robots and hardware. Units, contracts, state machines, timing rules and safety envelopes are part of the language. <strong>.RAV IDE</strong> is the IDE that runs it against physics.</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="docs/quickstart.html">Get started
           <svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
         <a class="btn" href="docs/index.html">Read the docs</a>
-        <a class="btn" href="hermisim.html">Explore HermiSim</a>
+        <a class="btn" href="hermisim.html">Explore .RAV IDE</a>
       </div>
       <div class="install-line"><span class="prompt">$</span><code>cargo build --release &amp;&amp; ./target/release/tulpa</code><button class="copy" type="button">Copy</button></div>
     </div>
@@ -100,7 +100,7 @@
     <div class="tabpanel" role="tabpanel" id="p-cosim" aria-labelledby="t-cosim" hidden>
       <div class="showcase">
         <div>{{snippet:cosim.rav|hold.rav}}{{snippet:cosim.out.txt|$ python -m tulpa_bridge run hold.rav --model pendulum.xml}}</div>
-        <div class="showcase-text"><span class="kicker">HermiSim × MuJoCo</span><h3>Drive physics in lock-step</h3>
+        <div class="showcase-text"><span class="kicker">.RAV IDE × MuJoCo</span><h3>Drive physics in lock-step</h3>
           <p>A PD controller holds a pendulum while MuJoCo integrates the dynamics. Each <code>sim.step</code> applies torque, advances five physics steps and returns an observation, so the loop is deterministic and runs faster than real time.</p>
           <ul><li><code>tlm::plot</code> streams to the IDE's live plots</li><li>The same file runs headless in CI</li></ul>
           <p><a href="docs/cosimulation.html">Co-simulation guide →</a></p></div>
@@ -123,8 +123,8 @@
           <div class="pills"><span class="pill">units</span><span class="pill">contracts</span><span class="pill">machines</span><span class="pill">signals</span><span class="pill">LLVM</span><span class="pill">RP2040 · ESP32</span><span class="pill">std/driver</span><span class="pill">nn::</span><span class="pill">std/rtl</span></div></div>
       </a>
       <a class="product reveal" href="hermisim.html">
-        <div class="product-img"><img src="assets/img/screens/02_cosim.webp" alt="HermiSim IDE running the Morty humanoid" loading="lazy"></div>
-        <div class="product-body"><span class="tag">IDE &amp; simulation suite · Python / Qt</span><h3>HermiSim</h3>
+        <div class="product-img"><img src="assets/img/screens/02_cosim.webp" alt=".RAV IDE running the Morty humanoid" loading="lazy"></div>
+        <div class="product-body"><span class="tag">IDE &amp; simulation suite · Python / Qt</span><h3>.RAV IDE</h3>
           <p>An engineering workbench for Tulpa: an LSP-aware editor, MuJoCo co-simulation, live telemetry, waveform, state-machine and BOM viewers, an integrated Tulpa terminal, and a Windows installer.</p>
           <div class="pills"><span class="pill">MuJoCo</span><span class="pill">VCD viewer</span><span class="pill">telemetry</span><span class="pill">headless CLI</span><span class="pill">Morty</span></div></div>
       </a>
@@ -210,7 +210,7 @@
 
 <section class="section">
   <div class="wrap split">
-    <div class="frame reveal"><img src="assets/img/screens/03_vcd.webp" alt="HermiSim waveform viewer" data-zoom loading="lazy"></div>
+    <div class="frame reveal"><img src="assets/img/screens/03_vcd.webp" alt=".RAV IDE waveform viewer" data-zoom loading="lazy"></div>
     <div class="reveal">
       <span class="kicker">Verification, layered</span>
       <h2>Catch it before it reaches the motor.</h2>
@@ -237,7 +237,7 @@
       <a class="card reveal" href="docs/installation.html"><h3>Install</h3><p>Release packages, the Windows installer, or build from source.</p><span class="more">Installation →</span></a>
       <a class="card reveal" href="docs/language-guide.html"><h3>Language guide</h3><p>Syntax, types, units, structs, machines, reactive rules and more.</p><span class="more">Read the guide →</span></a>
       <a class="card reveal" href="docs/libraries.html"><h3>Libraries</h3><p><code>nn</code>, <code>pack</code>, <code>json</code>, <code>tlm</code>, <code>cosim</code> and <code>std/</code>.</p><span class="more">Browse libraries →</span></a>
-      <a class="card reveal" href="docs/hermisim.html"><h3>HermiSim IDE</h3><p>Projects, co-simulation, telemetry and the Morty humanoid.</p><span class="more">Tour the IDE →</span></a>
+      <a class="card reveal" href="docs/hermisim.html"><h3>.RAV IDE</h3><p>Projects, co-simulation, telemetry and the Morty humanoid.</p><span class="more">Tour the IDE →</span></a>
       <a class="card reveal" href="android.html"><h3>Tulpa Field for Android</h3><p>Download the signed APK: sensors, 3D co-simulation and the REPL on your phone.</p><span class="more">Get the app →</span></a>
     </div>
   </div>
@@ -246,11 +246,11 @@
 <section class="section">
   <div class="band reveal">
     <h2>Write the controller. <span class="grad">Prove the envelope.</span> Ship.</h2>
-    <p>Install HermiSim on Windows and everything is bundled, or build Tulpa from source on Linux, macOS or a Raspberry Pi.</p>
+    <p>Install .RAV IDE on Windows and everything is bundled, or build Tulpa from source on Linux, macOS or a Raspberry Pi.</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="docs/installation.html">Install</a>
       <a class="btn" href="{{tulpa.repo}}" target="_blank" rel="noopener">TulpaLang on GitHub</a>
-      <a class="btn" href="{{hermisim.repo}}" target="_blank" rel="noopener">HermiSim on GitHub</a>
+      <a class="btn" href="{{hermisim.repo}}" target="_blank" rel="noopener">.RAV IDE on GitHub</a>
     </div>
   </div>
 </section>

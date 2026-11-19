@@ -362,7 +362,7 @@ fun SettingsScreen(vm: AppViewModel) {
             if (Build.VERSION.SDK_INT >= 33) TextButton(onClick = { notif.launch(Manifest.permission.POST_NOTIFICATIONS) }) { Text("Allow notifications for phone::notify") }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Text("Co-simulation", style = MaterialTheme.typography.titleSmall, color = TF.Violet)
-            Text("Programs that call cosim::connect() run against the on-device MuJoCo model. Enter host:port to drive a desktop HermiSim instead (its co-sim server must listen on your network).", color = TF.Dim, fontSize = 13.sp)
+            Text("Programs that call cosim::connect() run against the on-device MuJoCo model. Enter host:port to drive a desktop .RAV IDE instead (its co-sim server must listen on your network).", color = TF.Dim, fontSize = 13.sp)
             var remote by remember { mutableStateOf(p.remoteCosim) }
             OutlinedTextField(remote, { remote = it; vm.settings.update { s -> s.copy(remoteCosim = it.trim()) } }, singleLine = true,
                 label = { Text("Remote simulator (blank = on device)") }, placeholder = { Text("192.168.1.20:7300") }, modifier = Modifier.fillMaxWidth())
@@ -373,7 +373,7 @@ fun SettingsScreen(vm: AppViewModel) {
             Text("Physics: MuJoCo ${runCatching { TulpaNative.simVersion() }.getOrDefault("?")} (Apache-2.0), rendered with OpenGL ES 3.", color = TF.Dim, fontSize = 13.sp)
             val mods = remember { vm.modules.keys.sorted().joinToString(" · ") }
             Text("Modules: $mods", color = TF.Dim, fontSize = 12.sp, fontFamily = TF.Mono)
-            Text("Part of the HermiSim family. Everything runs on-device; the network is used only for a remote co-simulator you configure.", color = TF.Dim, fontSize = 13.sp)
+            Text("Part of the .RAV IDE family. Everything runs on-device; the network is used only for a remote co-simulator you configure.", color = TF.Dim, fontSize = 13.sp)
         }
     }
 }

@@ -9,12 +9,12 @@
 | **Tulpa 3.1** | Unit-typed native code, CAN and Bluetooth LE, timestamped replay, the VS Code extension and release packaging. |
 | **Tulpa 3.2** | The `nn`, `pack`, `json`, `tlm` and `cosim` modules; the `std/` library (rtl, eda, rl, lipm, topics, frame); operator overloading for native objects; the library search path. |
 | **Tulpa 3.3** | Interfaces and the Driver SDK (`std/driver`, MPU-6050 / PCA9685 / MCP3008 drivers); native compilation of structs, devices, state machines, `always` monitors and `every!` loops; standalone executables; embedded targets for RP2040, ESP32, ESP32-S2/S3/C3/C6 and generic Cortex-M / RISC-V, with `tulpa new` firmware projects. |
-| **HermiSim 2.0** | The Tulpa IDE: LSP editor, lock-step MuJoCo co-simulation, telemetry, waveform / machine / BOM viewers, Tulpa terminal, headless CLI, Windows installer and the Morty project. |
+| **.RAV IDE 2.0** | The Tulpa IDE: LSP editor, lock-step MuJoCo co-simulation, telemetry, waveform / machine / BOM viewers, Tulpa terminal, headless CLI, Windows installer and the Morty project. |
 | **Tulpa 3.4** | Autonomy (`std/plan`: behavior trees, GOAP, HTN, missions); Tulpa Link middleware (`std/link`); static proofs (`tulpa prove`); deterministic physics and emulated chips (`std/world`, `std/emu`); exhaustive exploration (`std/verify`); native `match`; standalone bundles and `tulpa deploy`. |
 | **Tulpa 3.5** | The whole language on microcontrollers: the Tulpa VM for firmware, used automatically by `tulpa build --target <board>` for programs outside the static subset; a Tulpa Link node in firmware over UDP and UART, with `tulpa link bridge`; `pack::` and `json::` in firmware. Licensed under the Business Source License 1.1. |
-| **HermiSim 2.1** | Tulpa 3.3 workflows: Run Natively, Build Firmware for Board…, New Firmware Project…, `native`/`firmware` run kinds, Driver SDK highlighting and docs. |
-| **HermiSim 2.2** | Proofs dock, Deploy Project to Board, Bundle, a Tulpa Link Network dock, and the bundled Autonomy lab project. |
-| **HermiSim 2.3** | Tulpa 3.5: firmware builds report the tier they used (static native code or the Tulpa VM), a Link Bridge action for boards on a serial port, and the Firmware VM lab project. |
+| **.RAV IDE 2.1** | Tulpa 3.3 workflows: Run Natively, Build Firmware for Board…, New Firmware Project…, `native`/`firmware` run kinds, Driver SDK highlighting and docs. |
+| **.RAV IDE 2.2** | Proofs dock, Deploy Project to Board, Bundle, a Tulpa Link Network dock, and the bundled Autonomy lab project. |
+| **.RAV IDE 2.3** | Tulpa 3.5: firmware builds report the tier they used (static native code or the Tulpa VM), a Link Bridge action for boards on a serial port, and the Firmware VM lab project. |
 | **Tulpa Field 1.5** | Tulpa Field on iPhone and iPad (a SwiftUI app, released as an IPA and an AltStore source) alongside Android, on the Tulpa 3.5 runtime, with a guide and example for running the whole language on a microcontroller. |
 | **Tulpa Field 1.3** | The Tulpa 3.4 runtime on Android: planning, Tulpa Link, physics and chip emulation, with new examples and guides. |
 | **Tulpa Field 1.2** | The Tulpa 3.3 runtime on Android with the Driver SDK, and *Your phone as an Imu*: `std/driver`'s `Imu` interface implemented on the phone's sensors. |

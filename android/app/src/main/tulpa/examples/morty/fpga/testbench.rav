@@ -1,6 +1,6 @@
 # Testbench for Morty's FPGA designs — the Tulpa successor of fpga/sim/testbench.v.
 #
-#   tulpa fpga/testbench.rav              (or Run ▸ Run in HermiSim)
+#   tulpa fpga/testbench.rav              (or Run ▸ Run in .RAV IDE)
 #
 # Part 1 replays the original testbench against the legacy port (0xAA, 0xCC, 0xF0) and
 # prints the same $monitor fields. Part 2 drives the torque governor with MGP packets at the

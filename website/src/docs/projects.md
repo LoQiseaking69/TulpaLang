@@ -1,10 +1,11 @@
 # Projects & run configurations
 
-A HermiSim project is a folder. If it contains a `hermisim.json`, HermiSim reads the project's
+A .RAV IDE project is a folder. If it contains a `ravide.json`, .RAV IDE reads the project's
 name, its simulation model, its entry file and its run configurations from it. Without one, the
-folder still opens and you can run the current file.
+folder still opens and you can run the current file. Projects made before the rebrand keep
+their `hermisim.json`; .RAV IDE and Tulpa Field read either name.
 
-## `hermisim.json`
+## `ravide.json`
 
 This is the file shipped with the Morty project (trimmed):
 
@@ -43,7 +44,7 @@ This is the file shipped with the Morty project (trimmed):
 | `file` | — | Tulpa file, relative to the project folder. |
 | `args` | `[]` | Extra program arguments, available as `ARGS`. |
 | `realtime` | `1.0` | For `cosim`: `0` runs as fast as possible, `1` is real time, `2` is 2× and so on. Sets the speed slider. |
-| `target` | `rp2040` | For `firmware`: the native target (`tulpa targets` lists them), e.g. `esp32c3`. HermiSim 2.1+. |
+| `target` | `rp2040` | For `firmware`: the native target (`tulpa targets` lists them), e.g. `esp32c3`. .RAV IDE 2.1+. |
 
 The working directory is the project folder.
 
@@ -62,7 +63,7 @@ The working directory is the project folder.
 | `bundle` | `tulpa bundle <file> -o <file>-app` |
 | `deploy` | `tulpa deploy <folder of file> [args]`, for example `"args": ["--dry-run"]` |
 | `firmware` | `tulpa build <file> --target <target> -o <file>-<target>.o`, where `target` is a field of the configuration (default `rp2040`) |
-| `vm` | `tulpa build <file> --target sim --exe --dynamic -o <file>-vm`, then runs it: the program on the Tulpa VM for firmware. HermiSim 2.3+ |
+| `vm` | `tulpa build <file> --target sim --exe --dynamic -o <file>-vm`, then runs it: the program on the Tulpa VM for firmware. .RAV IDE 2.3+ |
 | `cosim` | Loads `model`, starts a co-simulation server, sets `TULPA_COSIM`, then runs `tulpa <file> [args]`. |
 
 > [!TIP]
@@ -73,7 +74,7 @@ The working directory is the project folder.
 
 ```text
 my-robot/
-├── hermisim.json
+├── ravide.json
 ├── main.rav          # entry point
 ├── lib/              # import "lib/xyz"
 ├── tests/            # define_test! files

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Static site generator for the Tulpa & HermiSim site.
+// Static site generator for the Tulpa & .RAV IDE site.
 //   node build.mjs            build into _site/
 //   node build.mjs --serve    build, serve on :8080 and rebuild on change
 import fs from 'node:fs';
@@ -168,7 +168,7 @@ function layout({ title, description, root, active, body, bodyClass = '', canoni
 <meta property="og:image" content="${config.url}/assets/img/og-tulpa.jpg">
 <meta name="twitter:card" content="summary_large_image">
 ${canonical ? `<link rel="canonical" href="${config.url}/${canonical}">` : ''}
-<link rel="icon" type="image/svg+xml" href="${root}assets/img/hermisim-mark.svg">
+<link rel="icon" type="image/png" href="${root}assets/img/ravide-favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -180,13 +180,13 @@ ${canonical ? `<link rel="canonical" href="${config.url}/${canonical}">` : ''}
 <a class="skip" href="#main">Skip to content</a>
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="${root}index.html" aria-label="Tulpa and HermiSim home">
-      <span class="brand-mark"><img src="${root}assets/img/hermisim-mark.svg" alt="" width="30" height="30"></span>
-      <span class="brand-text">Tulpa<span class="brand-amp">&amp;</span>HermiSim</span>
+    <a class="brand" href="${root}index.html" aria-label="Tulpa and .RAV IDE home">
+      <span class="brand-mark"><img src="${root}assets/img/ravide-mark.png" alt="" width="30" height="30"></span>
+      <span class="brand-text">Tulpa<span class="brand-amp">&amp;</span>.RAV IDE</span>
     </a>
     <nav class="mainnav" aria-label="Main">
       ${link('tulpa.html', 'Tulpa', 'tulpa')}
-      ${link('hermisim.html', 'HermiSim', 'hermisim')}
+      ${link('hermisim.html', '.RAV IDE', 'hermisim')}
       ${link('android.html', 'Android', 'android')}
       ${link('docs/index.html', 'Docs', 'docs')}
       ${link('docs/examples.html', 'Examples', 'examples')}
@@ -204,14 +204,14 @@ ${body}
 <footer class="footer">
   <div class="footer-inner">
     <div class="footer-brand">
-      <img src="${root}assets/img/hermisim-mark.svg" alt="" width="36" height="36">
-      <div><strong>Tulpa &amp; HermiSim</strong><br><span>${esc(config.tagline)}. A ${esc(config.org)} project.</span></div>
+      <img src="${root}assets/img/ravide-mark.png" alt="" width="36" height="36">
+      <div><strong>Tulpa &amp; .RAV IDE</strong><br><span>${esc(config.tagline)}. A ${esc(config.org)} project.</span></div>
     </div>
     <div class="footer-cols">
       <div><h4>Tulpa</h4><a href="${root}tulpa.html">Overview</a><a href="${root}docs/language-guide.html">Language guide</a><a href="${root}docs/libraries.html">Libraries</a><a href="${config.tulpa.repo}/releases" target="_blank" rel="noopener">Releases</a></div>
-      <div><h4>HermiSim</h4><a href="${root}hermisim.html">Overview</a><a href="${root}docs/hermisim.html">IDE tour</a><a href="${root}docs/morty.html">Morty project</a><a href="${config.hermisim.repo}/releases" target="_blank" rel="noopener">Download</a></div>
+      <div><h4>.RAV IDE</h4><a href="${root}hermisim.html">Overview</a><a href="${root}docs/hermisim.html">IDE tour</a><a href="${root}docs/morty.html">Morty project</a><a href="${config.hermisim.repo}/releases" target="_blank" rel="noopener">Download</a></div>
       <div><h4>Tulpa Field</h4><a href="${root}android.html">Overview</a><a href="${root}docs/android.html">Install &amp; use</a><a href="${root}docs/android-sim.html">3D co-simulation</a><a href="${config.android.download}">Download APK</a></div>
-      <div><h4>Project</h4><a href="${config.tulpa.repo}" target="_blank" rel="noopener">TulpaLang on GitHub</a><a href="${config.hermisim.repo}" target="_blank" rel="noopener">HermiSim on GitHub</a><a href="${root}docs/roadmap.html">Roadmap</a><a href="${root}docs/contributing.html">Write docs</a></div>
+      <div><h4>Project</h4><a href="${config.tulpa.repo}" target="_blank" rel="noopener">TulpaLang on GitHub</a><a href="${config.hermisim.repo}" target="_blank" rel="noopener">.RAV IDE on GitHub</a><a href="${root}docs/roadmap.html">Roadmap</a><a href="${root}docs/contributing.html">Write docs</a></div>
     </div>
   </div>
   <div class="footer-legal">Both projects are source-available under the Business Source License 1.1: free for development, evaluation, education and research; commercial production use is licensed by HermiTech LLC. © ${new Date().getFullYear()} ${esc(config.org)}.</div>

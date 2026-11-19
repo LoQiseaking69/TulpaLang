@@ -109,7 +109,7 @@ tulpa link graph [--domain N]             # nodes, topics, services
 tulpa link echo /rover/speed [--domain N] # print messages as they arrive
 ```
 
-HermiSim shows the same graph in its Network dock.
+.RAV IDE shows the same graph in its Network dock.
 
 ## Wire format
 

@@ -3,7 +3,7 @@
 Tulpa has five native modules (written in Rust, always available, since 3.2) and a `std/`
 library of modules written in Tulpa (3.2, the Driver SDK in 3.3, and autonomy, middleware and
 simulation in 3.4). Together they make it possible to write a full robot stack in Tulpa:
-learning controllers, wire protocols, hardware models and board design. HermiSim's Morty project
+learning controllers, wire protocols, hardware models and board design. .RAV IDE's Morty project
 (`workspace/morty`) uses all of them.
 
 | Module | Kind | What it's for |
@@ -11,8 +11,8 @@ learning controllers, wire protocols, hardware models and board design. HermiSim
 | `nn::` | native | Tensors with reverse-mode autodiff, MLPs, Adam/SGD, running scalers, Gaussian policies |
 | `pack::` | native | Python-`struct`-style binary packing, `f32` arrays, CRC-16/32, COBS |
 | `json::` | native | JSON encode/decode, files |
-| `tlm::` | native | Telemetry for HermiSim's live plots, events and artifact links |
-| `cosim::` | native | Drive a physics engine (HermiSim/MuJoCo) in lock-step over TCP |
+| `tlm::` | native | Telemetry for .RAV IDE's live plots, events and artifact links |
+| `cosim::` | native | Drive a physics engine (.RAV IDE/MuJoCo) in lock-step over TCP |
 | `std/rtl` | Tulpa | Cycle-accurate RTL simulation with VCD waveforms |
 | `std/eda` | Tulpa | Schematic capture as code: ERC, power budgets in units, netlist/BOM export |
 | `std/rl` | Tulpa | Gaussian actor-critic, GAE, PPO on top of `nn::` |
@@ -39,7 +39,7 @@ resolved against, in order:
 
 1. the importing file's directory (as before)
 2. each entry of `$TULPA_PATH`
-3. `<tulpa binary>/../lib/tulpa`, the installed layout used by the `.deb`, the tarball and HermiSim's bundle
+3. `<tulpa binary>/../lib/tulpa`, the installed layout used by the `.deb`, the tarball and .RAV IDE's bundle
 4. `<tulpa binary>/lib`
 5. the source tree's `stdlib/`, for `cargo build` builds
 
@@ -123,7 +123,7 @@ Values may be passed as separate arguments or as one list. Out-of-range integers
 
 ## `tlm::`: telemetry
 
-When `TULPA_TELEMETRY=1` is set (HermiSim sets it), these emit `@@tlm {json}` lines on stdout.
+When `TULPA_TELEMETRY=1` is set (.RAV IDE sets it), these emit `@@tlm {json}` lines on stdout.
 Without it they are no-ops, so programs stay quiet on the command line.
 
 - `tlm::plot(name, value, t=nil)` adds a sample to a live plot series. Without `t`, the series is plotted against time since the program started.
@@ -135,7 +135,7 @@ Without it they are no-ops, so programs stay quiet on the command line.
 ## `cosim::`: co-simulation
 
 ```tulpa
-let sim = cosim::connect()            # address from $TULPA_COSIM (set by HermiSim)
+let sim = cosim::connect()            # address from $TULPA_COSIM (set by .RAV IDE)
 let info = sim.info()                 # {model, timestep, actuators, joints, sensors, bodies, ...}
 let obs = sim.reset()
 loop {
@@ -148,7 +148,7 @@ loop {
 - **Protocol:** newline-delimited JSON-RPC over TCP. Requests are `{"id", "method", "params"}`; replies are `{"id", "result"}` or `{"id", "error"}`.
 - **Methods:** `info reset observe step(ctrl, substeps) set_ctrl set_state apply_force(body, f, torque) plot log call(method, params) close addr`.
 - **Observations:** `time qpos qvel ctrl sensors{name: [..]} com com_vel bodies contacts`.
-- **Running:** HermiSim's *Run in Simulator* and `hermisim run prog.rav --model m.xml` start the server and set `TULPA_COSIM` for you.
+- **Running:** .RAV IDE's *Run in Simulator* and `ravide-cli run prog.rav --model m.xml` start the server and set `TULPA_COSIM` for you.
 - **Other engines:** any engine can be bridged by implementing the same few methods.
 
 ## `std/rtl`: RTL simulation
@@ -156,7 +156,7 @@ loop {
 Register-transfer-level semantics, as in Verilog:
 - Wires (`sim.sig`) are driven in `comb(self)`.
 - Registers (`sim.reg`) are loaded with `.d(v)` in `seq(self)`. All registers commit together on the clock edge.
-- `sim.trace("out.vcd")` writes a standard VCD file that you can open in HermiSim's waveform viewer or in GTKWave.
+- `sim.trace("out.vcd")` writes a standard VCD file that you can open in .RAV IDE's waveform viewer or in GTKWave.
 
 The library ships `Divider` and `Fifo` building blocks. Morty's `fpga/` folder contains a complete UART + torque-governor core, checked bit-exact against a behavioural model.
 

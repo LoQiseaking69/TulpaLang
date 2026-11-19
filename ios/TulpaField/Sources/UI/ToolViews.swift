@@ -351,7 +351,7 @@ struct SettingsView: View {
                     }.font(.subheadline)
                     Divider().background(TF.line).padding(.vertical, 8)
                     header("Co-simulation")
-                    Text("Programs that call cosim::connect() run against the on-device MuJoCo model. Enter host:port to drive a desktop HermiSim instead (its co-sim server must listen on your network).")
+                    Text("Programs that call cosim::connect() run against the on-device MuJoCo model. Enter host:port to drive a desktop .RAV IDE instead (its co-sim server must listen on your network).")
                         .font(.system(size: 13)).foregroundColor(TF.dim)
                     TextField("Remote simulator (blank = on device), e.g. 192.168.1.20:7300", text: $remote)
                         .textFieldStyle(.roundedBorder).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -363,7 +363,7 @@ struct SettingsView: View {
                         .font(.system(size: 13)).foregroundColor(TF.dim)
                     Text("Physics: MuJoCo \(TulpaNative.simVersion()) (Apache-2.0), rendered with Metal.").font(.system(size: 13)).foregroundColor(TF.dim)
                     Text("Modules: " + vm.modules.keys.sorted().joined(separator: " · ")).font(TF.mono(12)).foregroundColor(TF.dim)
-                    Text("Part of the HermiSim family. Everything runs on-device; the network is used only for a remote co-simulator you configure.")
+                    Text("Part of the .RAV IDE family. Everything runs on-device; the network is used only for a remote co-simulator you configure.")
                         .font(.system(size: 13)).foregroundColor(TF.dim)
                 }.padding(16)
             }

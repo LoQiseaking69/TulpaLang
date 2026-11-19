@@ -1,7 +1,7 @@
 //! On-device physics: MuJoCo (through `csrc/hsim.c`) plus a co-simulation server that speaks
-//! HermiSim's protocol, so `cosim::connect()` programs run unchanged on the phone.
+//! .RAV IDE's protocol, so `cosim::connect()` programs run unchanged on the phone.
 //!
-//! Protocol (one JSON object per line over TCP, identical to HermiSim's `cosim_server.py`):
+//! Protocol (one JSON object per line over TCP, identical to .RAV IDE's `cosim_server.py`):
 //!   request `{"id", "method", "params"}` → `{"id", "result"}` | `{"id", "error"}`;
 //!   notification `{"method", "params"}` (no reply). Methods: info, reset, observe, step,
 //!   set_ctrl, set_state, apply_force.

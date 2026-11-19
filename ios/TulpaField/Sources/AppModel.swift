@@ -526,7 +526,7 @@ final class AppModel: ObservableObject {
         toast("Imported \(f.lastPathComponent) into \(dir.lastPathComponent)")
     }
 
-    /// A new project wired to `m`: hermisim.json + a starter controller using its actuators.
+    /// A new project wired to `m`: ravide.json + a starter controller using its actuators.
     func newCosimProject(_ m: SimModel) {
         let dir = workspace.createProject("\(m.name) co-sim", template: .blank)
         let modelURL = URL(fileURLWithPath: m.path)
@@ -538,7 +538,7 @@ final class AppModel: ObservableObject {
         }
         let cfg: [String: Any] = ["name": m.name, "model": rel, "entry": "main.rav"]
         if let d = try? JSONSerialization.data(withJSONObject: cfg, options: [.prettyPrinted, .sortedKeys]) {
-            try? d.write(to: dir.appendingPathComponent("hermisim.json"))
+            try? d.write(to: dir.appendingPathComponent("ravide.json"))
         }
         let main = """
         # Co-simulation with \(m.name): \(m.actuators) actuators, \(m.joints) joints.
