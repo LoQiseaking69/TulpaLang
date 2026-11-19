@@ -1,7 +1,7 @@
 {
   "name": "tulpa-website",
   "version": "1.0.0",
-  "description": "Website and documentation for the Tulpa language and the HermiSim IDE",
+  "description": "Website and documentation for the Tulpa language and the .RAV IDE",
   "scripts": {
     "build": "node build.mjs",
     "dev": "node build.mjs --serve",

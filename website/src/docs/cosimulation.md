@@ -1,6 +1,6 @@
 # Co-simulation
 
-HermiSim runs Tulpa programs in **lock-step** with a MuJoCo model. The Tulpa program owns time:
+.RAV IDE runs Tulpa programs in **lock-step** with a MuJoCo model. The Tulpa program owns time:
 each `sim.step(ctrl, n)` applies controls, advances physics `n` steps, and returns an
 observation. Nothing moves between calls, so control loops are deterministic and can run faster
 than real time.
@@ -54,7 +54,7 @@ python -m tulpa_bridge run hold.rav --model pendulum.xml
 ```text
 1 actuator(s), 1.0 kg, dt = 0.002 s
 t = 3.01 s, angle = 26.8 deg
-[hermisim] exit 0 — 1505 physics steps, sim t=3.010s, wall 0.50s
+[ravide] exit 0 — 1505 physics steps, sim t=3.010s, wall 0.50s
 ```
 
 The pendulum settles a few degrees short of 30° because a pure PD controller has steady-state
@@ -65,7 +65,7 @@ In the IDE, the `angle_deg` series appears live in the **Telemetry** panel.
 
 | Call | Returns / does |
 |---|---|
-| `cosim::connect()` | Connects to `$TULPA_COSIM` (set by HermiSim). |
+| `cosim::connect()` | Connects to `$TULPA_COSIM` (set by .RAV IDE). |
 | `sim.info()` | `{timestep, gravity, nq, nv, nu, total_mass, actuators, joints, sensors, bodies, keys, ...}`. Each actuator lists its `name`, `joint`, `ctrlrange`, `gear` and address in `qpos` / `qvel`. |
 | `sim.reset(key?)` | Resets (optionally to a named keyframe, e.g. `"stand"`) and returns an observation. |
 | `sim.observe()` | Current observation without stepping. |

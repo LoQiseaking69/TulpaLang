@@ -32,7 +32,7 @@ data class SimState(
 
 /**
  * Owns the on-device MuJoCo model shared by the 3D view and co-simulation. A program that
- * uses `cosim::` gets `TULPA_COSIM` pointing at this model's server (or at a remote HermiSim
+ * uses `cosim::` gets `TULPA_COSIM` pointing at this model's server (or at a remote .RAV IDE
  * when one is configured in Settings).
  */
 class SimManager(private val workspace: Workspace) {
@@ -54,13 +54,15 @@ class SimManager(private val workspace: Workspace) {
     private fun isMjcf(f: File) = runCatching { f.bufferedReader().use { r -> r.readText().take(4000).contains("<mujoco") } }.getOrDefault(false)
 
     /**
-     * The model a program in [dir] should co-simulate: `hermisim.json` "model" (HermiSim
+     * The model a program in [dir] should co-simulate: `ravide.json` "model" (.RAV IDE
      * workspaces), else the first MJCF in the folder, else the model already open.
      */
     fun modelFor(dir: File): File? {
         var d: File? = dir
         repeat(3) {
-            val cfg = File(d ?: return@repeat, "hermisim.json")
+            val dd = d ?: return@repeat
+            // ravide.json, or hermisim.json from projects made before the .RAV IDE rebrand
+            val cfg = File(dd, "ravide.json").takeIf { it.exists() } ?: File(dd, "hermisim.json")
             if (cfg.exists()) {
                 val m = runCatching { JSONObject(cfg.readText()).optString("model") }.getOrDefault("")
                 if (m.isNotBlank()) {

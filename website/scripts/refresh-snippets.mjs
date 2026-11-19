@@ -18,4 +18,4 @@ for (const [file, pre] of Object.entries(runs)) {
   fs.writeFileSync(path.join(SNIP, file.replace('.rav', '.out.txt')), r.stdout + r.stderr);
   console.log(`${file}: exit ${r.status}`);
 }
-console.log('cosim.out.txt and morty.out.txt need HermiSim + MuJoCo and are refreshed by hand.');
+console.log('cosim.out.txt and morty.out.txt need .RAV IDE + MuJoCo and are refreshed by hand.');

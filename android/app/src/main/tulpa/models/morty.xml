@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!--
-  MORTY — bipedal humanoid for the HermiSim / Tulpa reimagining of the Morty project.
+  MORTY — bipedal humanoid for the .RAV IDE / Tulpa reimagining of the Morty project.
   16 body joints (5 per leg, 3 per arm) + 2 gripper slides, torque-controlled motors (N·m / N),
   IMU, joint pos/vel/torque, ankle force/torque, sole touch pads and wrist force sensors.
   Controller: workspace/morty (TulpaLang).  Masses ≈ 51 kg total, standing pelvis height ≈ 0.93 m.

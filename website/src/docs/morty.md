@@ -1,9 +1,9 @@
 # The Morty project
 
-HermiSim ships with **Morty**, a rewrite of the
+.RAV IDE ships with **Morty**, a rewrite of the
 [Morty bipedal humanoid](https://github.com/LoQiseaking69/Morty) written entirely in Tulpa. It
 uses every 3.2 library and is the best end-to-end reference for how a full robot stack looks in
-the language. You'll find it in `workspace/morty/`, or in `Documents\HermiSim` after a Windows
+the language. You'll find it in `workspace/morty/`, or in `Documents\RAV IDE` after a Windows
 install.
 
 ![Morty balancing in the co-simulator](../assets/img/screens/02_cosim.webp)

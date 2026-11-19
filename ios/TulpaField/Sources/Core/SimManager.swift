@@ -28,7 +28,7 @@ struct SimState: Equatable {
 }
 
 /// Owns the on-device MuJoCo model shared by the 3D view and co-simulation. A program that
-/// uses `cosim::` gets `TULPA_COSIM` pointing at this model's server (or at a remote HermiSim
+/// uses `cosim::` gets `TULPA_COSIM` pointing at this model's server (or at a remote .RAV IDE
 /// when one is configured in Settings).
 final class SimManager: ObservableObject {
     @Published private(set) var state = SimState()
@@ -70,13 +70,15 @@ final class SimManager: ObservableObject {
 
     private func isMjcf(_ f: URL) -> Bool { f.readText().prefix(4000).contains("<mujoco") }
 
-    /// The model a program in `dir` should co-simulate: `hermisim.json` "model" (HermiSim
+    /// The model a program in `dir` should co-simulate: `ravide.json` "model" (.RAV IDE
     /// workspaces), else the first MJCF in the folder, else the model already open.
     func modelFor(_ dir: URL) -> URL? {
         var d: URL? = dir
         for _ in 0..<3 {
             guard let cur = d else { break }
-            let cfg = cur.appendingPathComponent("hermisim.json")
+            // ravide.json, or hermisim.json from projects made before the .RAV IDE rebrand
+            let current = cur.appendingPathComponent("ravide.json")
+            let cfg = current.exists ? current : cur.appendingPathComponent("hermisim.json")
             if cfg.exists {
                 let m = JSON.object(cfg.readText()).str("model")
                 if !m.trimmingCharacters(in: .whitespaces).isEmpty {

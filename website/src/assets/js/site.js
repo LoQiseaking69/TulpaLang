@@ -1,4 +1,4 @@
-// Tulpa & HermiSim: site behaviour (no dependencies)
+// Tulpa & .RAV IDE: site behaviour (no dependencies)
 (() => {
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];

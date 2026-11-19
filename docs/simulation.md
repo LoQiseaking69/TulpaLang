@@ -7,7 +7,7 @@ Tulpa tests a robot program in layers, with the same source file all the way to 
 | Deterministic time | `--virtual-time`, `sim::virtual_time(true)` | A simulated clock that starts at 0. Runs repeat exactly. |
 | Simulated buses | `sim::` hooks, record/replay | GPIO, I2C, SPI, UART, PWM, CAN and BLE without hardware. |
 | Emulated chips | `std/emu` | Register-level models that your real drivers talk to, with fault injection. |
-| Physics | `std/world`, `cosim::` | A built-in 2-D world for mobile robots, or MuJoCo through HermiSim. |
+| Physics | `std/world`, `cosim::` | A built-in 2-D world for mobile robots, or MuJoCo through .RAV IDE. |
 | Simulated network | `std/link` | Latency, loss and partitions for multi-node systems. |
 | Exploration | `std/verify` | Every event order up to a depth, against the real semantics. |
 | Proof | `tulpa prove` | Contracts and invariants for all inputs. See [Proving safety](safety.md). |
@@ -62,7 +62,7 @@ an injected fault takes its IMU off the bus.
 - Motors have a first-order lag (`tau`), the battery drains with use, and sensor noise comes
   from the world's seeded generator. The same seed gives the same run on every machine.
 
-For full 3-D rigid-body dynamics, use MuJoCo through `cosim::` in HermiSim.
+For full 3-D rigid-body dynamics, use MuJoCo through `cosim::` in .RAV IDE.
 
 ### `std/emu`
 

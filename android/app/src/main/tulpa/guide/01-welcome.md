@@ -5,7 +5,7 @@ move, sense and must not fail. The whole Tulpa toolchain runs on the phone — i
 VM, units, contracts, state machines, reactive rules and the `std/` libraries. Nothing is sent to a
 server, and everything works offline.
 
-HermiSim is the desktop studio. Tulpa Field is built for the other half of an engineer's day —
+.RAV IDE is the desktop studio. Tulpa Field is built for the other half of an engineer's day —
 **in the field, with real sensors in your hand** and a physics model in your pocket:
 
 - **Your phone is a device.** `phone::accel()`, `phone::tilt()`, `phone::pressure()`,
@@ -14,7 +14,7 @@ HermiSim is the desktop studio. Tulpa Field is built for the other half of an en
 - **Live instruments.** `tlm::plot` draws live charts; `phone::gauge` puts a big readout on the
   Run screen.
 - **Physics in your pocket.** MuJoCo runs on the phone: `cosim::` programs drive a simulated
-  robot you watch in 3D, the same protocol and API as HermiSim.
+  robot you watch in 3D, the same protocol and API as .RAV IDE.
 - **Machine inspector.** Every `machine` in your file is drawn as a state graph you can tap.
 - **Verify on the go.** Fuzz every contract in a file and run its tests with one tap.
 - **A REPL with history** and a symbol keyboard built for Tulpa's syntax.

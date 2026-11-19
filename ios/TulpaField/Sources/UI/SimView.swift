@@ -190,7 +190,7 @@ struct SimView: View {
                     } label: { Label("Import an MJCF model (.xml)…", systemImage: "square.and.arrow.down") }
                     .listRowBackground(TF.surface)
                 } footer: {
-                    Text("Programs pick their model from hermisim.json (\"model\"), else the first MJCF in their folder, else the model open here.")
+                    Text("Programs pick their model from ravide.json (\"model\"), else the first MJCF in their folder, else the model open here.")
                 }
             }
             .scrollContentBackground(.hidden)

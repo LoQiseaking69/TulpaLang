@@ -53,7 +53,7 @@
   "id": "morty",
   "title": "Morty \u2014 humanoid balance (3D co-sim)",
   "category": "Simulation",
-  "summary": "The full Morty stack from HermiSim: capture-point balance, PINN, FPGA governor link and a behaviour machine, driving an 18-actuator humanoid.",
+  "summary": "The full Morty stack from .RAV IDE: capture-point balance, PINN, FPGA governor link and a behaviour machine, driving an 18-actuator humanoid.",
   "tags": [
    "cosim",
    "3d",

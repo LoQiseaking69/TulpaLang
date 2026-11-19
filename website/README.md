@@ -1,8 +1,8 @@
 # Tulpa website & documentation
 
-This folder is the source of the Tulpa and HermiSim website, published with GitHub Pages at
+This folder is the source of the Tulpa and .RAV IDE website, published with GitHub Pages at
 **https://loqiseaking69.github.io/TulpaLang/**. It holds the landing pages for
-[Tulpa](../README.md) and [HermiSim](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer)
+[Tulpa](../README.md) and [.RAV IDE](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer)
 and the documentation site.
 
 It's a small static-site generator (`build.mjs`, under 400 lines) with two dependencies,
@@ -63,7 +63,7 @@ website/
   src/pages/              index.html, tulpa.html, hermisim.html, 404.html (HTML fragments)
   src/docs/               site-only docs pages + _nav.json
   src/snippets/           runnable .rav snippets for the landing pages, with their real output
-  src/assets/             css, js, images and HermiSim screenshots
+  src/assets/             css, js, images and .RAV IDE screenshots
   scripts/tulpa-hljs.mjs  Tulpa grammar for highlight.js
   scripts/check-links.mjs internal link / anchor checker (run in CI)
   scripts/refresh-snippets.mjs  re-runs the snippets against target/release/tulpa
@@ -78,7 +78,7 @@ cargo build --release
 cd website && npm run snippets   # rewrites src/snippets/*.out.txt
 ```
 
-`cosim.out.txt` and `morty.out.txt` come from HermiSim runs with MuJoCo and are updated by
+`cosim.out.txt` and `morty.out.txt` come from .RAV IDE runs with MuJoCo and are updated by
 hand.
 
 ## Page fragments
@@ -86,7 +86,7 @@ hand.
 Files in `src/pages/` are HTML bodies with a JSON header comment:
 
 ```html
-<!--{"title": "HermiSim", "active": "hermisim", "description": "…", "search": "keywords"}-->
+<!--{"title": ".RAV IDE", "active": "hermisim", "description": "…", "search": "keywords"}-->
 ```
 
 | Include | Expands to |

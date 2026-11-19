@@ -9,7 +9,7 @@ machines, `std/` libraries), the same `phone::` host module on the device's sens
 |---|---|
 | **Editor** | syntax colouring, live diagnostics, completion, outline, inspect, go-to-definition, find/replace, undo/redo, auto-indent and a symbol/unit bar |
 | **Run** | console, stdin, live `phone::gauge` readouts and `tlm::plot` charts |
-| **Sim** | MuJoCo models in 3D (drag to orbit, two fingers to pan, pinch to zoom, double-tap to frame), play/pause/reset/push, real-time or max speed, `cosim::` programs drive it with HermiSim's protocol |
+| **Sim** | MuJoCo models in 3D (drag to orbit, two fingers to pan, pinch to zoom, double-tap to frame), play/pause/reset/push, real-time or max speed, `cosim::` programs drive it with .RAV IDE's protocol |
 | **REPL** | persistent session with history |
 | **Learn** | the example library and the in-app guide with runnable code blocks |
 | **Instruments** | sensors, machine inspector, verify & tests, bytecode, settings |

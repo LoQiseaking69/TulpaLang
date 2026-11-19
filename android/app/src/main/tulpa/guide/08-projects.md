@@ -15,7 +15,7 @@ to the app; it lands in the **Inbox** project.
 
 **Share** on a file sends it as text or as a `.rav` file. Files your programs write — a `track.csv`,
 a `counter.vcd` waveform — appear in the project's file list and in the Run screen's *Artifacts*
-row, where you can share them to a desktop running HermiSim or GTKWave.
+row, where you can share them to a desktop running .RAV IDE or GTKWave.
 
 ## Libraries
 

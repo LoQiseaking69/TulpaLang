@@ -56,10 +56,10 @@ Everything in Tulpa goes through one binary, `tulpa`. With no arguments it start
 |---|---|---|
 | `TULPA_BACKEND` | `tulpa` | `linux` selects the hardware backend, like `--hw`. |
 | `TULPA_NO_VM` | `tulpa` | `1` disables the bytecode VM. |
-| `TULPA_PATH` | `tulpa`, HermiSim | Extra library search path for `import`. |
-| `TULPA_TELEMETRY` | `tlm::` | `1` makes `tlm::*` calls emit `@@tlm {json}` lines. HermiSim sets it. |
-| `TULPA_COSIM` | `cosim::connect()` | Address of the co-simulation server. HermiSim sets it. |
-| `TULPA_BIN` | HermiSim | Path of the `tulpa` binary to use. |
+| `TULPA_PATH` | `tulpa`, .RAV IDE | Extra library search path for `import`. |
+| `TULPA_TELEMETRY` | `tlm::` | `1` makes `tlm::*` calls emit `@@tlm {json}` lines. .RAV IDE sets it. |
+| `TULPA_COSIM` | `cosim::connect()` | Address of the co-simulation server. .RAV IDE sets it. |
+| `TULPA_BIN` | .RAV IDE | Path of the `tulpa` binary to use. |
 | `TULPA_CLANG` | `tulpa build` | The clang binary to use. ESP32, S2 and S3 builds need Espressif's clang, which is found automatically in `~/.espressif`. |
 | `TULPA_LINK` | `std/link` | Default transport for nodes: `sim` or `udp`. |
 | `TULPA_GPIOCHIP` | native `linux` target | The gpiochip device to use (default `/dev/gpiochip0`). |

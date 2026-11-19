@@ -1,5 +1,5 @@
 //! Extended standard library: `pack::` (binary structs, CRC, COBS), `json::`, `tlm::`
-//! (IDE telemetry) and `cosim::` (co-simulation client for HermiSim / any JSON-lines
+//! (IDE telemetry) and `cosim::` (co-simulation client for .RAV IDE / any JSON-lines
 //! physics server).
 
 use crate::interp::Interpreter;
@@ -508,7 +508,7 @@ const JSON: &[(&str, NativeFn)] = &[
 
 // ---------------------------------------------------------------------------- tlm
 
-/// Telemetry is emitted as `@@tlm {json}` lines when `TULPA_TELEMETRY` is set (HermiSim sets
+/// Telemetry is emitted as `@@tlm {json}` lines when `TULPA_TELEMETRY` is set (.RAV IDE sets
 /// it); otherwise every `tlm::` call is a cheap no-op so scripts run unchanged elsewhere.
 pub fn telemetry_on() -> bool {
     std::env::var_os("TULPA_TELEMETRY").is_some_and(|v| v != "0")
@@ -718,8 +718,8 @@ const COSIM: &[(&str, NativeFn)] = &[
         let addr = match a.first() {
             Some(Value::Str(s)) => s.to_string(),
             _ => std::env::var("TULPA_COSIM").map_err(|_| {
-                "cosim::connect: no co-simulator. Run this program from HermiSim (Run ▸ Run in Simulator), \
-                 with `hermisim run FILE --model MODEL`, or set TULPA_COSIM=host:port"
+                "cosim::connect: no co-simulator. Run this program from .RAV IDE (Run ▸ Run in Simulator), \
+                 with `ravide-cli run FILE --model MODEL`, or set TULPA_COSIM=host:port"
                     .to_string()
             })?,
         };

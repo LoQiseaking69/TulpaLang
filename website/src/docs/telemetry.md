@@ -1,12 +1,12 @@
 # Telemetry & viewers
 
-Programs talk to the IDE through the `tlm::` module. When `TULPA_TELEMETRY=1` is set (HermiSim
+Programs talk to the IDE through the `tlm::` module. When `TULPA_TELEMETRY=1` is set (.RAV IDE
 sets it for every run), each call prints an `@@tlm {json}` line on stdout that the IDE picks up.
 Without it the calls are no-ops, so the same program stays quiet on the command line and in CI.
 
 ## `tlm::` calls
 
-| Call | Effect in HermiSim |
+| Call | Effect in .RAV IDE |
 |---|---|
 | `tlm::plot(name, value, t=nil)` | Adds a sample to the named series in **Telemetry**. Without `t`, the x-axis is time since the program started. |
 | `tlm::event(name, data)` | Sends a marker or log event. |
@@ -61,7 +61,7 @@ diagrams as Mermaid.
 ## BOM / netlist viewer
 
 Boards written with `std/eda` can export a BOM, a netlist and a JSON description
-(`write_bom`, `write_netlist`, `write_json`). Open the CSV from the explorer and HermiSim shows it
+(`write_bom`, `write_netlist`, `write_json`). Open the CSV from the explorer and .RAV IDE shows it
 as a table: quantity, kind, value, footprint, MPN and reference designators. ERC results and the
 power budget are printed to the console when the board program runs.
 

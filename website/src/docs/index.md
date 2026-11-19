@@ -1,7 +1,7 @@
 # Introduction
 
 Welcome to the documentation for **Tulpa**, a Python-flavoured, Rust-powered programming
-language for robotics, embedded systems and physical computing, and **HermiSim**, the
+language for robotics, embedded systems and physical computing, and **.RAV IDE**, the
 simulation suite and IDE built around it.
 
 Tulpa's central idea is that software which interacts with the physical world should be able to
@@ -9,7 +9,7 @@ express the rules of that world. Units of measure, engineering contracts, state 
 reactive rules, timing constraints and safety envelopes are part of the language itself rather
 than external libraries.
 
-HermiSim puts that language in one window with a MuJoCo co-simulator, a waveform viewer,
+.RAV IDE puts that language in one window with a MuJoCo co-simulator, a waveform viewer,
 state-machine diagrams, live telemetry plots and a board/BOM viewer.
 
 ## How these docs are organised
@@ -18,12 +18,12 @@ state-machine diagrams, live telemetry plots and a board/BOM viewer.
 |---|---|
 | **Getting started** | Installing the toolchain and the IDE, then writing and running your first program. |
 | **Tulpa language** | The full language guide, the libraries, device integration, the Driver SDK, native and embedded targets (RP2040, ESP32), autonomy, the Tulpa Link middleware, simulation and proofs, the CLI and editor setup, plus a gallery of runnable examples. |
-| **HermiSim IDE** | A tour of the IDE, project files and run configurations, the co-simulation protocol, telemetry, the integrated terminal, headless CI use and the bundled Morty humanoid project. |
+| **.RAV IDE** | A tour of the IDE, project files and run configurations, the co-simulation protocol, telemetry, the integrated terminal, headless CI use and the bundled Morty humanoid project. |
 | **Project** | Roadmap and how to contribute to these docs. |
 
 ## At a glance
 
-| | Tulpa | HermiSim |
+| | Tulpa | .RAV IDE |
 |---|---|---|
 | What it is | Programming language + toolchain | IDE and simulation suite |
 | Implementation | Rust | Python, Qt, MuJoCo |

@@ -30,7 +30,7 @@ abstractions, and native hardware integration.
 | Engineering model | Units, contracts, invariants, state machines, reactive rules, timing constraints |
 | Hardware integration | GPIO, I2C, SPI, UART, PWM, Servo, PID, CAN, Bluetooth LE |
 | Verification | Static proofs of contracts and invariants (`tulpa prove`), runtime contracts, contract fuzzing, safety monitors, exhaustive exploration, deterministic physics and chip emulation, record/replay |
-| Developer tooling | REPL, test runner, LSP, VS Code extension, Mermaid state diagrams, [HermiSim IDE](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer), [Tulpa Field](android/README.md) for Android and [iOS](ios/README.md) |
+| Developer tooling | REPL, test runner, LSP, VS Code extension, Mermaid state diagrams, [.RAV IDE](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer), [Tulpa Field](android/README.md) for Android and [iOS](ios/README.md) |
 | License | [Business Source License 1.1](LICENSING.md) (source-available; converts to Apache-2.0 after four years) |
 
 ## A language designed around physical systems
@@ -349,16 +349,16 @@ cmake -B build && cmake --build build      # → build/rover.uf2
 
 See the [Driver SDK](docs/drivers.md) and [Native and embedded targets](docs/embedded.md).
 
-## HermiSim integration
+## .RAV IDE integration
 
-The [HermiSim](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer) IDE bundles Tulpa with:
+The [.RAV IDE](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer) IDE bundles Tulpa with:
 - a MuJoCo co-simulator
 - a waveform viewer
 - state-machine diagrams
 - live plots
-- native and firmware builds: **Run Natively**, **Build Firmware for Board…** and **New Firmware Project…** (HermiSim 2.1)
-- a **Proofs** dock for `tulpa prove`, **Deploy Project to Board…**, **Bundle Standalone Executable**, a Tulpa Link **Network** dock, and the bundled Autonomy lab project (HermiSim 2.2)
-- firmware builds for any program (static native code or the Tulpa VM, reported in the build output), **Link Bridge to Board…** for a board on a serial port, and the Firmware VM lab project (HermiSim 2.3)
+- native and firmware builds: **Run Natively**, **Build Firmware for Board…** and **New Firmware Project…** (.RAV IDE 2.1)
+- a **Proofs** dock for `tulpa prove`, **Deploy Project to Board…**, **Bundle Standalone Executable**, a Tulpa Link **Network** dock, and the bundled Autonomy lab project (.RAV IDE 2.2)
+- firmware builds for any program (static native code or the Tulpa VM, reported in the build output), **Link Bridge to Board…** for a board on a serial port, and the Firmware VM lab project (.RAV IDE 2.3)
 
 It also has a Windows installer.
 
@@ -385,7 +385,7 @@ on the phone, offline, on Android and on iPhone/iPad. It turns the handset into 
 - the `phone::` module reads the accelerometer, gyro, magnetometer, orientation, light, barometer,
   proximity, battery, steps and GPS as unit-checked quantities, and drives vibration, the torch,
   speech, tones and notifications
-- MuJoCo on the device with a 3D view: `cosim::` programs (and HermiSim workspaces) run unchanged
+- MuJoCo on the device with a 3D view: `cosim::` programs (and .RAV IDE workspaces) run unchanged
 - live `tlm::plot` charts and `phone::gauge` readouts while a program runs
 - a touch-first editor with diagnostics, completion and a symbol/unit keyboard bar
 - a REPL, a tappable state-machine inspector, and one-tap contract verification and tests
@@ -410,7 +410,7 @@ The `release` workflow builds them on every `v*` tag. The latest release is **v3
   `sudo ./install.sh /usr/local`.
 - **Debian / Ubuntu / Raspberry Pi OS:** `sudo apt install ./tulpa_<version>_<arch>.deb`
 - **macOS:** `tulpa-<version>-<x86_64|aarch64>-apple-darwin.tar.gz`
-- **Windows:** use the [HermiSim installer](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer),
+- **Windows:** use the [.RAV IDE installer](https://github.com/LoQiseaking69/HermiSim-DynamicsViewer),
   which bundles `tulpa.exe` and the `std/` library, or build from source.
 - **VS Code:** `code --install-extension tulpa-lang-<version>.vsix`. The `.vsix` is attached to
   each release. The extension is not on the VS Code Marketplace yet.
@@ -529,7 +529,7 @@ Some important boundaries of its current scope:
 - Tulpa Link has no encryption or authentication. A microcontroller without a network stack
   joins over a UART through `tulpa link bridge` on a computer.
 - `std/world` is a 2-D model for mobile robots. Full rigid-body dynamics come from MuJoCo
-  through HermiSim.
+  through .RAV IDE.
 - Contract fuzzing explores test cases; it is not a mathematical proof of correctness.
 - Runtime safety envelopes detect violations at defined checkpoints. They are not independent
   hardware safety interlocks.
@@ -544,7 +544,7 @@ validated industrial control platform.
 ## Docs
 
 The full documentation, with search, a quick start, a CLI reference, an example gallery and the
-HermiSim IDE guides, is on the **[Tulpa website](https://loqiseaking69.github.io/TulpaLang/)**.
+.RAV IDE guides, is on the **[Tulpa website](https://loqiseaking69.github.io/TulpaLang/)**.
 Its source is in [`website/`](website/README.md). The guides below are rendered there directly.
 
 - [Language guide](docs/language_guide.md): syntax, types, units, structs, machines, reactive

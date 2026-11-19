@@ -65,4 +65,4 @@ Guard the physical limits with **`always`**, and drive modes with a **`machine`*
 *Tilt guard* and *Shake alarm machine* examples in the library.
 
 On a desktop, `phone::` calls report "not available outside the Tulpa Field app", so keep phone
-access in a small module if you share code with HermiSim.
+access in a small module if you share code with .RAV IDE.

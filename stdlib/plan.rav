@@ -156,7 +156,7 @@ struct Node {
         out
     }
 
-    # {kind, name, status, children} for tools (HermiSim draws this).
+    # {kind, name, status, children} for tools (.RAV IDE draws this).
     fn snapshot(self) {
         {kind: self.kind, name: self.name, status: self.status, children: self.children.map(|c| c.snapshot())}
     }

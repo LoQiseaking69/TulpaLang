@@ -70,7 +70,7 @@ Each obligation gets one of four answers:
 
 The exit code is 1 if anything is refuted. With `--strict` it is also 1 if anything is
 unproved or skipped, which makes `tulpa prove --strict` a CI gate. `--json` prints the report
-for tools; HermiSim's Proofs dock uses it.
+for tools; .RAV IDE's Proofs dock uses it.
 
 ## What the prover can show
 

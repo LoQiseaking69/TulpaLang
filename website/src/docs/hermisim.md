@@ -1,10 +1,14 @@
 # IDE tour
 
-HermiSim is an engineering workbench for writing robot software in Tulpa and testing it in one
+> [!NOTE]
+> .RAV IDE was called **HermiSim** up to version 2.3. Version 2.4 upgrades a HermiSim install in place
+> and keeps existing projects and settings.
+
+.RAV IDE is an engineering workbench for writing robot software in Tulpa and testing it in one
 window: MuJoCo physics driven in lock-step from Tulpa programs, cycle-accurate RTL models in a
 waveform viewer, boards described as code, and live telemetry.
 
-![HermiSim running the Morty project in the co-simulator](../assets/img/screens/02_cosim.webp)
+![.RAV IDE running the Morty project in the co-simulator](../assets/img/screens/02_cosim.webp)
 
 ## Layout
 
@@ -32,7 +36,7 @@ One **▶ Run** button runs whatever is selected in the run-target box:
 
 - **Current file** runs the open file. If the program calls `cosim::connect()`, a MuJoCo session
   starts automatically.
-- A **project run configuration** from `hermisim.json`. See
+- A **project run configuration** from `ravide.json`. See
   [Projects & run configurations](projects.md).
 
 The toolbar's **Test**, **Verify**, **Build**, **Native** and **Diagram** buttons map to
@@ -49,7 +53,7 @@ With Tulpa 3.3 or newer, the **Run** menu also has these commands:
 
 These commands need clang 14 or newer. See [Native & embedded targets](embedded.md).
 
-With Tulpa 3.4 or newer (HermiSim 2.2):
+With Tulpa 3.4 or newer (.RAV IDE 2.2):
 
 - **Prove Contracts** (Ctrl+Alt+P, or the **Prove** toolbar button) runs `tulpa prove` on the
   current file. The **Proofs** dock lists every obligation by function, marked proved, refuted
@@ -62,7 +66,7 @@ With Tulpa 3.4 or newer (HermiSim 2.2):
 - The **Network** dock lists the [Tulpa Link](link.md) nodes on your LAN with their topics and
   services. Pick the domain, then press Refresh or tick auto-refresh.
 
-With Tulpa 3.5 or newer (HermiSim 2.3):
+With Tulpa 3.5 or newer (.RAV IDE 2.3):
 
 - **Build Firmware for Board…** takes any program. One that fits the static compiler becomes
   native code; any other is built onto the Tulpa VM for firmware. The build output says which

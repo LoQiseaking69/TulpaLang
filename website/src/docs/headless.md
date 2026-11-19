@@ -1,12 +1,12 @@
 # Headless CLI & CI
 
-Everything the IDE runs can also run without a display, which is how HermiSim's own tests and
+Everything the IDE runs can also run without a display, which is how .RAV IDE's own tests and
 CI work.
 
 ## `tulpa_bridge`
 
 From a source checkout, use `python -m tulpa_bridge`. The installed Windows build ships the
-same tool as `hermisim-cli`, and `python main.py run|exec|doctor` is equivalent.
+same tool as `ravide-cli`, and `python main.py run|exec|doctor` is equivalent.
 
 | Command | What it does |
 |---|---|
