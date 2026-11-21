@@ -1,4 +1,3 @@
-# Tulpa
 ---
 
 ![Tulpa](image-18.jpg.png)
