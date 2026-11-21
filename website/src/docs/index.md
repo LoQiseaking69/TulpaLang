@@ -1,5 +1,7 @@
 # Introduction
 
+<img src="../assets/img/tulpa-logo-768.webp" alt="Tulpa" width="220" style="border-radius:16px;margin:0 0 8px">
+
 Welcome to the documentation for **Tulpa**, a Python-flavoured, Rust-powered programming
 language for robotics, embedded systems and physical computing, and for the products built
 around it.

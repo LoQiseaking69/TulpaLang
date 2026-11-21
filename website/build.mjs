@@ -166,9 +166,12 @@ function layout({ title, description, root, active, body, bodyClass = '', canoni
 <meta property="og:title" content="${esc(fullTitle)}">
 <meta property="og:description" content="${esc(description || config.description)}">
 <meta property="og:image" content="${config.url}/assets/img/og-tulpa.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 ${canonical ? `<link rel="canonical" href="${config.url}/${canonical}">` : ''}
 <link rel="icon" type="image/png" href="${root}assets/img/tulpa-favicon.png">
+<link rel="apple-touch-icon" href="${root}assets/img/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
