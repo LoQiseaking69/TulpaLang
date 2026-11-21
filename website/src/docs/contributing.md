@@ -1,6 +1,6 @@
 # Writing docs
 
-This site lives in the [`website/`](https://github.com/LoQiseaking69/TulpaLang/tree/main/website)
+This site lives in the [`website/`](https://github.com/LoQiseaking69/Tulpa/tree/main/website)
 folder of the Tulpa repository and is generated from Markdown. Adding a page takes two steps
 and no build tooling beyond Node.js.
 

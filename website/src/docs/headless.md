@@ -20,9 +20,9 @@ python -m tulpa_bridge doctor
 ```
 
 ```text
-tulpa:   /path/to/TulpaLang/target/release/tulpa
+tulpa:   /path/to/Tulpa/target/release/tulpa
 version: tulpa 3.5.0
-stdlib:  /path/to/TulpaLang/stdlib
+stdlib:  /path/to/Tulpa/stdlib
 mujoco:  4.0.1
 cosim:   ok (tulpa ↔ 127.0.0.1:35881: 100 physics steps, sim t=0.200s)
 render:  ok (egl backend, 64x48 frame, 2760 lit px)
@@ -41,10 +41,10 @@ jobs:
       - uses: actions/checkout@v4
         with: { path: rav-ide }
       - uses: actions/checkout@v4
-        with: { repository: LoQiseaking69/TulpaLang, path: TulpaLang }
+        with: { repository: LoQiseaking69/Tulpa, path: Tulpa }
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --release
-        working-directory: TulpaLang
+        working-directory: Tulpa
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -r requirements.txt pytest

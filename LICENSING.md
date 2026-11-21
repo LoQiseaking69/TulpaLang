@@ -16,6 +16,6 @@ under the Apache License 2.0. Each version has its own date.
 **Earlier versions.** Tulpa 3.4.0 and earlier were released under the BSD 3-Clause license
 and stay under it; the new license applies from 3.5.0.
 
-**Commercial licenses.** Contact HermiTech LLC through https://github.com/LoQiseaking69/TulpaLang.
+**Commercial licenses.** Contact HermiTech LLC through https://github.com/LoQiseaking69/Tulpa.
 
 This page is a summary. The [LICENSE](LICENSE) file is the license.

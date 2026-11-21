@@ -27,7 +27,7 @@ Screenshots come from the CI simulator smoke test (iPhone, iOS 18).
 
 ## Install (no Apple Developer account)
 
-Each `field-v*` [release](https://github.com/LoQiseaking69/TulpaLang/releases?q=field) carries
+Each `field-v*` [release](https://github.com/LoQiseaking69/Tulpa/releases?q=field) carries
 `TulpaField-<version>.ipa` next to the Android APK. The IPA is built without a signing identity
 and given an **ad-hoc signature**; a sideloading tool re-signs it on your side with your own free
 Apple ID. That is the standard way to install an app outside the App Store without a paid
@@ -38,7 +38,7 @@ developer membership.
 1. Install [AltStore](https://altstore.io) (AltServer on a Mac or PC) or
    [SideStore](https://sidestore.io) (no computer needed after setup) and sign in with your Apple ID.
 2. Either add the source
-   `https://github.com/LoQiseaking69/TulpaLang/releases/download/field-v<version>/altstore-source.json`
+   `https://github.com/LoQiseaking69/Tulpa/releases/download/field-v<version>/altstore-source.json`
    (Sources → +), or download the IPA on the phone and open it in AltStore/SideStore (My Apps → +).
 3. Settings → General → VPN & Device Management → trust your Apple ID, and on iOS 16+ turn on
    Settings → Privacy & Security → **Developer Mode** when prompted.

@@ -76,7 +76,7 @@ struct HomeView: View {
                             Text("Tulpa \(vm.tulpaVersion) · MuJoCo \(vm.sim.state.version)").font(.caption).foregroundColor(TF.dim)
                         }
                         Spacer()
-                        Button("GitHub") { openURL(URL(string: "https://github.com/LoQiseaking69/TulpaLang")!) }
+                        Button("GitHub") { openURL(URL(string: "https://github.com/LoQiseaking69/Tulpa")!) }
                     }.padding(.vertical, 12)
                     Spacer(minLength: 16)
                 }

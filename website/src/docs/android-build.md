@@ -1,6 +1,6 @@
 # Building Tulpa Field & releases
 
-Tulpa Field lives in [`android/`](https://github.com/LoQiseaking69/TulpaLang/tree/main/android)
+Tulpa Field lives in [`android/`](https://github.com/LoQiseaking69/Tulpa/tree/main/android)
 in the Tulpa repository.
 
 ```text
@@ -36,7 +36,7 @@ or the language:
    (releases up to 1.3.0 were Android-only `android-v<version>`).
 
 The iOS steps are scripts in `ios/ci/` and run the same way on any Mac; see
-[ios/README.md](https://github.com/LoQiseaking69/TulpaLang/blob/main/ios/README.md).
+[ios/README.md](https://github.com/LoQiseaking69/Tulpa/blob/main/ios/README.md).
 
 ## Building locally
 

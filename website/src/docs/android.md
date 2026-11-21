@@ -11,7 +11,7 @@ editor.
 ### Android
 
 1. On your phone, download the APK from the [Tulpa Field page](../android.html) or from the
-   [releases list](https://github.com/LoQiseaking69/TulpaLang/releases?q=field).
+   [releases list](https://github.com/LoQiseaking69/Tulpa/releases?q=field).
 2. Open it. Android asks once to allow installs from your browser or file manager.
 3. Install, then open **Tulpa Field**. Later releases install over the top.
 
@@ -32,7 +32,7 @@ IPA is ad-hoc signed, and a sideloading tool re-signs it with your free Apple ID
 1. Install [AltStore](https://altstore.io) or [SideStore](https://sidestore.io), or use
    [Sideloadly](https://sideloadly.io) on a computer.
 2. In AltStore/SideStore, add the source
-   `https://github.com/LoQiseaking69/TulpaLang/releases/download/field-v<version>/altstore-source.json`,
+   `https://github.com/LoQiseaking69/Tulpa/releases/download/field-v<version>/altstore-source.json`,
    or open the downloaded IPA in the app. In Sideloadly, drag the IPA in and sign in.
 3. Trust your Apple ID under Settings › General › VPN & Device Management, and turn on Developer
    Mode when iOS asks.
@@ -40,7 +40,7 @@ IPA is ad-hoc signed, and a sideloading tool re-signs it with your free Apple ID
 Apple limits free Apple IDs to 3 sideloaded apps, and the signature lasts 7 days; AltStore and
 SideStore refresh it in the background. TrollStore installs the IPA permanently on the iOS versions
 it supports. **Requirements:** iOS 16 or newer, arm64, Metal. Details and building from source:
-[ios/README.md](https://github.com/LoQiseaking69/TulpaLang/blob/main/ios/README.md).
+[ios/README.md](https://github.com/LoQiseaking69/Tulpa/blob/main/ios/README.md).
 
 ## The tabs
 

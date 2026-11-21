@@ -43,7 +43,7 @@ the same toolchain.
 
 ## Source repositories
 
-- [Tulpa](https://github.com/LoQiseaking69/TulpaLang): the language, toolchain, standard library and VS Code extension.
+- [Tulpa](https://github.com/LoQiseaking69/Tulpa): the language, toolchain, standard library and VS Code extension.
 - [dotRAV_IDE](https://github.com/LoQiseaking69/dotRAV_IDE): the IDE, co-simulator, Windows installer and the Morty project.
 - [TulpaTutor](https://github.com/LoQiseaking69/TulpaTutor): the interactive course for web, Android and iOS.
 - Tulpa Field lives in this repository, under `android/` and `ios/`.

@@ -142,7 +142,7 @@ fun HomeScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
                     Text("Tulpa Field ${BuildConfig.VERSION_NAME}", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                     Text("Tulpa ${runCatching { TulpaNative.version() }.getOrDefault("")} · MuJoCo ${vm.sim.state.value.version}", color = TF.Dim, fontSize = 12.sp)
                 }
-                TextButton(onClick = { uri.openUri("https://github.com/LoQiseaking69/TulpaLang") }) { Text("GitHub") }
+                TextButton(onClick = { uri.openUri("https://github.com/LoQiseaking69/Tulpa") }) { Text("GitHub") }
             }
             Spacer(Modifier.height(16.dp))
         }

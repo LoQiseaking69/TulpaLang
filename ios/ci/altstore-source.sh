@@ -4,7 +4,7 @@
 # Usage: altstore-source.sh <ipa> <tag> <out.json>
 set -euo pipefail
 IPA="$1"; TAG="$2"; OUT="$3"
-REPO="${GITHUB_REPOSITORY:-LoQiseaking69/TulpaLang}"
+REPO="${GITHUB_REPOSITORY:-LoQiseaking69/Tulpa}"
 VERSION="${TAG#field-v}"
 SIZE=$(stat -f %z "$IPA" 2>/dev/null || stat -c %s "$IPA")
 BUILD="${TF_BUILD:-1}"

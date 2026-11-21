@@ -9,7 +9,7 @@ On Windows, with Rust, Python, Node.js and [Inno Setup 6](https://jrsoftware.org
 installed, and the Tulpa repository cloned next to .RAV IDE:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1 -TulpaSrc ..\TulpaLang -Version 2.3.0
+powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1 -TulpaSrc ..\Tulpa -Version 2.3.0
 ```
 
 The script:

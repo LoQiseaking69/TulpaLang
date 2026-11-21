@@ -1,7 +1,7 @@
 # Tulpa website & documentation
 
 This folder is the source of the Tulpa ecosystem website (Tulpa, .RAV IDE, Tulpa Field, TulpaTutor and Tulpa AI), published with GitHub Pages at
-**https://loqiseaking69.github.io/TulpaLang/**. It holds the landing pages for
+**https://loqiseaking69.github.io/Tulpa/**. It holds the landing pages for
 [Tulpa](../README.md) and [.RAV IDE](https://github.com/LoQiseaking69/dotRAV_IDE)
 and the documentation site.
 
@@ -25,7 +25,7 @@ npm run check    # build + verify every internal link and #anchor
 Actions tab. GitHub Pages must be set to deploy from Actions: **Settings ▸ Pages ▸ Source ▸
 GitHub Actions**.
 
-Links are relative throughout, so the site works under `/TulpaLang/` and on a custom domain.
+Links are relative throughout, so the site works under `/Tulpa/` and on a custom domain.
 If the address changes, update `url` in `site.config.json`, which is used for canonical URLs,
 the sitemap and the 404 page.
 

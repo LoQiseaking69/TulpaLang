@@ -18,7 +18,7 @@ Editable projects, including Morty, are copied to `Documents\RAV IDE`.
 ## Tulpa release packages
 
 Release packages are built by the `release` workflow on every `v*` tag and attached to
-[Tulpa releases](https://github.com/LoQiseaking69/TulpaLang/releases).
+[Tulpa releases](https://github.com/LoQiseaking69/Tulpa/releases).
 
 | Platform | Package | Install |
 |---|---|---|
@@ -38,8 +38,8 @@ Release packages are built by the `release` workflow on every `v*` tag and attac
 Requires Rust **1.82** or later.
 
 ```bash
-git clone https://github.com/LoQiseaking69/TulpaLang.git
-cd TulpaLang
+git clone https://github.com/LoQiseaking69/Tulpa.git
+cd Tulpa
 cargo build --release
 ./target/release/tulpa --version
 ```
@@ -59,13 +59,13 @@ Firmware builds also need the board's SDK:
 
 ## Run .RAV IDE from source (Linux, macOS, Windows)
 
-Clone both repositories side by side. .RAV IDE looks for `../TulpaLang/target/release/tulpa`
-automatically.
+Clone both repositories side by side, with Tulpa in a folder named `tulpa`. .RAV IDE looks for
+`../tulpa/target/release/tulpa` automatically.
 
 ```bash
 git clone https://github.com/LoQiseaking69/dotRAV_IDE.git rav-ide
-git clone https://github.com/LoQiseaking69/TulpaLang.git
-(cd TulpaLang && cargo build --release)
+git clone https://github.com/LoQiseaking69/Tulpa.git tulpa
+(cd tulpa && cargo build --release)
 cd rav-ide
 pip install -r requirements.txt
 python main.py                      # the IDE

@@ -1,7 +1,7 @@
 # Tulpa
 ---
 
-![Tulpa](https://github.com/LoQiseaking69/TulpaLang/blob/main/file_00000000d52c81f589c57789de01a871.png)
+![Tulpa](https://github.com/LoQiseaking69/Tulpa/blob/main/file_00000000d52c81f589c57789de01a871.png)
 
 ---
 **A Python-flavoured, Rust-powered programming language for robotics, embedded systems, and physical computing.**
@@ -396,13 +396,13 @@ on the phone, offline, on Android and on iPhone/iPad. It turns the handset into 
 The signed APK and the iOS IPA are built by CI and attached together to `field-v*` releases (older
 Android-only builds are `android-v*`). The IPA installs without an Apple Developer account through
 AltStore, SideStore or Sideloadly with a free Apple ID ([iOS README](ios/README.md)). See the
-[Tulpa Field page](https://loqiseaking69.github.io/TulpaLang/android.html) on the website. Screenshots, features and build
+[Tulpa Field page](https://loqiseaking69.github.io/Tulpa/android.html) on the website. Screenshots, features and build
 instructions are in the [Tulpa Field README](android/README.md). Other hosts can embed the runtime the
 same way through `tulpa::embed` (run/REPL/analysis API) and `tulpa::host` (host-provided modules).
 
 ## Install
 
-Download a release package from [Releases](https://github.com/LoQiseaking69/TulpaLang/releases).
+Download a release package from [Releases](https://github.com/LoQiseaking69/Tulpa/releases).
 The `release` workflow builds them on every `v*` tag. The latest release is **v3.5.0**.
 
 - **Linux** (x86_64, arm64 for Raspberry Pi 3/4/5, armv7): download
@@ -544,7 +544,7 @@ validated industrial control platform.
 ## Docs
 
 The full documentation, with search, a quick start, a CLI reference, an example gallery and the
-.RAV IDE guides, is on the **[Tulpa website](https://loqiseaking69.github.io/TulpaLang/)**.
+.RAV IDE guides, is on the **[Tulpa website](https://loqiseaking69.github.io/Tulpa/)**.
 Its source is in [`website/`](website/README.md). The guides below are rendered there directly.
 
 - [Language guide](docs/language_guide.md): syntax, types, units, structs, machines, reactive

@@ -59,4 +59,4 @@ The latest results are on the [Tulpa AI page](../ai.html#model).
 
 The model runs on HermiTech's servers; the weights are not distributed. For preview access or
 commercial licensing, contact HermiTech LLC through
-[GitHub](https://github.com/LoQiseaking69/TulpaLang).
+[GitHub](https://github.com/LoQiseaking69/Tulpa).

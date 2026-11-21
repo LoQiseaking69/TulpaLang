@@ -105,7 +105,7 @@ Maintainer: HermiTech <noreply@hermitech.dev>
 Installed-Size: $SIZE
 Depends: $LIBC_DEP
 Recommends: clang
-Homepage: https://github.com/LoQiseaking69/TulpaLang
+Homepage: https://github.com/LoQiseaking69/Tulpa
 Description: Tulpa, a language for robots and hardware
  Python-flavoured scripting with units of measure, contracts, state machines,
  reactive safety rules, GPIO/I2C/SPI/UART/PWM/CAN/BLE devices with a simulator,

@@ -1,6 +1,6 @@
 # Tulpa for VS Code
 
-Language support for [Tulpa](https://github.com/LoQiseaking69/TulpaLang), a language for robots and hardware.
+Language support for [Tulpa](https://github.com/LoQiseaking69/Tulpa), a language for robots and hardware.
 
 - Syntax highlighting, including unit literals (`0.5[m/s]`), contracts (`require`, `ensure`, `x'`), state machines, `interface`/`impl`, `when`/`always`/`after … within`, and macros.
 - A language server, run by `tulpa lsp`:
