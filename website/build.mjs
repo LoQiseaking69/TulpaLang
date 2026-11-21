@@ -168,7 +168,7 @@ function layout({ title, description, root, active, body, bodyClass = '', canoni
 <meta property="og:image" content="${config.url}/assets/img/og-tulpa.jpg">
 <meta name="twitter:card" content="summary_large_image">
 ${canonical ? `<link rel="canonical" href="${config.url}/${canonical}">` : ''}
-<link rel="icon" type="image/png" href="${root}assets/img/ravide-favicon.png">
+<link rel="icon" type="image/png" href="${root}assets/img/tulpa-favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -180,19 +180,23 @@ ${canonical ? `<link rel="canonical" href="${config.url}/${canonical}">` : ''}
 <a class="skip" href="#main">Skip to content</a>
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="${root}index.html" aria-label="Tulpa and .RAV IDE home">
-      <span class="brand-mark"><img src="${root}assets/img/ravide-mark.png" alt="" width="30" height="30"></span>
-      <span class="brand-text">Tulpa<span class="brand-amp">&amp;</span>.RAV IDE</span>
+    <a class="brand" href="${root}index.html" aria-label="Tulpa home">
+      <span class="brand-mark"><img src="${root}assets/img/tulpa-mark.png" alt="" width="30" height="30"></span>
+      <span class="brand-text">Tulpa<span class="brand-sub">by ${esc(config.org)}</span></span>
     </a>
     <nav class="mainnav" aria-label="Main">
-      ${link('tulpa.html', 'Tulpa', 'tulpa')}
+      ${link('tulpa.html', 'Language', 'tulpa')}
       ${link('hermisim.html', '.RAV IDE', 'hermisim')}
-      ${link('android.html', 'Android', 'android')}
+      ${link('android.html', 'Field', 'android')}
+      ${link('tutor.html', 'Tutor', 'tutor')}
+      ${link('ai.html', 'AI', 'ai')}
+      <span class="nav-sep" aria-hidden="true"></span>
       ${link('docs/index.html', 'Docs', 'docs')}
       ${link('docs/examples.html', 'Examples', 'examples')}
+      ${link('download.html', 'Download', 'download')}
     </nav>
     <div class="topbar-actions">
-      <button class="search-btn" type="button" data-search-open>${ICON.search}<span>Search docs</span><kbd>/</kbd></button>
+      <button class="search-btn" type="button" data-search-open>${ICON.search}<span>Search</span><kbd>/</kbd></button>
       <a class="icon-btn" href="${config.tulpa.repo}" target="_blank" rel="noopener" aria-label="TulpaLang on GitHub">${ICON.github}</a>
       <button class="icon-btn menu-btn" type="button" aria-label="Open menu" data-menu>${ICON.menu}</button>
     </div>
@@ -204,17 +208,18 @@ ${body}
 <footer class="footer">
   <div class="footer-inner">
     <div class="footer-brand">
-      <img src="${root}assets/img/ravide-mark.png" alt="" width="36" height="36">
-      <div><strong>Tulpa &amp; .RAV IDE</strong><br><span>${esc(config.tagline)}. A ${esc(config.org)} project.</span></div>
+      <img src="${root}assets/img/tulpa-mark.png" alt="" width="36" height="36">
+      <div><strong>The Tulpa ecosystem</strong><br><span>${esc(config.tagline)}. Built by ${esc(config.org)} LLC.</span>
+        <p class="footer-versions">Tulpa ${esc(config.tulpa.version)} · .RAV IDE ${esc(config.hermisim.version)} · Field ${esc(config.android.version)} · Tutor ${esc(config.tutor.version)} · AI ${esc(config.ai.version)}</p></div>
     </div>
     <div class="footer-cols">
-      <div><h4>Tulpa</h4><a href="${root}tulpa.html">Overview</a><a href="${root}docs/language-guide.html">Language guide</a><a href="${root}docs/libraries.html">Libraries</a><a href="${config.tulpa.repo}/releases" target="_blank" rel="noopener">Releases</a></div>
-      <div><h4>.RAV IDE</h4><a href="${root}hermisim.html">Overview</a><a href="${root}docs/hermisim.html">IDE tour</a><a href="${root}docs/morty.html">Morty project</a><a href="${config.hermisim.repo}/releases" target="_blank" rel="noopener">Download</a></div>
-      <div><h4>Tulpa Field</h4><a href="${root}android.html">Overview</a><a href="${root}docs/android.html">Install &amp; use</a><a href="${root}docs/android-sim.html">3D co-simulation</a><a href="${config.android.download}">Download APK</a></div>
-      <div><h4>Project</h4><a href="${config.tulpa.repo}" target="_blank" rel="noopener">TulpaLang on GitHub</a><a href="${config.hermisim.repo}" target="_blank" rel="noopener">.RAV IDE on GitHub</a><a href="${root}docs/roadmap.html">Roadmap</a><a href="${root}docs/contributing.html">Write docs</a></div>
+      <div><h4>Products</h4><a href="${root}tulpa.html">Tulpa language</a><a href="${root}hermisim.html">.RAV IDE</a><a href="${root}android.html">Tulpa Field</a><a href="${root}tutor.html">TulpaTutor</a><a href="${root}ai.html">Tulpa AI</a></div>
+      <div><h4>Learn</h4><a href="${root}docs/quickstart.html">Quick start</a><a href="${root}docs/language-guide.html">Language guide</a><a href="${root}docs/examples.html">Examples</a><a href="${config.tutor.web}" target="_blank" rel="noopener">TulpaTutor web app</a></div>
+      <div><h4>Get it</h4><a href="${root}download.html">All downloads</a><a href="${config.tulpa.releases}" target="_blank" rel="noopener">Tulpa ${esc(config.tulpa.version)}</a><a href="${config.hermisim.releases}" target="_blank" rel="noopener">.RAV IDE for Windows</a><a href="${config.android.download}">Tulpa Field APK</a></div>
+      <div><h4>Project</h4><a href="${config.tulpa.repo}" target="_blank" rel="noopener">TulpaLang on GitHub</a><a href="${root}docs/ecosystem.html">How it fits together</a><a href="${root}docs/roadmap.html">Roadmap</a><a href="${root}docs/licensing.html">Licensing</a></div>
     </div>
   </div>
-  <div class="footer-legal">Both projects are source-available under the Business Source License 1.1: free for development, evaluation, education and research; commercial production use is licensed by HermiTech LLC. © ${new Date().getFullYear()} ${esc(config.org)}.</div>
+  <div class="footer-legal">Tulpa, .RAV IDE, Tulpa Field and TulpaTutor are source-available under the Business Source License 1.1: free for development, evaluation, education and research; commercial production use is licensed by HermiTech LLC. Tulpa AI is a private preview. © ${new Date().getFullYear()} HermiTech LLC.</div>
 </footer>
 <div class="search" hidden data-search>
   <div class="search-panel" role="dialog" aria-modal="true" aria-label="Search documentation">
@@ -236,8 +241,27 @@ function renderFragment(src) {
     const lang = { rav: 'tulpa', sh: 'bash', txt: 'text', json: 'json' }[path.extname(file).slice(1)] || 'text';
     return codeBlock(read(p), lang, title);
   });
-  src = src.replace(/\{\{(tulpa|hermisim|android|ios)\.(\w+)\}\}/g, (_, a, b) => esc(config[a][b]));
+  src = src.replace('{{ai-model-card}}', () => aiModelCard());
+  src = src.replace(/\{\{(tulpa|hermisim|android|ios|tutor|ai)\.(\w+)\}\}/g, (_, a, b) => esc(config[a][b]));
   return { meta, html: src };
+}
+
+// Tulpa AI model card from site.config.json → ai.exam (filled in from the release exam)
+function aiModelCard() {
+  const ai = config.ai, ex = ai.exam;
+  const pct = (v) => (v == null ? '–' : `${(v * 100).toFixed(1)}%`);
+  if (!ex) {
+    return `<div class="model-card"><dl><div><dt>Model</dt><dd>${esc(ai.model)}</dd></div><div><dt>Status</dt><dd>Training</dd></div><div><dt>Training data</dt><dd>${esc(ai.examples)} examples</dd></div><div><dt>Exam</dt><dd>Pending</dd></div></dl>` +
+      `<p class="note">The exam results for this model are published here when its training run finishes. A model only goes live if it beats the one it replaces.</p></div>`;
+  }
+  const rows = [['Overall', 'overall'], ['Tulpa knowledge', 'knowledge'], ['Code generation (pass@1)', 'pass_at_1'], ['Agent tasks', 'agent'], ['Held-out programs', 'holdout']]
+    .filter(([, k]) => ex[k] != null)
+    .map(([label, k]) => {
+      const v = ex[k], b = ex.base?.[k];
+      return `<div class="skill"><span>${label}</span><div class="bar"><i style="width:${Math.max(1, v * 100).toFixed(1)}%"></i>${b != null ? `<b style="left:${(b * 100).toFixed(1)}%" title="base model"></b>` : ''}</div><span class="val">${pct(v)}${b != null ? ` <small>· base ${pct(b)}</small>` : ''}</span></div>`;
+    }).join('');
+  return `<div class="model-card"><dl><div><dt>Model</dt><dd>${esc(ai.model)}</dd></div><div><dt>Overall exam</dt><dd>${pct(ex.overall)}</dd></div><div><dt>Training data</dt><dd>${esc(ai.examples)} examples</dd></div><div><dt>Promoted</dt><dd>${esc(ex.date || '')}</dd></div></dl>${rows}` +
+    `<p class="note">Bars show ${esc(ai.model)}; the amber tick marks the base model on the same exam. Every item is graded by the real <code>tulpa</code> ${esc(config.tulpa.version)} compiler.</p></div>`;
 }
 
 // ---------------------------------------------------------------- examples gallery

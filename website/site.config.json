@@ -1,17 +1,19 @@
 {
-  "title": "Tulpa & .RAV IDE",
+  "title": "Tulpa",
   "tagline": "Code the physical world",
-  "description": "Tulpa is a Python-flavoured, Rust-powered programming language for robotics, embedded systems and physical computing. .RAV IDE is its simulation suite and IDE, and Tulpa Field brings both to Android and iOS.",
+  "description": "Tulpa is a Python-flavoured, Rust-powered programming language for robotics and embedded systems, with a complete ecosystem around it: .RAV IDE for desktop simulation, Tulpa Field for Android and iOS, TulpaTutor for learning, and Tulpa AI, the agentic assistant for Tulpa developers.",
   "url": "https://loqiseaking69.github.io/TulpaLang",
   "org": "HermiTech",
   "tulpa": {
     "version": "3.5.0",
     "release": "v3.5.0",
-    "repo": "https://github.com/LoQiseaking69/TulpaLang"
+    "repo": "https://github.com/LoQiseaking69/TulpaLang",
+    "releases": "https://github.com/LoQiseaking69/TulpaLang/releases/tag/v3.5.0"
   },
   "hermisim": {
     "version": "2.4.0",
-    "repo": "https://github.com/LoQiseaking69/.RAV_IDE"
+    "repo": "https://github.com/LoQiseaking69/dotRAV_IDE",
+    "releases": "https://github.com/LoQiseaking69/dotRAV_IDE/releases/latest"
   },
   "siteRepo": "https://github.com/LoQiseaking69/TulpaLang",
   "editBranch": "main",
@@ -30,5 +32,23 @@
     "download": "https://github.com/LoQiseaking69/TulpaLang/releases/download/field-v1.5.1/TulpaField-1.5.1.ipa",
     "source": "https://github.com/LoQiseaking69/TulpaLang/releases/download/field-v1.5.1/altstore-source.json",
     "readme": "https://github.com/LoQiseaking69/TulpaLang/blob/main/ios/README.md"
+  },
+  "tutor": {
+    "version": "1.1.0",
+    "repo": "https://github.com/LoQiseaking69/TulpaTutor",
+    "web": "https://loqiseaking69.github.io/TulpaTutor/",
+    "releases": "https://github.com/LoQiseaking69/TulpaTutor/releases/tag/v1.1.0",
+    "apk": "https://github.com/LoQiseaking69/TulpaTutor/releases/download/v1.1.0/TulpaTutor-1.1.0.apk",
+    "ipa": "https://github.com/LoQiseaking69/TulpaTutor/releases/download/v1.1.0/TulpaTutor-1.1.0.ipa",
+    "zip": "https://github.com/LoQiseaking69/TulpaTutor/releases/download/v1.1.0/TulpaTutor-web-1.1.0.zip"
+  },
+  "ai": {
+    "version": "0.2.0",
+    "build": "pre.87",
+    "status": "Private preview",
+    "model": "Tulpa AI v4",
+    "base": "Qwen3.5-4B (Apache-2.0)",
+    "examples": "1,645",
+    "api": "https://tulpa-api-production.up.railway.app"
   }
 }

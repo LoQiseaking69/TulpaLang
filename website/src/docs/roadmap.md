@@ -2,22 +2,48 @@
 
 ## Shipped
 
+### Tulpa
+
 | Release | Highlights |
 |---|---|
-| **Tulpa 2.0** | Units of measure, runtime-checked types, keyword arguments, `\|>`, structs with invariants, state machines, signals and `when` rules, `always` monitors, modules, contract fuzzing (`tulpa verify`), record/replay, PWM and Servo. |
-| **Tulpa 3.0** | Bytecode VM, LLVM code generation, the gpiochip backend, timing rules (`when … for`, `after … within … ensure`), the virtual clock and the LSP. |
-| **Tulpa 3.1** | Unit-typed native code, CAN and Bluetooth LE, timestamped replay, the VS Code extension and release packaging. |
-| **Tulpa 3.2** | The `nn`, `pack`, `json`, `tlm` and `cosim` modules; the `std/` library (rtl, eda, rl, lipm, topics, frame); operator overloading for native objects; the library search path. |
-| **Tulpa 3.3** | Interfaces and the Driver SDK (`std/driver`, MPU-6050 / PCA9685 / MCP3008 drivers); native compilation of structs, devices, state machines, `always` monitors and `every!` loops; standalone executables; embedded targets for RP2040, ESP32, ESP32-S2/S3/C3/C6 and generic Cortex-M / RISC-V, with `tulpa new` firmware projects. |
-| **.RAV IDE 2.0** | The Tulpa IDE: LSP editor, lock-step MuJoCo co-simulation, telemetry, waveform / machine / BOM viewers, Tulpa terminal, headless CLI, Windows installer and the Morty project. |
-| **Tulpa 3.4** | Autonomy (`std/plan`: behavior trees, GOAP, HTN, missions); Tulpa Link middleware (`std/link`); static proofs (`tulpa prove`); deterministic physics and emulated chips (`std/world`, `std/emu`); exhaustive exploration (`std/verify`); native `match`; standalone bundles and `tulpa deploy`. |
 | **Tulpa 3.5** | The whole language on microcontrollers: the Tulpa VM for firmware, used automatically by `tulpa build --target <board>` for programs outside the static subset; a Tulpa Link node in firmware over UDP and UART, with `tulpa link bridge`; `pack::` and `json::` in firmware. Licensed under the Business Source License 1.1. |
-| **.RAV IDE 2.1** | Tulpa 3.3 workflows: Run Natively, Build Firmware for Board…, New Firmware Project…, `native`/`firmware` run kinds, Driver SDK highlighting and docs. |
-| **.RAV IDE 2.2** | Proofs dock, Deploy Project to Board, Bundle, a Tulpa Link Network dock, and the bundled Autonomy lab project. |
+| **Tulpa 3.4** | Autonomy (`std/plan`: behavior trees, GOAP, HTN, missions); Tulpa Link middleware (`std/link`); static proofs (`tulpa prove`); deterministic physics and emulated chips (`std/world`, `std/emu`); exhaustive exploration (`std/verify`); native `match`; standalone bundles and `tulpa deploy`. |
+| **Tulpa 3.3** | Interfaces and the Driver SDK (`std/driver`, MPU-6050 / PCA9685 / MCP3008 drivers); native compilation of structs, devices, state machines, `always` monitors and `every!` loops; standalone executables; embedded targets for RP2040, ESP32, ESP32-S2/S3/C3/C6 and generic Cortex-M / RISC-V, with `tulpa new` firmware projects. |
+| **Tulpa 3.2** | The `nn`, `pack`, `json`, `tlm` and `cosim` modules; the `std/` library (rtl, eda, rl, lipm, topics, frame); operator overloading for native objects; the library search path. |
+| **Tulpa 3.1** | Unit-typed native code, CAN and Bluetooth LE, timestamped replay, the VS Code extension and release packaging. |
+| **Tulpa 3.0** | Bytecode VM, LLVM code generation, the gpiochip backend, timing rules (`when … for`, `after … within … ensure`), the virtual clock and the LSP. |
+| **Tulpa 2.0** | Units of measure, runtime-checked types, keyword arguments, `\|>`, structs with invariants, state machines, signals and `when` rules, `always` monitors, modules, contract fuzzing (`tulpa verify`), record/replay, PWM and Servo. |
+
+### .RAV IDE
+
+| Release | Highlights |
+|---|---|
+| **.RAV IDE 2.4** | Rebranded from HermiSim to .RAV IDE, with a new identity and screenshots. Existing installs, `hermisim.json` projects and the `Documents\HermiSim` folder keep working, and the installer upgrades in place. The repository is now [dotRAV_IDE](https://github.com/LoQiseaking69/dotRAV_IDE). |
 | **.RAV IDE 2.3** | Tulpa 3.5: firmware builds report the tier they used (static native code or the Tulpa VM), a Link Bridge action for boards on a serial port, and the Firmware VM lab project. |
+| **.RAV IDE 2.2** | Proofs dock, Deploy Project to Board, Bundle, a Tulpa Link Network dock, and the bundled Autonomy lab project. |
+| **.RAV IDE 2.1** | Tulpa 3.3 workflows: Run Natively, Build Firmware for Board…, New Firmware Project…, `native`/`firmware` run kinds, Driver SDK highlighting and docs. |
+| **.RAV IDE 2.0** | The Tulpa IDE: LSP editor, lock-step MuJoCo co-simulation, telemetry, waveform / machine / BOM viewers, Tulpa terminal, headless CLI, Windows installer and the Morty project. |
+
+### Tulpa Field
+
+| Release | Highlights |
+|---|---|
 | **Tulpa Field 1.5** | Tulpa Field on iPhone and iPad (a SwiftUI app, released as an IPA and an AltStore source) alongside Android, on the Tulpa 3.5 runtime, with a guide and example for running the whole language on a microcontroller. |
 | **Tulpa Field 1.3** | The Tulpa 3.4 runtime on Android: planning, Tulpa Link, physics and chip emulation, with new examples and guides. |
 | **Tulpa Field 1.2** | The Tulpa 3.3 runtime on Android with the Driver SDK, and *Your phone as an Imu*: `std/driver`'s `Imu` interface implemented on the phone's sensors. |
+
+### TulpaTutor
+
+| Release | Highlights |
+|---|---|
+| **TulpaTutor 1.1** | An animated startup with the wings-spread Tutor logo, and black native launch screens that hand off to it. |
+| **TulpaTutor 1.0** | The interactive course on Tulpa 3.5 compiled to WebAssembly: 60 lessons in 10 modules, 306 runnable snippets, 60 checked exercises, 122 quiz questions, 14 challenges and the Mastery Certification. Web, Android and iOS. |
+
+### Tulpa AI
+
+| Release | Highlights |
+|---|---|
+| **Tulpa AI 0.2 (preview)** | The agentic assistant for Tulpa developers on Android and iOS: streaming chat, an agent that checks and repairs its code with the real toolchain, and a model specialized on compiler-verified Tulpa data that is promoted only when it beats its predecessor on the exam. |
 
 ## Planned
 

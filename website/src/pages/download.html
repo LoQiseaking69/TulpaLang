@@ -1,0 +1,77 @@
+<!--{"title": "Downloads", "active": "download", "description": "Download every product in the Tulpa ecosystem: the Tulpa toolchain for Linux, macOS and Raspberry Pi, the VS Code extension, .RAV IDE for Windows, Tulpa Field and TulpaTutor for Android and iOS.", "search": "download install release tarball deb vsix VS Code extension Windows installer APK IPA AltStore web app Linux macOS Raspberry Pi arm64 armhf"}-->
+<section class="page-hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Latest releases</span>
+    <h1>Downloads</h1>
+    <p class="sub">Every product, every platform, in one place. All builds come from CI on the public repositories, with checksums published alongside each release.</p>
+  </div>
+</section>
+
+<section class="section tight">
+  <div class="wrap">
+
+    <div class="dl-group reveal" id="tulpa">
+      <div class="dl-head"><img src="assets/img/tulpa-mark.png" alt=""><h2>Tulpa</h2><span class="badge v">v{{tulpa.version}}</span><a class="dl-more" href="{{tulpa.releases}}" target="_blank" rel="noopener">Release notes &amp; checksums →</a></div>
+      <div class="table-wrap"><table class="dl-table">
+        <thead><tr><th>Platform</th><th>File</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Linux x86-64</td><td><code>tulpa_3.5.0_amd64.deb</code> · <code>.tar.gz</code></td><td><a class="btn" href="{{tulpa.repo}}/releases/download/v3.5.0/tulpa_3.5.0_amd64.deb">.deb</a> <a class="btn" href="{{tulpa.repo}}/releases/download/v3.5.0/tulpa-3.5.0-x86_64-unknown-linux-gnu.tar.gz">.tar.gz</a></td></tr>
+          <tr><td>Linux arm64 · Raspberry Pi 4/5</td><td><code>tulpa_3.5.0_arm64.deb</code> · <code>.tar.gz</code></td><td><a class="btn" href="{{tulpa.repo}}/releases/download/v3.5.0/tulpa_3.5.0_arm64.deb">.deb</a> <a class="btn" href="{{tulpa.repo}}/releases/download/v3.5.0/tulpa-3.5.0-aarch64-unknown-linux-gnu.tar.gz">.tar.gz</a></td></tr>
+          <tr><td>Linux armv7 · 32-bit Raspberry Pi</td><td><code>tulpa_3.5.0_armhf.deb</code> · <code>.tar.gz</code></td><td><a class="btn" href="{{tulpa.repo}}/releases/download/v3.5.0/tulpa_3.5.0_armhf.deb">.deb</a> <a class="btn" href="{{tulpa.repo}}/releases/download/v3.5.0/tulpa-3.5.0-armv7-unknown-linux-gnueabihf.tar.gz">.tar.gz</a></td></tr>
+          <tr><td>macOS Apple silicon</td><td><code>tulpa-3.5.0-aarch64-apple-darwin.tar.gz</code></td><td><a class="btn" href="{{tulpa.repo}}/releases/download/v3.5.0/tulpa-3.5.0-aarch64-apple-darwin.tar.gz">.tar.gz</a></td></tr>
+          <tr><td>macOS Intel</td><td><code>tulpa-3.5.0-x86_64-apple-darwin.tar.gz</code></td><td><a class="btn" href="{{tulpa.repo}}/releases/download/v3.5.0/tulpa-3.5.0-x86_64-apple-darwin.tar.gz">.tar.gz</a></td></tr>
+          <tr><td>VS Code extension</td><td><code>tulpa-lang-3.5.0.vsix</code></td><td><a class="btn" href="{{tulpa.repo}}/releases/download/v3.5.0/tulpa-lang-3.5.0.vsix">.vsix</a></td></tr>
+          <tr><td>From source</td><td><code>cargo build --release</code></td><td><a class="btn" href="docs/installation.html">Guide</a></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="dl-group reveal" id="rav-ide">
+      <div class="dl-head"><img src="assets/img/ravide-mark.png" alt=""><h2>.RAV IDE</h2><span class="badge v">v{{hermisim.version}}</span><a class="dl-more" href="hermisim.html">About .RAV IDE →</a></div>
+      <div class="table-wrap"><table class="dl-table">
+        <thead><tr><th>Platform</th><th>Includes</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Windows 10/11</td><td>Installer with Tulpa, Python, MuJoCo and the Morty project bundled</td><td><a class="btn btn-primary" href="{{hermisim.releases}}" target="_blank" rel="noopener">Installer</a></td></tr>
+          <tr><td>Linux · macOS</td><td>Run from source with Python 3 and a <code>tulpa</code> on your PATH</td><td><a class="btn" href="docs/installation.html">Guide</a></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="dl-group reveal" id="field">
+      <div class="dl-head"><img src="assets/img/android/home.jpg" alt=""><h2>Tulpa Field</h2><span class="badge v">v{{android.version}}</span><a class="dl-more" href="android.html">About Tulpa Field →</a></div>
+      <div class="table-wrap"><table class="dl-table">
+        <thead><tr><th>Platform</th><th>Requirements</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Android</td><td>Android 8.0+, signed with the HermiTech release key</td><td><a class="btn btn-primary" href="{{android.download}}">APK</a></td></tr>
+          <tr><td>iPhone &amp; iPad</td><td>iOS 16+, sideload with AltStore or SideStore</td><td><a class="btn" href="{{ios.download}}">IPA</a> <a class="btn" href="android.html#install-ios">How to install</a></td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">APK signing certificate SHA-256: <code>{{android.cert}}</code></p>
+    </div>
+
+    <div class="dl-group reveal" id="tutor">
+      <div class="dl-head"><img src="assets/img/tutor/mark.png" alt=""><h2>TulpaTutor</h2><span class="badge v">v{{tutor.version}}</span><a class="dl-more" href="tutor.html">About TulpaTutor →</a></div>
+      <div class="table-wrap"><table class="dl-table">
+        <thead><tr><th>Platform</th><th>Requirements</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Web</td><td>Any modern browser, nothing to install</td><td><a class="btn btn-primary" href="{{tutor.web}}" target="_blank" rel="noopener">Open</a></td></tr>
+          <tr><td>Android</td><td>Android 8.0+</td><td><a class="btn" href="{{tutor.apk}}">APK</a></td></tr>
+          <tr><td>iPhone &amp; iPad</td><td>iOS 15+, sideload with AltStore, SideStore or Sideloadly</td><td><a class="btn" href="{{tutor.ipa}}">IPA</a></td></tr>
+          <tr><td>Self-hosted</td><td>Static web build for any file server</td><td><a class="btn" href="{{tutor.zip}}">.zip</a></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="dl-group reveal" id="ai">
+      <div class="dl-head"><img src="assets/img/ai/mark.png" alt=""><h2>Tulpa AI</h2><span class="badge pre">{{ai.status}}</span><a class="dl-more" href="ai.html">About Tulpa AI →</a></div>
+      <div class="table-wrap"><table class="dl-table">
+        <thead><tr><th>Platform</th><th>Availability</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Android · iOS</td><td>Pre-release builds for preview testers</td><td><a class="btn" href="ai.html#access">Request access</a></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <p class="note">Tulpa, .RAV IDE, Tulpa Field and TulpaTutor are source-available under the Business Source License 1.1. They're free for development, evaluation, education and research, and commercial production use needs a licence from HermiTech LLC. <a href="docs/licensing.html">Licensing details</a>.</p>
+  </div>
+</section>

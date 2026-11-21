@@ -1,15 +1,15 @@
-<!--{"title": "", "active": "home", "description": "Tulpa is a Python-flavoured, Rust-powered language for robots and hardware, with units, contracts, state machines and safety envelopes built in. .RAV IDE is its IDE and MuJoCo co-simulator.", "search": "Tulpa .RAV IDE home units contracts state machines reactive timing safety envelopes co-simulation IDE"}-->
+<!--{"title": "", "active": "home", "description": "Tulpa is a Python-flavoured, Rust-powered language for robots and hardware, with units, contracts, state machines and safety envelopes built in, plus .RAV IDE, Tulpa Field, TulpaTutor and Tulpa AI around it.", "search": "Tulpa ecosystem home .RAV IDE Tulpa Field TulpaTutor Tulpa AI units contracts state machines reactive timing safety envelopes co-simulation IDE"}-->
 <section class="hero">
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow"><span class="dot"></span>Tulpa {{tulpa.version}} · .RAV IDE {{hermisim.version}}</span>
+      <span class="eyebrow"><span class="dot"></span>Tulpa {{tulpa.version}} · five products, one language</span>
       <h1>Code the <span class="grad">physical world.</span></h1>
-      <p class="sub"><strong>Tulpa</strong> is a Python-flavoured, Rust-powered language for robots and hardware. Units, contracts, state machines, timing rules and safety envelopes are part of the language. <strong>.RAV IDE</strong> is the IDE that runs it against physics.</p>
+      <p class="sub"><strong>Tulpa</strong> is a Python-flavoured, Rust-powered language for robots and hardware. Units, contracts, state machines, timing rules and safety envelopes are part of the language, and the same program runs in a REPL, against physics, or as firmware on a microcontroller. Around it: an IDE, a mobile workbench, a course and an AI assistant.</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="docs/quickstart.html">Get started
           <svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
-        <a class="btn" href="docs/index.html">Read the docs</a>
-        <a class="btn" href="hermisim.html">Explore .RAV IDE</a>
+        <a class="btn" href="#ecosystem">Explore the ecosystem</a>
+        <a class="btn" href="download.html">Downloads</a>
       </div>
       <div class="install-line"><span class="prompt">$</span><code>cargo build --release &amp;&amp; ./target/release/tulpa</code><button class="copy" type="button">Copy</button></div>
     </div>
@@ -17,6 +17,49 @@
       <div class="window-bar"><span class="lights"><i></i><i></i><i></i></span><span class="window-tab">cell.rav</span><span class="window-meta">tulpa {{tulpa.version}}</span></div>
       {{snippet:hero.rav}}
       <div class="window-out"><span>$ tulpa cell.rav</span>Idle 150 deg</div>
+    </div>
+  </div>
+</section>
+
+<section class="section tight" id="ecosystem">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">The ecosystem</span>
+      <h2>Everything you need to build with Tulpa.</h2>
+      <p>One language and runtime, delivered everywhere you work: the desktop, your phone, the browser and the microcontroller. Every product runs the real Tulpa {{tulpa.version}} toolchain, not an imitation of it.</p>
+    </div>
+    <div class="eco">
+      <a class="eco-card wide reveal" href="tulpa.html">
+        <div class="eco-top"><img src="assets/img/tulpa-mark.png" alt=""><div><span class="role">Language &amp; toolchain</span><h3>Tulpa</h3></div></div>
+        <p>The language itself: interpreter, bytecode VM and LLVM native compiler, firmware for RP2040 and ESP32, an LSP, a VS Code extension and the <code>std/</code> library.</p>
+        <div class="eco-foot"><span class="badge v">v{{tulpa.version}}</span><span class="badge">Linux</span><span class="badge">macOS</span><span class="badge">Raspberry Pi</span><span class="badge">MCU</span></div></a>
+      <a class="eco-card wide reveal" href="hermisim.html">
+        <div class="eco-top"><img src="assets/img/ravide-mark.png" alt=""><div><span class="role">Desktop IDE &amp; simulation</span><h3>.RAV IDE</h3></div></div>
+        <p>The engineering workbench: LSP editor, MuJoCo co-simulation, live telemetry, waveform, machine and BOM viewers, proofs, firmware builds and one-click deploy.</p>
+        <div class="eco-foot"><span class="badge v">v{{hermisim.version}}</span><span class="badge">Windows installer</span><span class="badge">Linux</span><span class="badge">macOS</span></div></a>
+      <a class="eco-card reveal" href="android.html">
+        <div class="eco-top"><img src="assets/img/android/home.jpg" alt=""><div><span class="role">Mobile IDE</span><h3>Tulpa Field</h3></div></div>
+        <p>The whole runtime on your phone, offline. Program the phone's sensors, run MuJoCo in 3D and use the REPL anywhere.</p>
+        <div class="eco-foot"><span class="badge v">v{{android.version}}</span><span class="badge">Android</span><span class="badge">iOS</span></div></a>
+      <a class="eco-card reveal" href="tutor.html">
+        <div class="eco-top"><img src="assets/img/tutor/mark.png" alt=""><div><span class="role">Learn</span><h3>TulpaTutor</h3></div></div>
+        <p>A 60-lesson interactive course with 306 runnable snippets, checked exercises, challenges and a mastery certificate, on Tulpa compiled to WebAssembly.</p>
+        <div class="eco-foot"><span class="badge v">v{{tutor.version}}</span><span class="badge">Web</span><span class="badge">Android</span><span class="badge">iOS</span></div></a>
+      <a class="eco-card reveal" href="ai.html">
+        <div class="eco-top"><img src="assets/img/ai/mark.png" alt=""><div><span class="role">AI assistant</span><h3>Tulpa AI</h3></div></div>
+        <p>The agentic platform for Tulpa developers. It writes, fixes and explains Tulpa, and checks its own work against the real compiler before it answers.</p>
+        <div class="eco-foot"><span class="badge pre">{{ai.status}}</span><span class="badge">Android</span><span class="badge">iOS</span></div></a>
+    </div>
+  </div>
+</section>
+
+<section class="section tight">
+  <div class="wrap">
+    <div class="flow reveal">
+      <div><span class="n">01 · LEARN</span><h3>Start in TulpaTutor</h3><p>Lessons, exercises and a playground in the browser or on your phone. Nothing to install.</p></div>
+      <div><span class="n">02 · BUILD</span><h3>Write in .RAV IDE or Field</h3><p>Editor, REPL, diagnostics and Tulpa AI beside you when you get stuck.</p></div>
+      <div><span class="n">03 · SIMULATE</span><h3>Prove it before it moves</h3><p>Contracts, fuzzing, proofs and MuJoCo co-simulation on the desktop or the phone.</p></div>
+      <div><span class="n">04 · SHIP</span><h3>Native code &amp; firmware</h3><p><code>tulpa build</code> and <code>tulpa deploy</code> produce executables and flash RP2040 and ESP32 boards.</p></div>
     </div>
   </div>
 </section>
@@ -109,35 +152,6 @@
   </div>
 </section>
 
-<section class="section">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <span class="kicker">One toolchain, desktop to pocket</span>
-      <h2>A language, the workbench built for it, and an IDE for your phone.</h2>
-    </div>
-    <div class="products">
-      <a class="product reveal" href="tulpa.html">
-        <div class="product-img"><img src="assets/img/tulpa-hero.jpg" alt="Tulpa: Code the Physical World" loading="lazy"></div>
-        <div class="product-body"><span class="tag">Programming language · Rust</span><h3>Tulpa</h3>
-          <p>An expression-oriented language with Python-style ergonomics, three execution tiers (interpreter, bytecode VM and LLVM), an LSP, a VS Code extension, and libraries for learning, RTL and boards as code.</p>
-          <div class="pills"><span class="pill">units</span><span class="pill">contracts</span><span class="pill">machines</span><span class="pill">signals</span><span class="pill">LLVM</span><span class="pill">RP2040 · ESP32</span><span class="pill">std/driver</span><span class="pill">nn::</span><span class="pill">std/rtl</span></div></div>
-      </a>
-      <a class="product reveal" href="hermisim.html">
-        <div class="product-img"><img src="assets/img/screens/02_cosim.webp" alt=".RAV IDE running the Morty humanoid" loading="lazy"></div>
-        <div class="product-body"><span class="tag">IDE &amp; simulation suite · Python / Qt</span><h3>.RAV IDE</h3>
-          <p>An engineering workbench for Tulpa: an LSP-aware editor, MuJoCo co-simulation, live telemetry, waveform, state-machine and BOM viewers, an integrated Tulpa terminal, and a Windows installer.</p>
-          <div class="pills"><span class="pill">MuJoCo</span><span class="pill">VCD viewer</span><span class="pill">telemetry</span><span class="pill">headless CLI</span><span class="pill">Morty</span></div></div>
-      </a>
-      <a class="product reveal" href="android.html">
-        <div class="product-img phones"><img src="assets/img/android/home.jpg" alt="Tulpa Field welcome page" loading="lazy"><img src="assets/img/android/sim.jpg" alt="Tulpa Field 3D co-simulation" loading="lazy"><img src="assets/img/android/editor.jpg" alt="Tulpa Field editor" loading="lazy"></div>
-        <div class="product-body"><span class="tag">Android IDE · Kotlin + Rust · v{{android.version}}</span><h3>Tulpa Field</h3>
-          <p>The whole Tulpa runtime on your phone, offline: a touch-first editor, the phone's sensors as a programmable device, MuJoCo physics with 3D co-simulation, a REPL, and runnable examples.</p>
-          <div class="pills"><span class="pill">phone::</span><span class="pill">MuJoCo 3D</span><span class="pill">cosim::</span><span class="pill">REPL</span><span class="pill">APK</span></div></div>
-      </a>
-    </div>
-  </div>
-</section>
-
 <section class="section alt">
   <div class="wrap">
     <div class="section-head reveal">
@@ -160,7 +174,7 @@
 <section class="section alt">
   <div class="wrap">
     <div class="section-head reveal">
-      <span class="kicker">Autonomy, middleware, proof · and in 3.5, all of it on a microcontroller</span>
+      <span class="kicker">Autonomy, middleware, drivers, proof</span>
       <h2>Plan it, connect it, simulate it, prove it.</h2>
       <p>The layers above the control loop, and the tools to trust them before anything moves.</p>
     </div>
@@ -183,27 +197,6 @@
       <a class="card reveal" href="docs/simulation.html#from-simulation-to-hardware">
         <h3>Simulation to hardware</h3><p>One command proves, checks on the simulator, builds with the board SDK and flashes.</p>
         <code class="syn">tulpa deploy --port /dev/ttyUSB0</code></a>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <span class="kicker">3.3 · standalone robotics software</span>
-      <h2>From the simulator to the microcontroller.</h2>
-      <p>Write a driver once in Tulpa, test it against the simulated bus, and compile the same file for a Pico or an ESP32. CI checks that native output matches the interpreter byte for byte.</p>
-    </div>
-    <div class="grid g3">
-      <a class="card reveal" href="docs/drivers.html">
-        <h3>Driver SDK</h3><p>Typed <code>interface</code>s checked when a struct is defined, <code>std/driver</code> helpers, and reference MPU-6050, PCA9685 and MCP3008 drivers.</p>
-        <code class="syn">struct Mpu6050 impl Imu, Thermometer</code></a>
-      <a class="card reveal" href="docs/embedded.html#what-compiles-natively">
-        <h3>Native driver compilation</h3><p>Structs with invariants, devices, state machines, <code>always</code> monitors and <code>every!</code> loops all compile through LLVM.</p>
-        <code class="syn">tulpa build app.rav --target sim --exe</code></a>
-      <a class="card reveal" href="docs/embedded.html#firmware-projects">
-        <h3>Embedded backend</h3><p>RP2040, ESP32, S2, S3, C3 and C6, plus generic Cortex-M and RISC-V, on a portable C HAL. <code>tulpa new</code> scaffolds the project.</p>
-        <code class="syn">tulpa new rover --board rp2040</code></a>
     </div>
   </div>
 </section>
@@ -232,13 +225,13 @@
       <span class="kicker">Documentation</span>
       <h2>Start anywhere.</h2>
     </div>
-    <div class="grid g5">
-      <a class="card reveal" href="docs/embedded.html"><h3>Embedded targets</h3><p>Compile Tulpa for RP2040, ESP32 and Linux boards. Includes drivers and HAL porting.</p><span class="more">Build firmware →</span></a>
-      <a class="card reveal" href="docs/installation.html"><h3>Install</h3><p>Release packages, the Windows installer, or build from source.</p><span class="more">Installation →</span></a>
-      <a class="card reveal" href="docs/language-guide.html"><h3>Language guide</h3><p>Syntax, types, units, structs, machines, reactive rules and more.</p><span class="more">Read the guide →</span></a>
-      <a class="card reveal" href="docs/libraries.html"><h3>Libraries</h3><p><code>nn</code>, <code>pack</code>, <code>json</code>, <code>tlm</code>, <code>cosim</code> and <code>std/</code>.</p><span class="more">Browse libraries →</span></a>
-      <a class="card reveal" href="docs/hermisim.html"><h3>.RAV IDE</h3><p>Projects, co-simulation, telemetry and the Morty humanoid.</p><span class="more">Tour the IDE →</span></a>
-      <a class="card reveal" href="android.html"><h3>Tulpa Field for Android</h3><p>Download the signed APK: sensors, 3D co-simulation and the REPL on your phone.</p><span class="more">Get the app →</span></a>
+    <div class="grid g3">
+      <a class="card reveal" href="docs/quickstart.html"><h3>Quick start</h3><p>Install Tulpa and run your first program, units and contracts included, in five minutes.</p><span class="more">Get started →</span></a>
+      <a class="card reveal" href="docs/language-guide.html"><h3>Language guide</h3><p>Syntax, types, units, structs, machines, reactive rules, timing and safety envelopes.</p><span class="more">Read the guide →</span></a>
+      <a class="card reveal" href="docs/embedded.html"><h3>Embedded &amp; drivers</h3><p>The Driver SDK, native compilation and firmware for RP2040, ESP32, Cortex-M and RISC-V.</p><span class="more">Build firmware →</span></a>
+      <a class="card reveal" href="docs/hermisim.html"><h3>.RAV IDE</h3><p>Projects, co-simulation, telemetry, proofs and the Morty humanoid.</p><span class="more">Tour the IDE →</span></a>
+      <a class="card reveal" href="docs/tutor.html"><h3>TulpaTutor</h3><p>What the course covers, how exercises are checked, and running it offline.</p><span class="more">About the course →</span></a>
+      <a class="card reveal" href="docs/ai.html"><h3>Tulpa AI</h3><p>What the assistant can do, how it checks its answers and how the model is evaluated.</p><span class="more">About Tulpa AI →</span></a>
     </div>
   </div>
 </section>
@@ -246,11 +239,11 @@
 <section class="section">
   <div class="band reveal">
     <h2>Write the controller. <span class="grad">Prove the envelope.</span> Ship.</h2>
-    <p>Install .RAV IDE on Windows and everything is bundled, or build Tulpa from source on Linux, macOS or a Raspberry Pi.</p>
+    <p>Install Tulpa on Linux, macOS or a Raspberry Pi, get .RAV IDE for Windows with everything bundled, or start learning in the browser right now.</p>
     <div class="cta-row">
-      <a class="btn btn-primary" href="docs/installation.html">Install</a>
+      <a class="btn btn-primary" href="download.html">Downloads</a>
+      <a class="btn" href="{{tutor.web}}" target="_blank" rel="noopener">Open TulpaTutor</a>
       <a class="btn" href="{{tulpa.repo}}" target="_blank" rel="noopener">TulpaLang on GitHub</a>
-      <a class="btn" href="{{hermisim.repo}}" target="_blank" rel="noopener">.RAV IDE on GitHub</a>
     </div>
   </div>
 </section>

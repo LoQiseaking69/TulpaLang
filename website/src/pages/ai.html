@@ -1,0 +1,67 @@
+<!--{"title": "Tulpa AI", "active": "ai", "description": "Tulpa AI is the agentic platform for Tulpa developers: an AI assistant that writes, fixes and explains Tulpa code and checks its work against the real compiler. Android and iOS, private preview.", "search": "Tulpa AI assistant agent agentic chat model LLM code generation fix compiler errors explain docs exam benchmark Android iOS preview"}-->
+<section class="page-hero">
+  <div class="wrap hero-grid">
+    <div>
+      <img src="assets/img/ai/mark.png" alt="" width="64" height="64" style="border-radius:14px">
+      <span class="eyebrow" style="margin-top:18px"><span class="dot"></span>Tulpa AI {{ai.version}} · {{ai.status}} · Android · iOS</span>
+      <h1>An AI that knows Tulpa, <span class="grad">and checks its work.</span></h1>
+      <p class="sub">Tulpa AI is the agentic platform for Tulpa developers. Ask it to write a driver, fix a compiler error or explain a state machine. Before it answers, it runs the code through the real <code>tulpa</code> toolchain and repairs what fails.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#model">The model</a>
+        <a class="btn" href="docs/ai.html">How it works</a>
+        <a class="btn" href="#access">Get access</a>
+      </div>
+    </div>
+    <div class="frame reveal"><img src="assets/img/ai/startup.webp" alt="Tulpa AI: the agentic platform for Tulpa developers"></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">What it does</span>
+      <h2>A pair programmer for the physical world.</h2>
+    </div>
+    <div class="grid g3">
+      <div class="card reveal"><h3>Write</h3><p>Programs, drivers, state machines and missions in idiomatic Tulpa, with units and contracts where they belong.</p></div>
+      <div class="card reveal"><h3>Fix</h3><p>Paste a compiler diagnostic and get a corrected program that actually passes <code>tulpa check</code>.</p></div>
+      <div class="card reveal"><h3>Explain</h3><p>Walks through unfamiliar code and language features, from units of measure to safety envelopes.</p></div>
+      <div class="card reveal"><h3>Agent mode</h3><p>Plans a change, runs <code>tulpa check</code>, <code>run</code>, <code>test</code> and <code>prove</code> in a sandbox, repairs from the diagnostics and shows you a diff to approve.</p></div>
+      <div class="card reveal"><h3>Knows the ecosystem</h3><p>Ships with a knowledge pack of the Tulpa docs, examples and <code>std/</code>, and knows .RAV IDE, Tulpa Field and TulpaTutor.</p></div>
+      <div class="card reveal"><h3>Built for phones</h3><p>Native Android and SwiftUI iOS apps with streaming chat, projects, an editor and tools.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt" id="model">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">The model</span>
+      <h2>Trained on code the compiler has already checked.</h2>
+      <p>Tulpa AI is specialized on {{ai.examples}} chat and agent examples, and every one was verified against the real compiler: writing, fixing genuine errors, explaining, documenting and multi-step tool use. Each new model sits the same exam as the one it replaces, and goes live only if it scores higher.</p>
+    </div>
+    {{ai-model-card}}
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="kicker">The exam</span>
+      <h2>Graded by the toolchain, not by vibes.</h2>
+      <ul class="feature-list">
+        <li><div><strong>Knowledge</strong><span>Compiler-verified questions on the language and its libraries.</span></div></li>
+        <li><div><strong>Code generation</strong><span>pass@1 on executable tasks: the program has to run and produce the right output.</span></div></li>
+        <li><div><strong>Held-out programs</strong><span>Real TulpaLang programs the model never saw in training.</span></div></li>
+        <li><div><strong>Agent loop</strong><span>End-to-end tasks against <code>tulpa</code> {{tulpa.version}}: plan, run, repair, deliver.</span></div></li>
+      </ul>
+    </div>
+    <div class="reveal" id="access">
+      <span class="kicker">Access</span>
+      <h2>Private preview.</h2>
+      <p>Tulpa AI {{ai.version}} is in a private preview for Android and iOS while the model and agent mature. Builds are signed pre-releases; the iOS app installs with AltStore or SideStore.</p>
+      <p>The model runs on HermiTech's servers, and the weights are not distributed.</p>
+      <p class="note">Interested in early access or a commercial licence? Contact HermiTech LLC through <a href="{{tulpa.repo}}" target="_blank" rel="noopener">GitHub</a>.</p>
+    </div>
+  </div>
+</section>

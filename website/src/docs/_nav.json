@@ -16,6 +16,11 @@
         "slug": "quickstart",
         "file": "quickstart.md",
         "title": "Quick start"
+      },
+      {
+        "slug": "ecosystem",
+        "file": "ecosystem.md",
+        "title": "How it fits together"
       }
     ]
   },
@@ -130,7 +135,7 @@
     ]
   },
   {
-    "section": "Tulpa Field (Android)",
+    "section": "Tulpa Field (Android & iOS)",
     "pages": [
       {
         "slug": "android",
@@ -155,12 +160,32 @@
     ]
   },
   {
+    "section": "TulpaTutor & Tulpa AI",
+    "pages": [
+      {
+        "slug": "tutor",
+        "file": "tutor.md",
+        "title": "TulpaTutor"
+      },
+      {
+        "slug": "ai",
+        "file": "ai.md",
+        "title": "Tulpa AI"
+      }
+    ]
+  },
+  {
     "section": "Project",
     "pages": [
       {
         "slug": "roadmap",
         "file": "roadmap.md",
         "title": "Roadmap"
+      },
+      {
+        "slug": "licensing",
+        "repo": "LICENSING.md",
+        "title": "Licensing"
       },
       {
         "slug": "contributing",

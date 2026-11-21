@@ -1,0 +1,78 @@
+<!--{"title": "TulpaTutor", "active": "tutor", "description": "TulpaTutor: learn Tulpa with the real runtime running on your device. 60 interactive lessons, 306 runnable snippets, checked exercises, challenges and a Mastery Certification. Web, Android and iOS.", "search": "TulpaTutor learn Tulpa course lessons exercises quiz challenges certification tutor mascot web app Android iOS APK IPA WebAssembly"}-->
+<section class="page-hero">
+  <div class="wrap hero-grid">
+    <div>
+      <img src="assets/img/tutor/mark.png" alt="" width="64" height="64" style="border-radius:14px">
+      <span class="eyebrow" style="margin-top:18px"><span class="dot"></span>TulpaTutor {{tutor.version}} · Web · Android · iOS</span>
+      <h1>Learn Tulpa by <span class="grad">running real code.</span></h1>
+      <p class="sub">Every snippet, exercise, challenge and exam question runs on Tulpa {{tulpa.version}} compiled to WebAssembly: the same interpreter, VM, units, contracts, state machines and simulated hardware bus the desktop toolchain uses. No server, no account.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="{{tutor.web}}" target="_blank" rel="noopener">Open the web app</a>
+        <a class="btn" href="{{tutor.apk}}">Android APK</a>
+        <a class="btn" href="{{tutor.ipa}}">iPhone &amp; iPad (IPA)</a>
+      </div>
+    </div>
+    <div class="frame reveal"><img src="assets/img/tutor/home.webp" alt="TulpaTutor home: course progress, today's goal, course map and skills" data-zoom></div>
+  </div>
+</section>
+
+<section class="section tight">
+  <div class="wrap">
+    <div class="stats reveal">
+      <div class="stat"><b class="grad">60</b><span>in-depth lessons in 10 modules</span></div>
+      <div class="stat"><b class="grad">306</b><span>runnable, editable snippets</span></div>
+      <div class="stat"><b class="grad">60</b><span>exercises checked by the runtime</span></div>
+      <div class="stat"><b class="grad">122</b><span>quiz questions, plus 14 challenges</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="kicker">What's inside</span>
+      <h2>From <code>print</code> to autonomous robots.</h2>
+      <p>Getting Started · Syntax &amp; Basics · Data Types · Functions &amp; Modules · Control Flow · Advanced Features · Object Oriented · Concurrency &amp; Async · Hardware &amp; Embedded · Robotics &amp; Simulation, ending in a capstone autonomous rover.</p>
+    </div>
+    <div class="grid g3">
+      <div class="card reveal"><h3>Course</h3><p>Lessons with runnable snippets, key takeaways and callouts. The CI validates every snippet and solution against the runtime before a release ships.</p></div>
+      <div class="card reveal"><h3>Mastery Certification</h3><p>20 questions drawn from a 32-question pool, plus 3 capstone programs checked by the runtime. Save your certificate as an image.</p></div>
+      <div class="card reveal"><h3>Practice</h3><p>Spaced-repetition review in Leitner boxes, code drills from finished lessons and timed lightning rounds.</p></div>
+      <div class="card reveal"><h3>Explore</h3><p>A full workspace: editor with live diagnostics, a REPL, state-machine diagrams, contract fuzzing, a test runner and a searchable language reference.</p></div>
+      <div class="card reveal"><h3>Live instruments</h3><p><code>tlm::plot</code> draws animated charts under the output, so control loops and sensor code are visible as they run.</p></div>
+      <div class="card reveal"><h3>Progress &amp; the Tutor</h3><p>XP, levels, streaks, skill breakdowns and 14 achievements, with a robotic-raven Tutor who greets you, cheers you on and hands out hints.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head reveal"><span class="kicker">Gallery</span><h2>Desktop browser or phone, same course.</h2></div>
+    <div class="gallery g2">
+      <figure class="frame reveal"><img src="assets/img/tutor/exercise.webp" alt="A checked exercise" loading="lazy" data-zoom></figure>
+      <figure class="frame reveal"><img src="assets/img/tutor/playground.webp" alt="Playground with a live telemetry plot" loading="lazy" data-zoom></figure>
+      <figure class="frame reveal"><img src="assets/img/tutor/machines.webp" alt="State-machine diagram" loading="lazy" data-zoom></figure>
+      <figure class="frame reveal"><img src="assets/img/tutor/progress.webp" alt="Progress and achievements" loading="lazy" data-zoom></figure>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap split">
+    <div class="phones reveal">
+      <img src="assets/img/tutor/m-home.webp" alt="TulpaTutor home on a phone" data-zoom>
+      <img src="assets/img/tutor/m-lesson.webp" alt="A lesson on a phone" data-zoom>
+    </div>
+    <div class="reveal">
+      <span class="kicker">Get it</span>
+      <h2>Three ways in.</h2>
+      <ul class="feature-list">
+        <li><div><strong>Web app</strong><span>Runs in any modern browser and works offline once loaded. <a href="{{tutor.web}}" target="_blank" rel="noopener">Open TulpaTutor →</a></span></div></li>
+        <li><div><strong>Android</strong><span>Android 8.0+, with native haptics. <a href="{{tutor.apk}}">Download the APK →</a></span></div></li>
+        <li><div><strong>iPhone &amp; iPad</strong><span>iOS 15+. Sideload the IPA with AltStore, SideStore or Sideloadly. <a href="{{tutor.ipa}}">Download the IPA →</a></span></div></li>
+        <li><div><strong>Self-host</strong><span>Unzip the web build onto any static file server. <a href="{{tutor.zip}}">Web build (zip) →</a></span></div></li>
+      </ul>
+      <p class="note"><a href="docs/tutor.html">More about the course</a> · <a href="{{tutor.repo}}" target="_blank" rel="noopener">TulpaTutor on GitHub</a></p>
+    </div>
+  </div>
+</section>

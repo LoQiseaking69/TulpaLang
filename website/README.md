@@ -1,8 +1,8 @@
 # Tulpa website & documentation
 
-This folder is the source of the Tulpa and .RAV IDE website, published with GitHub Pages at
+This folder is the source of the Tulpa ecosystem website (Tulpa, .RAV IDE, Tulpa Field, TulpaTutor and Tulpa AI), published with GitHub Pages at
 **https://loqiseaking69.github.io/TulpaLang/**. It holds the landing pages for
-[Tulpa](../README.md) and [.RAV IDE](https://github.com/LoQiseaking69/.RAV_IDE)
+[Tulpa](../README.md) and [.RAV IDE](https://github.com/LoQiseaking69/dotRAV_IDE)
 and the documentation site.
 
 It's a small static-site generator (`build.mjs`, under 400 lines) with two dependencies,
@@ -60,7 +60,7 @@ images.
 website/
   site.config.json        versions, repo URLs, site URL
   build.mjs               generator (+ dev server with --serve)
-  src/pages/              index.html, tulpa.html, hermisim.html, 404.html (HTML fragments)
+  src/pages/              index, tulpa, hermisim (.RAV IDE), android (Field), tutor, ai, download, 404 (HTML fragments)
   src/docs/               site-only docs pages + _nav.json
   src/snippets/           runnable .rav snippets for the landing pages, with their real output
   src/assets/             css, js, images and .RAV IDE screenshots
@@ -93,4 +93,13 @@ Files in `src/pages/` are HTML bodies with a JSON header comment:
 |---|---|
 | `{{snippet:units.rav}}` | Highlighted code block from `src/snippets/` (`.rav`, `.txt`, `.sh`, `.json`) |
 | `{{snippet:units.out.txt\|$ tulpa units.rav}}` | The same, with a custom title |
-| `{{tulpa.version}}`, `{{hermisim.repo}}`, … | Values from `site.config.json` |
+| `{{tulpa.version}}`, `{{hermisim.repo}}`, `{{tutor.web}}`, `{{ai.status}}`, … | Values from `site.config.json` |
+| `{{ai-model-card}}` | The Tulpa AI model card, from `ai.exam` in `site.config.json` (shows "pending" until set) |
+
+## Releasing a product
+
+Versions and download links for every product live in `site.config.json` (`tulpa`, `hermisim`,
+`android`/`ios`, `tutor`, `ai`). Bump them there and the header badges, home page, product pages,
+downloads page and footer all update. When a new Tulpa AI model is promoted, set `ai.model` and
+`ai.exam` (`overall`, `knowledge`, `pass_at_1`, `agent`, `holdout` as 0–1 fractions, `base` with the
+same keys, and `date`).

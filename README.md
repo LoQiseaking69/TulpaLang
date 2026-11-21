@@ -30,7 +30,7 @@ abstractions, and native hardware integration.
 | Engineering model | Units, contracts, invariants, state machines, reactive rules, timing constraints |
 | Hardware integration | GPIO, I2C, SPI, UART, PWM, Servo, PID, CAN, Bluetooth LE |
 | Verification | Static proofs of contracts and invariants (`tulpa prove`), runtime contracts, contract fuzzing, safety monitors, exhaustive exploration, deterministic physics and chip emulation, record/replay |
-| Developer tooling | REPL, test runner, LSP, VS Code extension, Mermaid state diagrams, [.RAV IDE](https://github.com/LoQiseaking69/.RAV_IDE), [Tulpa Field](android/README.md) for Android and [iOS](ios/README.md) |
+| Developer tooling | REPL, test runner, LSP, VS Code extension, Mermaid state diagrams, [.RAV IDE](https://github.com/LoQiseaking69/dotRAV_IDE), [Tulpa Field](android/README.md) for Android and [iOS](ios/README.md) |
 | License | [Business Source License 1.1](LICENSING.md) (source-available; converts to Apache-2.0 after four years) |
 
 ## A language designed around physical systems
@@ -351,7 +351,7 @@ See the [Driver SDK](docs/drivers.md) and [Native and embedded targets](docs/emb
 
 ## .RAV IDE integration
 
-The [.RAV IDE](https://github.com/LoQiseaking69/.RAV_IDE) IDE bundles Tulpa with:
+The [.RAV IDE](https://github.com/LoQiseaking69/dotRAV_IDE) IDE bundles Tulpa with:
 - a MuJoCo co-simulator
 - a waveform viewer
 - state-machine diagrams
@@ -410,7 +410,7 @@ The `release` workflow builds them on every `v*` tag. The latest release is **v3
   `sudo ./install.sh /usr/local`.
 - **Debian / Ubuntu / Raspberry Pi OS:** `sudo apt install ./tulpa_<version>_<arch>.deb`
 - **macOS:** `tulpa-<version>-<x86_64|aarch64>-apple-darwin.tar.gz`
-- **Windows:** use the [.RAV IDE installer](https://github.com/LoQiseaking69/.RAV_IDE),
+- **Windows:** use the [.RAV IDE installer](https://github.com/LoQiseaking69/dotRAV_IDE),
   which bundles `tulpa.exe` and the `std/` library, or build from source.
 - **VS Code:** `code --install-extension tulpa-lang-<version>.vsix`. The `.vsix` is attached to
   each release. The extension is not on the VS Code Marketplace yet.
