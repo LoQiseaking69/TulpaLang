@@ -46,9 +46,24 @@
     "version": "0.2.0",
     "build": "pre.87",
     "status": "Private preview",
-    "model": "Tulpa AI v4",
+    "model": "Tulpa AI v1",
     "base": "Qwen3.5-4B (Apache-2.0)",
     "examples": "1,645",
-    "api": "https://tulpa-api-production.up.railway.app"
+    "api": "https://tulpa-api-production.up.railway.app",
+    "exam": {
+      "overall": 0.734,
+      "knowledge": 0.69,
+      "pass_at_1": 0.76,
+      "agent": 0.75,
+      "holdout": 0.17,
+      "base": {
+        "overall": 0.413,
+        "knowledge": 0.62,
+        "pass_at_1": 0.62,
+        "agent": 0.0,
+        "holdout": 0.17
+      },
+      "date": "Nov 2026"
+    }
   }
 }

@@ -475,7 +475,7 @@ body.is-docs .footer { margin-top: 0; }
 .model-card dl { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin: 0 0 22px; }
 .model-card dt { font: 600 11.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .model-card dd { margin: 4px 0 0; font: 600 20px var(--display); color: #f2f5fb; }
-.skill { display: grid; grid-template-columns: 170px 1fr 120px; align-items: center; gap: 14px; margin: 10px 0; font-size: 14.5px; }
+.skill { display: grid; grid-template-columns: 190px 1fr 180px; align-items: center; gap: 14px; margin: 10px 0; font-size: 14.5px; }
 .skill .bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.06); position: relative; overflow: hidden; }
 .skill .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--grad); }
 .skill .bar b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--amber); }

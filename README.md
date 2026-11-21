@@ -1,7 +1,6 @@
-# Tulpa
----
 
-![Tulpa](https://github.com/LoQiseaking69/Tulpa/blob/main/file_00000000d52c81f589c57789de01a871.png)
+___
+![Tulpa](image-18.jpg.png)
 
 ---
 **A Python-flavoured, Rust-powered programming language for robotics, embedded systems, and physical computing.**
