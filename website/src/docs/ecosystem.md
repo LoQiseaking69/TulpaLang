@@ -1,11 +1,11 @@
 # How it fits together
 
 Every product in the Tulpa ecosystem runs the same language. There is one implementation of
-Tulpa, in the TulpaLang repository, and each product embeds it rather than reimplementing it:
+Tulpa, in the Tulpa repository, and each product embeds it rather than reimplementing it:
 
 | Product | How it runs Tulpa |
 |---|---|
-| **Tulpa** (the CLI) | Native binary built from TulpaLang, with the interpreter, bytecode VM and LLVM backend |
+| **Tulpa** (the CLI) | Native binary built from the Tulpa repository, with the interpreter, bytecode VM and LLVM backend |
 | **.RAV IDE** | Bundles the `tulpa` binary and talks to it through `tulpa lsp`, the REPL and the co-simulation bridge |
 | **Tulpa Field** | Links the Tulpa runtime into the Android and iOS apps, so it works offline |
 | **TulpaTutor** | Compiles the Tulpa runtime to WebAssembly, so the course runs in the browser and in the apps without a server |

@@ -1,6 +1,6 @@
 # Tulpa Field: install & tour
 
-**Tulpa Field** is the TulpaLang IDE for Android and iOS. It runs the whole Tulpa runtime on the phone,
+**Tulpa Field** is the Tulpa IDE for Android and iOS. It runs the whole Tulpa runtime on the phone,
 offline: the interpreter and bytecode VM, units, contracts, state machines, signals and timing
 rules, and the `std/` libraries. It adds three things the desktop can't give you: the phone's own
 sensors as a programmable device, MuJoCo physics with a 3D view in your pocket, and a touch-first

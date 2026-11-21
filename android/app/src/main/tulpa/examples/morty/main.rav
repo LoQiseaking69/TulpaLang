@@ -1,4 +1,4 @@
-# MORTY — bipedal humanoid control, reimagined in TulpaLang.
+# MORTY — bipedal humanoid control, reimagined in Tulpa.
 #
 # Run from .RAV IDE (Run ▸ Run in Simulator, model models/morty.xml) or headless:
 #     python -m tulpa_bridge run workspace/morty/main.rav --model models/morty.xml -- 12 [hard] [policy] [nogov]

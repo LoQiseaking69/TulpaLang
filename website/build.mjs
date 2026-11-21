@@ -12,7 +12,7 @@ import powershell from 'highlight.js/lib/languages/powershell';
 import tulpa from './scripts/tulpa-hljs.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const REPO = path.join(ROOT, '..');          // the TulpaLang checkout this site lives in
+const REPO = path.join(ROOT, '..');          // the Tulpa checkout this site lives in
 const SRC = path.join(ROOT, 'src');
 const OUT = path.join(ROOT, '_site');
 hljs.registerLanguage('tulpa', tulpa);
@@ -56,7 +56,7 @@ function codeBlock(code, lang, title) {
 const config = JSON.parse(read(path.join(ROOT, 'site.config.json')));
 const nav = JSON.parse(read(path.join(SRC, 'docs/_nav.json')));
 const docPages = nav.flatMap((s) => s.pages.map((p) => ({ ...p, section: s.section })));
-// site docs by file name, and repo docs by their path in the TulpaLang tree
+// site docs by file name, and repo docs by their path in the Tulpa tree
 const docSlugByFile = new Map();
 const docSlugByRepoPath = new Map();
 for (const p of docPages) {
@@ -121,7 +121,7 @@ function rewriteHref(href, ctx) {
   const [file, hash] = href.split('#');
   const tail = hash ? '#' + hash : '';
   if (ctx.repoPath) {
-    // a page read from the TulpaLang tree: resolve against its location in the repo
+    // a page read from the Tulpa tree: resolve against its location in the repo
     const rel = path.posix.normalize(path.posix.join(path.posix.dirname(ctx.repoPath), file));
     const slug = docSlugByRepoPath.get(rel);
     if (slug) return `${slug}.html${tail}`;
@@ -200,7 +200,7 @@ ${canonical ? `<link rel="canonical" href="${config.url}/${canonical}">` : ''}
     </nav>
     <div class="topbar-actions">
       <button class="search-btn" type="button" data-search-open>${ICON.search}<span>Search</span><kbd>/</kbd></button>
-      <a class="icon-btn" href="${config.tulpa.repo}" target="_blank" rel="noopener" aria-label="TulpaLang on GitHub">${ICON.github}</a>
+      <a class="icon-btn" href="${config.tulpa.repo}" target="_blank" rel="noopener" aria-label="Tulpa on GitHub">${ICON.github}</a>
       <button class="icon-btn menu-btn" type="button" aria-label="Open menu" data-menu>${ICON.menu}</button>
     </div>
   </div>
@@ -219,7 +219,7 @@ ${body}
       <div><h4>Products</h4><a href="${root}tulpa.html">Tulpa language</a><a href="${root}hermisim.html">.RAV IDE</a><a href="${root}android.html">Tulpa Field</a><a href="${root}tutor.html">TulpaTutor</a><a href="${root}ai.html">Tulpa AI</a></div>
       <div><h4>Learn</h4><a href="${root}docs/quickstart.html">Quick start</a><a href="${root}docs/language-guide.html">Language guide</a><a href="${root}docs/examples.html">Examples</a><a href="${config.tutor.web}" target="_blank" rel="noopener">TulpaTutor web app</a></div>
       <div><h4>Get it</h4><a href="${root}download.html">All downloads</a><a href="${config.tulpa.releases}" target="_blank" rel="noopener">Tulpa ${esc(config.tulpa.version)}</a><a href="${config.hermisim.releases}" target="_blank" rel="noopener">.RAV IDE for Windows</a><a href="${config.android.download}">Tulpa Field APK</a></div>
-      <div><h4>Project</h4><a href="${config.tulpa.repo}" target="_blank" rel="noopener">TulpaLang on GitHub</a><a href="${root}docs/ecosystem.html">How it fits together</a><a href="${root}docs/roadmap.html">Roadmap</a><a href="${root}docs/licensing.html">Licensing</a></div>
+      <div><h4>Project</h4><a href="${config.tulpa.repo}" target="_blank" rel="noopener">Tulpa on GitHub</a><a href="${root}docs/ecosystem.html">How it fits together</a><a href="${root}docs/roadmap.html">Roadmap</a><a href="${root}docs/licensing.html">Licensing</a></div>
     </div>
   </div>
   <div class="footer-legal">Tulpa, .RAV IDE, Tulpa Field and TulpaTutor are source-available under the Business Source License 1.1: free for development, evaluation, education and research; commercial production use is licensed by HermiTech LLC. Tulpa AI is a private preview. © ${new Date().getFullYear()} HermiTech LLC.</div>
@@ -274,7 +274,7 @@ function buildExamples() {
   const names = fs.readdirSync(dir).filter((n) => fs.existsSync(path.join(dir, n, 'main.rav')))
     .sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99));
   const ctx = { toc: [], text: [] };
-  let html = `<p class="lead">Every program below lives in <a href="${config.tulpa.repo}/tree/main/examples" target="_blank" rel="noopener"><code>examples/</code></a> in the TulpaLang repository. The output shown is its <code>expected.txt</code>, which <code>cargo test</code> checks on every commit, under both the interpreter and the VM.</p>\n`;
+  let html = `<p class="lead">Every program below lives in <a href="${config.tulpa.repo}/tree/main/examples" target="_blank" rel="noopener"><code>examples/</code></a> in the Tulpa repository. The output shown is its <code>expected.txt</code>, which <code>cargo test</code> checks on every commit, under both the interpreter and the VM.</p>\n`;
   html += '<div class="ex-index">' + names.map((n) => `<a href="#${slugify(n)}">${n}</a>`).join('') + '</div>';
   for (const n of names) {
     const code = read(path.join(dir, n, 'main.rav'));
@@ -289,7 +289,7 @@ function buildExamples() {
     html += `<div class="ex-cmd"><code>tulpa examples/${esc(n)}/main.rav</code><a href="${config.tulpa.repo}/tree/main/examples/${esc(n)}" target="_blank" rel="noopener">View on GitHub →</a></div>`;
     html += `<div class="ex-pair">${codeBlock(code, 'tulpa', 'main.rav')}${out ? codeBlock(out, 'text', 'expected output') : ''}</div></section>`;
   }
-  return { ...ctx, html, title: 'Example gallery', paras: ['Runnable Tulpa example programs from the TulpaLang repository, each with the expected output that cargo test checks on every commit.'] };
+  return { ...ctx, html, title: 'Example gallery', paras: ['Runnable Tulpa example programs from the Tulpa repository, each with the expected output that cargo test checks on every commit.'] };
 }
 
 // ---------------------------------------------------------------- docs pages

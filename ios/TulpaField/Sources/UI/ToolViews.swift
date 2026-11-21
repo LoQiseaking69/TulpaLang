@@ -359,7 +359,7 @@ struct SettingsView: View {
                     Divider().background(TF.line).padding(.vertical, 8)
                     header("About")
                     Text("Tulpa Field \(vm.appVersion) (\(vm.buildNumber))").font(.headline).foregroundColor(TF.text)
-                    Text("TulpaLang runtime \(vm.tulpaVersion) · interpreter, bytecode VM, units, contracts, machines, signals, Driver SDK, planning, Tulpa Link, std/ libraries")
+                    Text("Tulpa runtime \(vm.tulpaVersion) · interpreter, bytecode VM, units, contracts, machines, signals, Driver SDK, planning, Tulpa Link, std/ libraries")
                         .font(.system(size: 13)).foregroundColor(TF.dim)
                     Text("Physics: MuJoCo \(TulpaNative.simVersion()) (Apache-2.0), rendered with Metal.").font(.system(size: 13)).foregroundColor(TF.dim)
                     Text("Modules: " + vm.modules.keys.sorted().joined(separator: " · ")).font(TF.mono(12)).foregroundColor(TF.dim)

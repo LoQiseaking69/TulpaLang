@@ -46,7 +46,7 @@ Every model is graded by the real `tulpa` compiler, not by another model:
 |---|---|
 | Knowledge | Compiler-verified questions on the language and its libraries |
 | Code generation | pass@1 on executable tasks: the program must run and print the right output |
-| Held-out programs | Real TulpaLang programs that were never in the training data |
+| Held-out programs | Real Tulpa programs that were never in the training data |
 | Agent | End-to-end tasks in the agent loop against `tulpa` 3.5.0 |
 
 The latest results are on the [Tulpa AI page](../ai.html#model).

@@ -3,7 +3,7 @@
   MORTY — bipedal humanoid for the .RAV IDE / Tulpa reimagining of the Morty project.
   16 body joints (5 per leg, 3 per arm) + 2 gripper slides, torque-controlled motors (N·m / N),
   IMU, joint pos/vel/torque, ankle force/torque, sole touch pads and wrist force sensors.
-  Controller: workspace/morty (TulpaLang).  Masses ≈ 51 kg total, standing pelvis height ≈ 0.93 m.
+  Controller: workspace/morty (Tulpa).  Masses ≈ 51 kg total, standing pelvis height ≈ 0.93 m.
 -->
 <mujoco model="morty">
   <compiler angle="degree" autolimits="true"/>

@@ -1,6 +1,6 @@
 {
   "name": "Morty",
-  "description": "Bipedal humanoid control reimagined in TulpaLang: capture-point balance, physics-informed COM model, PPO residual policy, FPGA torque governor (RTL + behavioural), mainboard as code.",
+  "description": "Bipedal humanoid control reimagined in Tulpa: capture-point balance, physics-informed COM model, PPO residual policy, FPGA torque governor (RTL + behavioural), mainboard as code.",
   "model": "../../models/morty.xml",
   "entry": "main.rav",
   "run_configurations": [

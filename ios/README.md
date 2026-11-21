@@ -1,6 +1,6 @@
 # Tulpa Field for iOS
 
-The iPhone and iPad build of [Tulpa Field](../android/README.md), the TulpaLang pocket IDE. It
+The iPhone and iPad build of [Tulpa Field](../android/README.md), the Tulpa pocket IDE. It
 runs the same Tulpa runtime as the Android app (interpreter, bytecode VM, units, contracts,
 machines, `std/` libraries), the same `phone::` host module on the device's sensors, and
 **MuJoCo 4** for 3D co-simulation, drawn with Metal.

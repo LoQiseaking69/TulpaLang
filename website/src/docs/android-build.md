@@ -1,7 +1,7 @@
 # Building Tulpa Field & releases
 
 Tulpa Field lives in [`android/`](https://github.com/LoQiseaking69/TulpaLang/tree/main/android)
-in the TulpaLang repository.
+in the Tulpa repository.
 
 ```text
 android/

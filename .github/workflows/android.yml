@@ -300,7 +300,7 @@ jobs:
             dist/*.sha256
             dist/altstore-source.json
           body: |
-            **Tulpa Field** — the TulpaLang IDE for Android and iOS.
+            **Tulpa Field** — the Tulpa IDE for Android and iOS.
 
             ### Android
             Download `TulpaField-${{ needs.version.outputs.version }}.apk` and open it on your phone (allow "install unknown apps" for your browser or file manager once).

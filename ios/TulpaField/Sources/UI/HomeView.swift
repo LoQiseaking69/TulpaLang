@@ -73,7 +73,7 @@ struct HomeView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Tulpa Field \(vm.appVersion)").font(.system(size: 13, weight: .semibold))
-                            Text("TulpaLang \(vm.tulpaVersion) · MuJoCo \(vm.sim.state.version)").font(.caption).foregroundColor(TF.dim)
+                            Text("Tulpa \(vm.tulpaVersion) · MuJoCo \(vm.sim.state.version)").font(.caption).foregroundColor(TF.dim)
                         }
                         Spacer()
                         Button("GitHub") { openURL(URL(string: "https://github.com/LoQiseaking69/TulpaLang")!) }
@@ -90,7 +90,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 0) {
             Image("Logo").resizable().frame(width: 64, height: 64)
             Text("Welcome to Tulpa Field").font(.title2.bold()).foregroundColor(TF.text).padding(.top, 10)
-            Text("TulpaLang in your pocket: write code for things that move and sense, run it against your phone's real sensors or a MuJoCo physics model in 3D. Everything runs offline, on the device.")
+            Text("Tulpa in your pocket: write code for things that move and sense, run it against your phone's real sensors or a MuJoCo physics model in 3D. Everything runs offline, on the device.")
                 .foregroundColor(TF.text.opacity(0.85)).lineSpacing(3).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Button { vm.openGuide("welcome") } label: { Label("Start the tour", systemImage: "book") }.buttonStyle(PrimaryButton())

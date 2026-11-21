@@ -44,7 +44,7 @@ fun ProjectsScreen(vm: AppViewModel, onImport: () -> Unit, menu: @Composable () 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(painterResourceLogo(), null, tint = androidx.compose.ui.graphics.Color.Unspecified, modifier = Modifier.size(30.dp))
                     Spacer(Modifier.width(10.dp))
-                    Column { Text("Projects", fontWeight = FontWeight.SemiBold); Text("TulpaLang ${runCatching { dev.hermitech.tulpafield.core.TulpaNative.version() }.getOrDefault("")}", style = MaterialTheme.typography.labelSmall, color = TF.Dim) }
+                    Column { Text("Projects", fontWeight = FontWeight.SemiBold); Text("Tulpa ${runCatching { dev.hermitech.tulpafield.core.TulpaNative.version() }.getOrDefault("")}", style = MaterialTheme.typography.labelSmall, color = TF.Dim) }
                 }
             }, actions = {
                 IconButton(onClick = onImport) { Icon(Icons.Default.FileOpen, "Import a file") }

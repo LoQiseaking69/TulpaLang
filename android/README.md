@@ -1,4 +1,4 @@
-# Tulpa Field — TulpaLang IDE for Android
+# Tulpa Field — Tulpa IDE for Android
 
 <p align="center">
   <img src="docs/screenshots/home.jpg" width="19%" alt="Welcome page">
@@ -17,7 +17,7 @@
 <p align="center"><sub>Welcome page · Morty and cart-pole in 3D co-simulation · editor · gauges & plots — machine inspector · verify · guide · REPL · sensors.
 Captured by CI on an Android 14 emulator (<code>android/ci/smoke.sh</code>).</sub></p>
 
-A pocket IDE for TulpaLang that runs the **entire Tulpa runtime on the phone** (interpreter,
+A pocket IDE for Tulpa that runs the **entire Tulpa runtime on the phone** (interpreter,
 bytecode VM, units, contracts, machines, signals, interfaces and the Driver SDK, `std/` libraries), turns the handset itself
 into a device you can program, and carries **MuJoCo** for 3D co-simulation.
 

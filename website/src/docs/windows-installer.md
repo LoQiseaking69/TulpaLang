@@ -6,7 +6,7 @@ the VS Code extension into one `RAVIDE-Setup-<version>-x64.exe`.
 ## Build locally
 
 On Windows, with Rust, Python, Node.js and [Inno Setup 6](https://jrsoftware.org/isinfo.php)
-installed, and TulpaLang cloned next to .RAV IDE:
+installed, and the Tulpa repository cloned next to .RAV IDE:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1 -TulpaSrc ..\TulpaLang -Version 2.3.0
@@ -23,7 +23,7 @@ The script:
 ## Build in CI
 
 The `windows-installer` workflow does the same on every `v*` tag and attaches the installer to the
-GitHub release. If TulpaLang is private, add a `TULPA_REPO_TOKEN` secret with read access to it
+GitHub release. If the Tulpa repository is private, add a `TULPA_REPO_TOKEN` secret with read access to it
 so the workflow can check it out.
 
 ## What the installer does

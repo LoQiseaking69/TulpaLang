@@ -16,7 +16,7 @@ struct ProjectsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TopBar(title: "Projects", subtitle: "TulpaLang \(vm.tulpaVersion)", leading: { BackButton() }) {
+            TopBar(title: "Projects", subtitle: "Tulpa \(vm.tulpaVersion)", leading: { BackButton() }) {
                 IconButton(system: "doc.badge.arrow.up", label: "Import a file") { importing = true }
                 ToolsMenu()
             }

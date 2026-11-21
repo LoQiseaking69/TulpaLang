@@ -65,7 +65,7 @@ fun HomeScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
                     Spacer(Modifier.height(10.dp))
                     Text("Welcome to Tulpa Field", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
-                    Text("TulpaLang in your pocket: write code for things that move and sense, run it against your phone's real sensors or a MuJoCo physics model in 3D. Everything runs offline, on the device.",
+                    Text("Tulpa in your pocket: write code for things that move and sense, run it against your phone's real sensors or a MuJoCo physics model in 3D. Everything runs offline, on the device.",
                         color = TF.Text.copy(alpha = 0.85f), lineHeight = 21.sp)
                     Spacer(Modifier.height(14.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -140,7 +140,7 @@ fun HomeScreen(vm: AppViewModel, menu: @Composable () -> Unit) {
             Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Tulpa Field ${BuildConfig.VERSION_NAME}", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    Text("TulpaLang ${runCatching { TulpaNative.version() }.getOrDefault("")} · MuJoCo ${vm.sim.state.value.version}", color = TF.Dim, fontSize = 12.sp)
+                    Text("Tulpa ${runCatching { TulpaNative.version() }.getOrDefault("")} · MuJoCo ${vm.sim.state.value.version}", color = TF.Dim, fontSize = 12.sp)
                 }
                 TextButton(onClick = { uri.openUri("https://github.com/LoQiseaking69/TulpaLang") }) { Text("GitHub") }
             }

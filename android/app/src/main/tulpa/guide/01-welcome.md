@@ -1,6 +1,6 @@
 # Welcome to Tulpa Field
 
-Tulpa Field is a pocket IDE for **TulpaLang**, the language for engineers who program things that
+Tulpa Field is a pocket IDE for **Tulpa**, the language for engineers who program things that
 move, sense and must not fail. The whole Tulpa toolchain runs on the phone — interpreter, bytecode
 VM, units, contracts, state machines, reactive rules and the `std/` libraries. Nothing is sent to a
 server, and everything works offline.

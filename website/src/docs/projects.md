@@ -12,7 +12,7 @@ This is the file shipped with the Morty project (trimmed):
 ```json
 {
   "name": "Morty",
-  "description": "Bipedal humanoid control reimagined in TulpaLang.",
+  "description": "Bipedal humanoid control reimagined in Tulpa.",
   "model": "../../models/morty.xml",
   "entry": "main.rav",
   "run_configurations": [
